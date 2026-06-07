@@ -1,2 +1,2 @@
 # iopn-dex
-Decentralized Exchange on IOPn Chain using PancakeSwap liquidity
+Decentralized Exchange on IOPn Chain with real time token price
