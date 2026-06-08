@@ -1,2 +1,28 @@
-# iopn-dex
-Decentralized Exchange on IOPn Chain with real time token price
+# IOPn Dex
+
+IOPn Dex is a next-generation decentralized exchange and analytics platform built for the IOPn ecosystem.
+
+## Features
+
+- Real-time token price tracking
+- DEX analytics dashboard
+- Wallet connection
+- Portfolio tracking
+- Watchlist management
+- Market overview
+- Trending tokens
+- Liquidity analytics
+- Mobile-friendly interface
+- Secure Web3 integration
+
+## Tech Stack
+
+- Next.js
+- TypeScript
+- Tailwind CSS
+- Wagmi
+- Viem
+- WalletConnect
+- IOPn Chain
+
+## Project Structure
