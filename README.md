@@ -25,14 +25,13 @@ IOPn Dex is a next-generation decentralized exchange and analytics platform buil
 - WalletConnect
 - IOPn Chain
 
-## Project Structure
-
 ## Roadmap
-[ 1 ] Wallet Integration
-[ 2 ] Token Analytics
-[ 3 ] Portfolio Dashboard
-[ 4 ] Watchlist
-[ 5 ] DEX Aggregator
-[ 6 ] Liquidity Pool Analytics
-[ 7 ] AI Market Insights
-[ 8 ] Mobile Optimization
+
+ - Wallet Integration
+ - Token Analytics
+ - Portfolio Dashboard
+ - Watchlist
+ - DEX Aggregator
+ - Liquidity Pool Analytics
+ - AI Market Insights
+ - Mobile Optimization
