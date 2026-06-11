@@ -1,5 +1,6 @@
 import "./globals.css";
-
+import Navbar from "@/components/Navbar";
+import Providers from "@/components/Providers";
 export const metadata = {
   title: "IOPn Dex",
     description: "DEX Analytics & Trading Platform",
@@ -12,7 +13,12 @@ export const metadata = {
         }) {
           return (
               <html lang="en">
-                    <body>{children}</body>
-                        </html>
-                          );
-                          }
+                    <body>
+                        <Providers>
+                            <Navbar />
+                                    {children}
+                                    </Providers>
+                                          </body>
+                                              </html>
+                                                );
+                                                }

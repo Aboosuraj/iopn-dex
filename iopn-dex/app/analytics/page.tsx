@@ -1,3 +1,5 @@
+import AnalyticsCards from "@/components/AnalyticsCards";
+
 export default function AnalyticsPage() {
-      return <h1 className="p-8 text-3xl font-bold">Analytics</h1>;
-      }
+  return <AnalyticsCards />;
+  }
