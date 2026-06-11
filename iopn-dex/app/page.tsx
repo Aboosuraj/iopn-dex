@@ -1,15 +1,15 @@
 import Navbar from "@/components/Navbar";
+import Hero from "@/components/Hero";
+import MarketOverview from "@/components/MarketOverview";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
       <>
             <Navbar />
-                  <main className="p-8">
-                          <h1 className="text-4xl font-bold">IOPn Dex</h1>
-                                  <p className="mt-4">
-                                            DEX Analytics & Trading Platform for the IOPn Ecosystem
-                                                    </p>
-                                                          </main>
-                                                              </>
-                                                                );
-                                                                }
+                  <Hero />
+                        <MarketOverview />
+                              <Footer />
+                                  </>
+                                    );
+                                    }
