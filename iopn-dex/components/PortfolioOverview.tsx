@@ -5,14 +5,15 @@ export default function PortfolioOverview() {
                         Portfolio
                               </h1>
 
-                                    <div className="border rounded-lg p-4">
+                                    <div className="border rounded-xl p-5 shadow-sm">
                                             <p>Total Portfolio Value</p>
-                                                    <h2 className="text-2xl font-bold">
+
+                                                    <h2 className="text-3xl font-bold mt-2">
                                                               $0.00
                                                                       </h2>
                                                                             </div>
 
-                                                                                  <div className="mt-4 border rounded-lg p-4">
+                                                                                  <div className="mt-4 border rounded-xl p-5 shadow-sm">
                                                                                           No assets found.
                                                                                                 </div>
                                                                                                     </div>

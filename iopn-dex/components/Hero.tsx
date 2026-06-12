@@ -11,14 +11,20 @@ export default function Hero() {
                                                             </p>
 
                                                                   <div className="mt-8 flex gap-4">
-                                                                          <button className="rounded-lg border px-6 py-3">
-                                                                                    Launch App
-                                                                                            </button>
+                                                                          <a
+                                                                              href="/trade"
+                                                                                  className="rounded-lg border px-6 py-3"
+                                                                                    >
+                                                                                        Launch App
+                                                                                          </a>
 
-                                                                                                    <button className="rounded-lg border px-6 py-3">
-                                                                                                              View Markets
-                                                                                                                      </button>
-                                                                                                                            </div>
-                                                                                                                                </section>
+                                                                                            <a
+                                                                                                href="/markets"
+                                                                                                    className="rounded-lg border px-6 py-3"
+                                                                                                      >
+                                                                                                          View Markets
+                                                                                                            </a>
+                                                                                                            </div>
+                                                                                                                  </section>
                                                                                                                                   );
                                                                                                                                   }
