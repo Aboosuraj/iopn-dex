@@ -2,13 +2,14 @@ export default function Hero() {
         return (
             <section className="px-8 py-16">
                   <h1 className="text-6xl font-bold">
-                          IOPn Dex
+                          IOPn Dex 
                                 </h1>
 
                                       <p className="mt-6 text-xl">
-                                              Analytics, Portfolio Tracking and
-                                                      Decentralized Trading on IOPn Chain.
-                                                            </p>
+                                        Decentralized Trading on IOPn Chain ,
+                                          Track markets, monitor portfolios, and analyze
+                                            tokens across the IOPn ecosystem.
+                                            </p>
 
                                                                   <div className="mt-8 flex gap-4">
                                                                           <a
