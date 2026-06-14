@@ -1,22 +1,56 @@
 import Link from "next/link";
 import WalletButton from "./WalletButton";
-import Logo from "./Logo";
 
 export default function Navbar() {
   return (
-      <nav className="flex items-center justify-between px-6 py-4 border-b bg-black/20">
-        
-            <div className="flex gap-5">
-                    <Link href="/">Home</Link>
-                            <Link href="/markets">Markets</Link>
-                                    <Link href="/analytics">Analytics</Link>
-                                            <Link href="/trade">Trade</Link>
-                                                    <Link href="/portfolio">Portfolio</Link>
-                                                            <Link href="/watchlist">Watchlist</Link>
-                                                                    <Link href="/wallet">Wallet</Link>
-                                                                          </div>
+      <nav className="border-b px-6 py-4">
+            <div className="flex items-center justify-between">
+                    <Link href="/" className="text-xl font-bold">
+                              IOPn Dex
+                                      </Link>
 
-                                                                                <WalletButton />
-                                                                                    </nav>
-                                                                                      );
-                                                                                      }
+                                              <div className="flex items-center gap-4">
+                                                        <Link href="/">Home</Link>
+
+                                                                  <Link href="/markets">
+                                                                              Markets
+                                                                                        </Link>
+
+                                                                                                  <Link href="/trade">
+                                                                                                              Trade
+                                                                                                                        </Link>
+
+                                                                                                                                  <Link href="/analytics">
+                                                                                                                                              Analytics
+                                                                                                                                                        </Link>
+
+                                                                                                                                                                  <Link href="/tokens">
+                                                                                                                                                                              Tokens
+                                                                                                                                                                                    </Link>
+
+                                                                                                                                                                                                  <Link href="/pairs">
+                                                                                                                                                                                                              Pairs
+                                                                                                                                                                                                                        </Link>
+
+                                                                                                                                                                                                                                  <Link href="/portfolio">
+                                                                                                                                                                                                                                              Portfolio
+                                                                                                                                                                                                                                                        </Link>
+
+                                                                                                                                                                                                                                                                  <Link href="/watchlist">
+                                                                                                                                                                                                                                                                              Watchlist
+                                                                                                                                                                                                                                                                                        </Link>
+
+                                                                                                                                                                                                                                                                                                  <Link href="/wallet">
+                                                                                                                                                                                                                                                                                                              Wallet
+                                                                                                                                                                                                                                                                                                                        </Link>
+
+                                                                                                                                                                                                                                                                                                                                  <Link href="/explorer">
+                                                                                                                                                                                                                                                                                                                                              Explorer
+                                                                                                                                                                                                                                                                                                                                                        </Link>
+                                                                                                                                                                                                                                                                                                                                                                </div>
+
+                                                                                                                                                                                                                                                                                                                                                                        <WalletButton />
+                                                                                                                                                                                                                                                                                                                                                                              </div>
+                                                                                                                                                                                                                                                                                                                                                                                  </nav>
+                                                                                                                                                                                                                                                                                                                                                                                    );
+                                                                                                                                                                                                                                                                                                                                                                                    }

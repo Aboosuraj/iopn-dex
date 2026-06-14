@@ -3,10 +3,10 @@
 export default function WalletButton() {
   return (
       <button
-            onClick={() => alert("Wallet button clicked")}
-                  className="rounded-lg border px-4 py-2"
+            onClick={() => alert("Button Clicked")}
+                  className="rounded-lg border px-4 py-2 bg-red-500 text-white"
                       >
-                            Connect Wallet
+                            CONNECT WALLET 
                                 </button>
                                   );
                                   }

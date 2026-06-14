@@ -1,9 +1,11 @@
 import "./globals.css";
-import Navbar from "@/components/Navbar";
 import Providers from "@/components/Providers";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+
 export const metadata = {
-  title: "IOPn Dex",
-    description: "DEX Analytics & Trading Platform",
+  title: "IOPn Dex Analytics",
+    description: "DEX Analytics Platform on IOPn Chain",
     };
 
     export default function RootLayout({
@@ -14,11 +16,11 @@ export const metadata = {
           return (
               <html lang="en">
                     <body>
-                        <Providers>
-                            <Navbar />
-                                    {children}
-                                    </Providers>
-                                          </body>
-                                              </html>
-                                                );
-                                                }
+                            <Providers>
+                                      <Navbar />
+                                                <main>{children}</main>
+                                                                  </Providers>
+                                                                        </body>
+                                                                            </html>
+                                                                              );
+                                                                              }
