@@ -1,56 +1,53 @@
+"use client";
+
 import Link from "next/link";
-import WalletButton from "./WalletButton";
 
 export default function Navbar() {
   return (
-      <nav className="border-b px-6 py-4">
-            <div className="flex items-center justify-between">
-                    <Link href="/" className="text-xl font-bold">
-                              IOPn Dex
-                                      </Link>
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-md">
+            <div className="flex justify-around items-center py-3">
 
-                                              <div className="flex items-center gap-4">
-                                                        <Link href="/">Home</Link>
+                    <Link
+                              href="/"
+                                        className="flex flex-col items-center text-purple-400 hover:text-white transition"
+                                                >
+                                                          <span className="text-xl">🏠</span>
+                                                                    <span className="text-xs font-semibold">Home</span>
+                                                                            </Link>
 
-                                                                  <Link href="/markets">
-                                                                              Markets
-                                                                                        </Link>
+                                                                                    <Link
+                                                                                              href="/trade"
+                                                                                                        className="flex flex-col items-center text-zinc-400 hover:text-white transition"
+                                                                                                                >
+                                                                                                                          <span className="text-xl">🔄</span>
+                                                                                                                                    <span className="text-xs font-semibold">Trade</span>
+                                                                                                                                            </Link>
 
-                                                                                                  <Link href="/trade">
-                                                                                                              Trade
-                                                                                                                        </Link>
+                                                                                                                                                    <Link
+                                                                                                                                                              href="/staking"
+                                                                                                                                                                        className="flex flex-col items-center text-zinc-400 hover:text-white transition"
+                                                                                                                                                                                >
+                                                                                                                                                                                          <span className="text-xl">💎</span>
+                                                                                                                                                                                                    <span className="text-xs font-semibold">Staking</span>
+                                                                                                                                                                                                            </Link>
 
-                                                                                                                                  <Link href="/analytics">
-                                                                                                                                              Analytics
-                                                                                                                                                        </Link>
+                                                                                                                                                                                                                    <Link
+                                                                                                                                                                                                                              href="/analytics"
+                                                                                                                                                                                                                                        className="flex flex-col items-center text-zinc-400 hover:text-white transition"
+                                                                                                                                                                                                                                                >
+                                                                                                                                                                                                                                                          <span className="text-xl">📊</span>
+                                                                                                                                                                                                                                                                    <span className="text-xs font-semibold">Zone</span>
+                                                                                                                                                                                                                                                                            </Link>
 
-                                                                                                                                                                  <Link href="/tokens">
-                                                                                                                                                                              Tokens
-                                                                                                                                                                                    </Link>
+                                                                                                                                                                                                                                                                                    <Link
+                                                                                                                                                                                                                                                                                              href="/portfolio"
+                                                                                                                                                                                                                                                                                                        className="flex flex-col items-center text-zinc-400 hover:text-white transition"
+                                                                                                                                                                                                                                                                                                                >
+                                                                                                                                                                                                                                                                                                                          <span className="text-xl">💼</span>
+                                                                                                                                                                                                                                                                                                                                    <span className="text-xs font-semibold">Portfolio</span>
+                                                                                                                                                                                                                                                                                                                                            </Link>
 
-                                                                                                                                                                                                  <Link href="/pairs">
-                                                                                                                                                                                                              Pairs
-                                                                                                                                                                                                                        </Link>
-
-                                                                                                                                                                                                                                  <Link href="/portfolio">
-                                                                                                                                                                                                                                              Portfolio
-                                                                                                                                                                                                                                                        </Link>
-
-                                                                                                                                                                                                                                                                  <Link href="/watchlist">
-                                                                                                                                                                                                                                                                              Watchlist
-                                                                                                                                                                                                                                                                                        </Link>
-
-                                                                                                                                                                                                                                                                                                  <Link href="/wallet">
-                                                                                                                                                                                                                                                                                                              Wallet
-                                                                                                                                                                                                                                                                                                                        </Link>
-
-                                                                                                                                                                                                                                                                                                                                  <Link href="/explorer">
-                                                                                                                                                                                                                                                                                                                                              Explorer
-                                                                                                                                                                                                                                                                                                                                                        </Link>
-                                                                                                                                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                                                                                                                                        <WalletButton />
-                                                                                                                                                                                                                                                                                                                                                                              </div>
-                                                                                                                                                                                                                                                                                                                                                                                  </nav>
-                                                                                                                                                                                                                                                                                                                                                                                    );
-                                                                                                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                                                                  </div>
+                                                                                                                                                                                                                                                                                                                                                      </div>
+                                                                                                                                                                                                                                                                                                                                                        );
+                                                                                                                                                                                                                                                                                                                                                        }
