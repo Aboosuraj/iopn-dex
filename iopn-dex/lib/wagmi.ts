@@ -2,35 +2,35 @@ import { createConfig, http } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { defineChain } from "viem";
 
-export const iopnChain = defineChain({
-  id: 141319,
-    name: "IOPn Chain",
+export const iopnTestnet = defineChain({
+  id: 984,
+    name: "IOPN Testnet",
       nativeCurrency: {
-          decimals: 18,
-              name: "IOPn",
-                  symbol: "IOPn",
+          name: "OPN",
+              symbol: "OPN",
+                  decimals: 18,
                     },
                       rpcUrls: {
                           default: {
-                                http: ["https://rpc.iopn.tech"],
+                                http: ["https://testnet-rpc.iopn.tech"],
                                     },
                                       },
                                         blockExplorers: {
                                             default: {
-                                                  name: "IOPn Explorer",
-                                                        url: "https://explorer.iopn.tech",
+                                                  name: "IOPN Explorer",
+                                                        url: "https://testnet.iopn.tech",
                                                             },
                                                               },
                                                               });
 
                                                               export const config = createConfig({
-                                                                chains: [iopnChain],
+                                                                chains: [iopnTestnet],
                                                                   connectors: [
                                                                       injected({
                                                                             shimDisconnect: true,
                                                                                 }),
                                                                                   ],
                                                                                     transports: {
-                                                                                        [iopnChain.id]: http(),
+                                                                                        [984]: http("https://testnet-rpc.iopn.tech"),
                                                                                           },
                                                                                           });

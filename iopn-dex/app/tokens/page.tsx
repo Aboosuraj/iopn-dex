@@ -1,60 +1,36 @@
-import Link from "next/link";
+"use client";
+
+import { TOKENS } from "@/lib/tokens";
 
 export default function TokensPage() {
-  const tokens = [
-      {
-            name: "OPN",
-                  price: "$0.00",
-                        liquidity: "$0",
-                            },
-                                {
-                                      name: "IDEX",
-                                            price: "$0.00",
-                                                  liquidity: "$0",
-                                                      },
-                                                          {
-                                                                name: "DIO",
-                                                                      price: "$0.00",
-                                                                            liquidity: "$0",
-                                                                                },
-                                                                                    {
-                                                                                          name: "DAA",
-                                                                                                price: "$0.00",
-                                                                                                      liquidity: "$0",
-                                                                                                          },
-                                                                                                            ];
+  return (
+      <main className="min-h-screen bg-black text-white p-6">
+            <div className="max-w-4xl mx-auto">
+                    <h1 className="text-4xl font-bold mb-8">
+                              Tokens
+                                      </h1>
 
-                                                                                                              return (
-                                                                                                                  <div className="p-6">
-                                                                                                                        <h1 className="text-3xl font-bold mb-6">
-                                                                                                                                Tokens
-                                                                                                                                      </h1>
+                                              <div className="grid gap-4">
+                                                        {TOKENS.map((token) => (
+                                                                    <div
+                                                                                  key={token.address}
+                                                                                                className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4"
+                                                                                                            >
+                                                                                                                          <div className="text-xl font-semibold">
+                                                                                                                                          {token.symbol}
+                                                                                                                                                        </div>
 
-                                                                                                                                            <div className="border rounded-xl p-5">
-                                                                                                                                                    <div className="grid grid-cols-3 font-bold border-b pb-3 mb-3">
-                                                                                                                                                              <span>Token</span>
-                                                                                                                                                                        <span>Price</span>
-                                                                                                                                                                                  <span>Liquidity</span>
-                                                                                                                                                                                          </div>
+                                                                                                                                                                      <div className="text-sm text-zinc-400 break-all mt-2">
+                                                                                                                                                                                      {token.address}
+                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                  {tokens.map((token) => (
-                                                                                                                                                                                                            <div
-                                                                                                                                                                                                                        key={token.name}
-                                                                                                                                                                                                                                    className="grid grid-cols-3 py-3 border-b"
-                                                                                                                                                                                                                                              >
-                                                                                                                                                                                                                                                          <Link
-                                                                                                                                                                                                                                                                        href={`/tokens/${token.name.toLowerCase()}`}
-                                                                                                                                                                                                                                                                                      className="text-blue-500 hover:underline"
-                                                                                                                                                                                                                                                                                                  >
-                                                                                                                                                                                                                                                                                                                {token.name}
-                                                                                                                                                                                                                                                                                                                            </Link>
-
-                                                                                                                                                                                                                                                                                                                                        <span>{token.price}</span>
-
-                                                                                                                                                                                                                                                                                                                                                    <span>{token.liquidity}</span>
-                                                                                                                                                                                                                                                                                                                                                              </div>
-                                                                                                                                                                                                                                                                                                                                                                      ))}
-                                                                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                  );
-                                                                                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                  <div className="text-sm text-zinc-500 mt-2">
+                                                                                                                                                                                                                                  Decimals: {token.decimals}
+                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                      ))}
+                                                                                                                                                                                                                                                                              </div>
+                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                        </main>
+                                                                                                                                                                                                                                                                                          );
+                                                                                                                                                                                                                                                                                          }

@@ -1,20 +1,31 @@
 export const ROUTER_ADDRESS =
-  "0x05795eB171D8A5040EE0499C5A66CE1Eae6DFe5A";
+  "0xe3Bb1A8Fca436599A6FA15908e8a01767c565BCc";
 
-  export const FACTORY_ADDRESS =
-    "0x266174ba738E757AA82398E7b0dd3D7840ed6232";
+  export const WOPN =
+    "0xeb69FE376bA27B1105509aB46BdB56267134a318";
 
-    export const routerAbi = [
+    export const ROUTER_ABI = [
       {
-          name: "getAmountsOut",
-              type: "function",
+          type: "function",
+              name: "getAmountsOut",
                   stateMutability: "view",
                       inputs: [
                             { name: "amountIn", type: "uint256" },
-                                  { name: "path", type: "address[]" }
+                                  { name: "path", type: "address[]" },
                                       ],
-                                          outputs: [
-                                                { name: "amounts", type: "uint256[]" }
-                                                    ]
-                                                      }
-                                                      ] as const;
+                                          outputs: [{ name: "amounts", type: "uint256[]" }],
+                                            },
+                                              {
+                                                  type: "function",
+                                                      name: "swapExactTokensForTokens",
+                                                          stateMutability: "nonpayable",
+                                                              inputs: [
+                                                                    { name: "amountIn", type: "uint256" },
+                                                                          { name: "amountOutMin", type: "uint256" },
+                                                                                { name: "path", type: "address[]" },
+                                                                                      { name: "to", type: "address" },
+                                                                                            { name: "deadline", type: "uint256" },
+                                                                                                ],
+                                                                                                    outputs: [{ name: "amounts", type: "uint256[]" }],
+                                                                                                      },
+                                                                                                      ] as const;

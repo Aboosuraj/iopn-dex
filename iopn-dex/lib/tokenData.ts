@@ -1,5 +1,5 @@
 import { createPublicClient, http, formatUnits } from "viem";
-import { iopnChain } from "./wagmi";
+import { iopnTestnet } from "./wagmi";
 
 const ERC20_ABI = [
   {
@@ -33,7 +33,7 @@ const ERC20_ABI = [
                                                                                                 ] as const;
 
                                                                                                 const client = createPublicClient({
-                                                                                                  chain: iopnChain,
+                                                                                                  chain: iopnTestnet,
                                                                                                     transport: http("https://rpc.iopn.tech"),
                                                                                                     });
 

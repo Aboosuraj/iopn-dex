@@ -1,4 +1,4 @@
-export const iopnChain = {
+export const iopnTestnet = {
     id: 9845,
       name: "IOPn",
         network: "iopn",
