@@ -1,5 +1,4 @@
-import { createConfig, http } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { defineChain } from "viem";
 
 export const iopnTestnet = defineChain({
@@ -21,16 +20,12 @@ export const iopnTestnet = defineChain({
                                                         url: "https://testnet.iopn.tech",
                                                             },
                                                               },
-                                                              });
+                                                                testnet: true,
+                                                                });
 
-                                                              export const config = createConfig({
-                                                                chains: [iopnTestnet],
-                                                                  connectors: [
-                                                                      injected({
-                                                                            shimDisconnect: true,
-                                                                                }),
-                                                                                  ],
-                                                                                    transports: {
-                                                                                        [984]: http("https://testnet-rpc.iopn.tech"),
-                                                                                          },
-                                                                                          });
+                                                                export const config = getDefaultConfig({
+                                                                  appName: "IOPn Dex",
+                                                                    projectId: "2f556cee5880c8a19600fcfc8238056d",
+                                                                      chains: [iopnTestnet],
+                                                                        ssr: true,
+                                                                        });
