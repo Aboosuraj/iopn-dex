@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 
 export default function TradePage() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
+  const { data: opnBalance } = useBalance({
+          address,
+          });
     const { connect, connectors } = useConnect();
       const { disconnect } = useDisconnect();
 
@@ -37,6 +40,17 @@ export default function TradePage() {
                                                                                                                                                                                                                               {isConnected ? "Disconnect Wallet" : "Connect Wallet"}
                                                                                                                                                                                                                                         </button>
                                                                                                                                                                                                                                                 </div>
+                                                                                                                                                                                                                                                {isConnected && (
+                                                                                                                                                                                                                                                          <div className="mb-6 text-center">
+                                                                                                                                                                                                                                                              <p className="text-xs break-all">
+                                                                                                                                                                                                                                                                    {address}
+                                                                                                                                                                                                                                                                        </p>
+
+                                                                                                                                                                                                                                                                            <p className="font-bold mt-2">
+                                                                                                                                                                                                                                                                                  Balance: {opnBalance?.formatted} {opnBalance?.symbol}
+                                                                                                                                                                                                                                                                                      </p>
+                                                                                                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                                                                                                        )}
 
                                                                                                                                                                                                                                                         {/* Pay */}
                                                                                                                                                                                                                                                                 <div className="rounded-2xl bg-white/10 p-4 mb-4 border border-white/10">
