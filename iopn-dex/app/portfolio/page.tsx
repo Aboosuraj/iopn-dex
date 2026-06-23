@@ -1,9 +1,11 @@
 "use client";
 
-import { useAccount } from "wagmi";
+import { usePortfolio } from "@/lib/usePortfolio";
 
 export default function PortfolioPage() {
-  const { address, isConnected } = useAccount();
+  const { address, nativeBalance } = usePortfolio();
+
+  const isConnected = !!address;
 
     return (
         <main className="min-h-screen pb-24 text-white bg-gradient-to-b from-blue-950 via-purple-950 to-black">
@@ -37,6 +39,14 @@ export default function PortfolioPage() {
                                                                                                                                                                                                 <h2 className="text-xl font-semibold mb-5">
                                                                                                                                                                                                             Assets
                                                                                                                                                                                                                       </h2>
+                                                                                                                                                                                                                      <div className="flex justify-between p-4 rounded-xl bg-cyan-500/20">
+                                                                                                                                                                                                                        <span>🔷 OPN</span>
+                                                                                                                                                                                                                          <span>
+                                                                                                                                                                                                                              {nativeBalance.data
+                                                                                                                                                                                                                                    ? Number(nativeBalance.data.formatted).toFixed(4)
+                                                                                                                                                                                                                                          : "0.0000"}
+                                                                                                                                                                                                                                            </span>
+                                                                                                                                                                                                                                            </div>
 
                                                                                                                                                                                                                                 <div className="space-y-4">
 

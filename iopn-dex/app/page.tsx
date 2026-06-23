@@ -1,10 +1,13 @@
 "use client";
 
-import { useAccount } from "wagmi";
+import { useAccount, useBalance } from "wagmi";
 import WalletButton from "@/components/WalletButton";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
+  const { data: opnBalance } = useBalance({
+    address,
+    });
 
     return (
         <main className="min-h-screen text-white pb-24 bg-gradient-to-b from-purple-950 via-black to-green-950">
@@ -43,9 +46,17 @@ export default function Home() {
                                                                                                                                                                                                         : "Wallet Not Connected"}
                                                                                                                                                                                                                   </h2>
 
-                                                                                                                                                                                                                            <p className="mt-2 text-sm">
-                                                                                                                                                                                                                                        OPN Testnet • Chain ID 984
-                                                                                                                                                                                                                                                  </p>
+                                                                                                                                                                                                                            <div className="mt-3">
+                                                                                                                                                                                                                                  <p className="text-sm">
+                                                                                                                                                                                                                                      OPN Testnet • Chain ID 984
+                                                                                                                                                                                                                                        </p>
+
+                                                                                                                                                                                                                                          <p className="font-bold text-lg mt-2">
+                                                                                                                                                                                                                                              {opnBalance?.formatted
+                                                                                                                                                                                                                                                    ? Number(opnBalance.formatted).toFixed(4)
+                                                                                                                                                                                                                                                          : "0.0000"} OPN
+                                                                                                                                                                                                                                                            </p>
+                                                                                                                                                                                                                                                            </div>
 
                                                                                                                                                                                                                                                           </div>
 
