@@ -1,6 +1,8 @@
 "use client";
 
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useReadContracts } from "wagmi";
+import { ERC20_ABI } from "@/lib/erc20";
+import { TOKENS } from "@/lib/tokens";
 
 export function usePortfolio() {
   const { address } = useAccount();
@@ -9,8 +11,23 @@ export function usePortfolio() {
         address,
           });
 
-            return {
-                address,
-                    nativeBalance,
-                      };
-                      }
+            const tokenContracts = TOKENS.map((token) => ({
+                address: token.address as `0x${string}`,
+                    abi: ERC20_ABI,
+                        functionName: "balanceOf",
+                            args: [address as `0x${string}`],
+                              }));
+
+                                const tokenBalances = useReadContracts({
+                                    contracts: tokenContracts,
+                                        query: {
+                                              enabled: !!address,
+                                                  },
+                                                    });
+
+                                                      return {
+                                                          address,
+                                                              nativeBalance,
+                                                                  tokenBalances,
+                                                                    };
+                                                                    }
