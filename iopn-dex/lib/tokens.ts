@@ -32,7 +32,7 @@ export const TOKENS = [
 
                                                                                           {
                                                                                               symbol: "IDEX",
-                                                                                                  address: "0x3CC9C3D16a2cE9bEEb7f660cc696F804B4B3228f",
+                                                                                                  address: "0xD5D72Ea6775D7618aFD4d8c42d2d8934638B75f9",
                                                                                                       decimals: 18,
                                                                                                         },
                                                                                                         ] as const;
