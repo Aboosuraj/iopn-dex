@@ -1,10 +1,12 @@
 # IOPn Dex
 
-IOPn Dex is a next-generation decentralized exchange and analytics platform built for the IOPn ecosystem.
+IOPn Dex is a next-generation decentralized exchange, pay app, stake  and analytics platform built for the IOPn ecosystem.
 
 ## Features
 
 - Real-time token price tracking
+- make payments,QR and virtual card
+- stake in usdt earn in OPN 
 - DEX analytics dashboard
 - Wallet connection
 - Portfolio tracking
