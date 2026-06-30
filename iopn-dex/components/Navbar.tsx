@@ -12,7 +12,7 @@ export default function Navbar() {
                                         className="flex flex-col items-center text-purple-400"
                                                 >
                                                           <span className="text-xl">🏠</span>
-                                                                    <span className="text-[10px]">HOME</span>
+                                                                    <span className="text-[10px]">DASHBOARD</span>
                                                                             </Link>
 
                                                                                     <Link
@@ -28,7 +28,7 @@ export default function Navbar() {
                                                                                                                                                                         className="flex flex-col items-center text-blue-400"
                                                                                                                                                                                 >
                                                                                                                                                                                           <span className="text-xl">🔄</span>
-                                                                                                                                                                                                    <span className="text-[10px]">TRADE</span>
+                                                                                                                                                                                                    <span className="text-[10px]">SWAP</span>
                                                                                                                                                                                                             </Link>
 
                                                                                                                                                                                                                     <Link

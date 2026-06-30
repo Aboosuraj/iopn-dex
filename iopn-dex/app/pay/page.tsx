@@ -359,7 +359,7 @@ export default function PayPage() {
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
             <p className="text-sm text-white/60">Network</p>
-            <h2 className="mt-3 text-3xl font-extrabold">IOPN Testnet</h2>
+            <h2 className="mt-3 text-3xl font-extrabold">OPN Testnet</h2>
             <p className="mt-2 text-xs text-white/45">
               Optimized for wallet payments, QR receive and virtual card flow
             </p>
