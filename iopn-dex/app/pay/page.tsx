@@ -8,6 +8,7 @@ import {
   useWriteContract,
 } from "wagmi";
 
+import { useScanner } from "@/hooks/useScanner";
 import { parseUnits, formatEther } from "viem";
 import { QRCodeSVG } from "qrcode.react";
 import { TOKENS } from "@/lib/tokens";
@@ -101,6 +102,7 @@ const { sendTx } = useSendTx();
   const [tokenSymbol, setTokenSymbol] = useState("OPN");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
+  const { startScanner, stopScanner, isScanning } = useScanner(handleScan);
 
   const [tab, setTab] = useState<"send" | "receive" | "scan" | "card">("send");
 
@@ -164,10 +166,10 @@ const { sendTx } = useSendTx();
       {/* ================= HEADER ================= */}
       <div className="rounded-3xl p-5 bg-white/5 border border-white/10 backdrop-blur-xl">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text">
-          IOPN Pay Engine
+          IOPN Pay
         </h1>
         <p className="text-xs text-white/60 mt-1">
-          Web3 Payments • IOPN Chain Testnet
+          Payments • IOPn Chain Testnet
         </p>
 
         {/* BALANCE CARD */}
@@ -280,10 +282,35 @@ const { sendTx } = useSendTx();
 
       {/* ================= SCAN ================= */}
       {tab === "scan" && (
-        <div className="mt-6">
-          <QRScanner onScan={handleScan} />
-        </div>
-      )}
+  <div className="mt-5 space-y-4">
+
+    <div
+      id="qr-reader"
+      className="rounded-2xl overflow-hidden border border-white/10"
+    />
+
+    <button
+      onClick={startScanner}
+      className="w-full p-3 rounded-xl bg-green-500 text-black font-bold"
+    >
+      Start Scanner
+    </button>
+
+    <button
+      onClick={stopScanner}
+      className="w-full p-3 rounded-xl bg-red-500 text-white font-bold"
+    >
+      Stop Scanner
+    </button>
+
+    {isScanning && (
+      <p className="text-center text-green-400">
+        Scanner is running...
+      </p>
+    )}
+
+  </div>
+)}
 
       {/* ================= CARD ================= */}
       {tab === "card" && (
