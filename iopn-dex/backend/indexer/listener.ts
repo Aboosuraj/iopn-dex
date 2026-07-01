@@ -11,7 +11,7 @@ export async function startListener(io?:any) {
   console.log("🚀 IOPN Listener started...");
 
   provider.on("block", async (blockNumber) => {
-    const block = await provider.getBlockWithTransactions(blockNumber);
+    const block = await provider.getBlock(blockNumber, true);
 
     for (const tx of block.transactions) {
       if (!tx.to) continue;
