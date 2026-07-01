@@ -2,32 +2,54 @@ import { ethers } from "ethers";
 import Transaction from "../db/Transaction";
 import { connectDB } from "../services/db";
 
-const RPC = "https://rpc.iopn.testnet"; // IOPN chain
-const provider = new ethers.JsonRpcProvider(RPC);
+// IOPN Testnet RPC
+const RPC_URL = "https://testnet-rpc.iopn.tech";
 
-export async function startListener(io?:any) {
+const provider = new ethers.JsonRpcProvider(RPC_URL);
+
+export async function startListener(io?: any) {
   await connectDB();
 
-  console.log("🚀 IOPN Listener started...");
+  console.log("🚀 IOPN Testnet Listener started...");
 
-  provider.on("block", async (blockNumber) => {
-    const block = await provider.getBlock(blockNumber, true);
+  provider.on("block", async (blockNumber: number) => {
+    try {
+      // Ethers v6
+      const block = await provider.getBlock(blockNumber, true);
 
-    for (const tx of block.transactions) {
-      if (!tx.to) continue;
+      if (!block) return;
 
-      await Transaction.create({
-        io.to(tx.to).emit("newTx", tx);
-        hash: tx.hash,
-        from: tx.from,
-        to: tx.to,
-        amount: tx.value.toString(),
-        token: "OPN",
-        status: "confirmed",
-        chainId: 1234,
-      });
+      for (const tx of block.transactions) {
+        // Skip if transaction object is missing or doesn't have a recipient
+        if (typeof tx === "string") continue;
+        if (!tx.to) continue;
 
-      console.log("📦 Tx saved:", tx.hash);
+        // Prevent duplicate records
+        const exists = await Transaction.findOne({ hash: tx.hash });
+        if (exists) continue;
+
+        // Save transaction
+        const savedTx = await Transaction.create({
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          amount: tx.value.toString(),
+          token: "OPN",
+          status: "confirmed",
+          chainId: 984,
+          blockNumber: block.number,
+          timestamp: new Date((block.timestamp ?? 0) * 1000),
+        });
+
+        // Emit socket event if Socket.IO is available
+        if (io) {
+          io.emit("newTx", savedTx);
+        }
+
+        console.log(`✅ Saved TX: ${tx.hash}`);
+      }
+    } catch (error) {
+      console.error("Listener error:", error);
     }
   });
 }
