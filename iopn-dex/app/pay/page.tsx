@@ -16,7 +16,6 @@ import { ERC20_ABI } from "@/lib/erc20";
 import { useSocket } from "@/hooks/useSocket";
 import { useBalance as useBackendBalance } from "@/hooks/useBalance";
 import { useHistory } from "@/hooks/useHistory";
-import { useSendTx } from "@/hooks/useSendTx";
 
 /* ================= UTIL ================= */
 function formatBalance(value: any) {
@@ -98,7 +97,6 @@ export default function PayPage() {
   const history = useHistory(address);
 const socketTxs = useSocket(address);
 const balance = useBackendBalance(address);
-const { sendTx } = useSendTx();
   const [tokenSymbol, setTokenSymbol] = useState("OPN");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -119,8 +117,6 @@ const { sendTx } = useSendTx();
   );
 
   /* ================= BALANCE ================= */
-  const { data: balance } = useBalance({ address });
-
   const formattedBalance = formatBalance(balance);
 
   /* ================= TX ================= */
