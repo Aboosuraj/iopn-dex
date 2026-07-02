@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useSendTransaction } from "wagmi";
+import { parseEther } from "viem";
 import { io } from "socket.io-client";
-
 import { TOKENS } from "@/lib/tokens";
 
 /* ================= SOCKET ================= */
@@ -12,183 +12,164 @@ const socket = io("http://localhost:5000");
 /* ================= UTIL ================= */
 function formatBalance(value: any) {
   if (!value) return "0.00";
-  const num = Number(value?.formatted || value?.toString?.() || 0);
-  return num.toFixed(2);
-}
-
-/* ================= PAGE ================= */
-export default function PayPage() {
-  const { address } = useAccount();
-
-  const [tokenSymbol, setTokenSymbol] = useState("OPN");
-  const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("");
-
-  const [tab, setTab] = useState<"send" | "receive" | "scan">("send");
-
-  const [liveTxs, setLiveTxs] = useState<any[]>([]);
-
-  const token = useMemo(
-    () => TOKENS.find((t) => t.symbol === tokenSymbol)!,
-    [tokenSymbol]
-  );
-
-  /* ================= BALANCE ================= */
-  const { data: balance } = useBalance({ address });
-
-  /* ================= SEND TX (BACKEND ENGINE) ================= */
-  async function sendTx() {
-    if (!recipient || !amount || !address) return;
-
-    try {
-      const res = await fetch("http://localhost:5000/api/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: address,
-          to: recipient,
-          amount,
-          token: tokenSymbol,
-          chainId: 984,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setAmount("");
-        setRecipient("");
-        alert("Transaction sent 🚀");
-      } else {
-        alert("Transaction failed ❌");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Server error ❌");
+    return Number(value.formatted || 0).toFixed(2);
     }
-  }
 
-  /* ================= SOCKET REAL-TIME LISTENER ================= */
-  useEffect(() => {
-    socket.on("txConfirmed", (data) => {
-      console.log("CONFIRMED:", data);
+    /* ================= PAGE ================= */
+    export default function PayPage() {
+      const { address, isConnected } = useAccount();
 
-      setLiveTxs((prev) =>
-        prev.map((tx) =>
-          tx.hash === data.hash
-            ? { ...tx, status: "confirmed" }
-            : tx
-        )
-      );
-    });
+        const [recipient, setRecipient] = useState("");
+          const [amount, setAmount] = useState("");
+            const [tokenSymbol] = useState("OPN");
+              const [txHash, setTxHash] = useState<string | null>(null);
+                const [liveTxs, setLiveTxs] = useState<any[]>([]);
 
-    socket.on("newTx", (tx) => {
-      setLiveTxs((prev) => [tx, ...prev]);
-    });
+                  const token = useMemo(
+                      () => TOKENS.find((t) => t.symbol === tokenSymbol)!,
+                          [tokenSymbol]
+                            );
 
-    return () => {
-      socket.off("txConfirmed");
-      socket.off("newTx");
-    };
-  }, []);
+                              /* ================= BALANCE ================= */
+                                const { data: balance } = useBalance({ address });
 
-  /* ================= QR SCAN HANDLER ================= */
-  function handleScan(value: string) {
-    setRecipient(value);
-    setTab("send");
-  }
+                                  /* ================= WAGMI SEND TX ================= */
+                                    const { sendTransactionAsync } = useSendTransaction();
 
-  return (
-    <div className="min-h-screen bg-black text-white p-6">
+                                      async function sendTx() {
+                                          if (!isConnected || !address) {
+                                                alert("Connect wallet first");
+                                                      return;
+                                                          }
 
-      {/* ================= HEADER ================= */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">IOPN Exchange Pay</h1>
-        <p className="text-white/60">
-          Balance: {formatBalance(balance)} {tokenSymbol}
-        </p>
-      </div>
+                                                              if (!recipient || !amount) {
+                                                                    alert("Missing fields");
+                                                                          return;
+                                                                              }
 
-      {/* ================= TABS ================= */}
-      <div className="flex gap-3 mb-6">
-        <button onClick={() => setTab("send")} className="px-4 py-2 bg-white/10 rounded">
-          Send
-        </button>
-        <button onClick={() => setTab("receive")} className="px-4 py-2 bg-white/10 rounded">
-          Receive
-        </button>
-        <button onClick={() => setTab("scan")} className="px-4 py-2 bg-white/10 rounded">
-          Scan
-        </button>
-      </div>
+                                                                                  try {
+                                                                                        /* 1. SEND REAL BLOCKCHAIN TX */
+                                                                                              const hash = await sendTransactionAsync({
+                                                                                                      to: recipient as `0x${string}`,
+                                                                                                              value: parseEther(amount),
+                                                                                                                    });
 
-      {/* ================= SEND ================= */}
-      {tab === "send" && (
-        <div className="space-y-4">
-          <input
-            className="w-full p-3 bg-white/10 rounded"
-            placeholder="Recipient address"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-          />
+                                                                                                                          setTxHash(hash);
 
-          <input
-            className="w-full p-3 bg-white/10 rounded"
-            placeholder="Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
+                                                                                                                                /* 2. SEND TO BACKEND */
+                                                                                                                                      const res = await fetch("http://localhost:5000/api/send", {
+                                                                                                                                              method: "POST",
+                                                                                                                                                      headers: {
+                                                                                                                                                                "Content-Type": "application/json",
+                                                                                                                                                                        },
+                                                                                                                                                                                body: JSON.stringify({
+                                                                                                                                                                                          from: address,
+                                                                                                                                                                                                    to: recipient,
+                                                                                                                                                                                                              amount,
+                                                                                                                                                                                                                        token: tokenSymbol,
+                                                                                                                                                                                                                                  hash,
+                                                                                                                                                                                                                                            chainId: 984,
+                                                                                                                                                                                                                                                    }),
+                                                                                                                                                                                                                                                          });
 
-          <button
-            onClick={sendTx}
-            className="w-full p-3 bg-green-500 text-black font-bold rounded"
-          >
-            Send Transaction
-          </button>
-        </div>
-      )}
+                                                                                                                                                                                                                                                                const data = await res.json();
 
-      {/* ================= SCAN ================= */}
-      {tab === "scan" && (
-        <div className="p-4 bg-white/5 rounded">
-          <div className="h-40 bg-white/10 rounded flex items-center justify-center">
-            QR Scanner Area
-          </div>
+                                                                                                                                                                                                                                                                      if (data.success) {
+                                                                                                                                                                                                                                                                              setRecipient("");
+                                                                                                                                                                                                                                                                                      setAmount("");
+                                                                                                                                                                                                                                                                                              alert("Transaction sent 🚀");
+                                                                                                                                                                                                                                                                                                    } else {
+                                                                                                                                                                                                                                                                                                            alert("Backend failed ❌");
+                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                      } catch (err) {
+                                                                                                                                                                                                                                                                                                                            console.error(err);
+                                                                                                                                                                                                                                                                                                                                  alert("Transaction failed ❌");
+                                                                                                                                                                                                                                                                                                                                      }
+                                                                                                                                                                                                                                                                                                                                        }
 
-          <button
-            onClick={() => handleScan("0xDEMO_ADDRESS")}
-            className="mt-4 w-full p-3 bg-blue-500 rounded"
-          >
-            Simulate Scan
-          </button>
-        </div>
-      )}
+                                                                                                                                                                                                                                                                                                                                          /* ================= SOCKET ================= */
+                                                                                                                                                                                                                                                                                                                                            useEffect(() => {
+                                                                                                                                                                                                                                                                                                                                                socket.on("txConfirmed", (data) => {
+                                                                                                                                                                                                                                                                                                                                                      setLiveTxs((prev) =>
+                                                                                                                                                                                                                                                                                                                                                              prev.map((tx) =>
+                                                                                                                                                                                                                                                                                                                                                                        tx.hash === data.hash ? { ...tx, status: "confirmed" } : tx
+                                                                                                                                                                                                                                                                                                                                                                                )
+                                                                                                                                                                                                                                                                                                                                                                                      );
+                                                                                                                                                                                                                                                                                                                                                                                          });
 
-      {/* ================= LIVE TX ================= */}
-      <div className="mt-10">
-        <h2 className="text-lg font-bold mb-3">Live Transactions</h2>
+                                                                                                                                                                                                                                                                                                                                                                                              socket.on("newTx", (tx) => {
+                                                                                                                                                                                                                                                                                                                                                                                                    setLiveTxs((prev) => [tx, ...prev]);
+                                                                                                                                                                                                                                                                                                                                                                                                        });
 
-        {liveTxs.length === 0 && (
-          <p className="text-white/40">No transactions yet</p>
-        )}
+                                                                                                                                                                                                                                                                                                                                                                                                            return () => {
+                                                                                                                                                                                                                                                                                                                                                                                                                  socket.off("txConfirmed");
+                                                                                                                                                                                                                                                                                                                                                                                                                        socket.off("newTx");
+                                                                                                                                                                                                                                                                                                                                                                                                                            };
+                                                                                                                                                                                                                                                                                                                                                                                                                              }, []);
 
-        {liveTxs.map((tx, i) => (
-          <div key={i} className="p-3 border-b border-white/10">
-            <p className="text-sm text-white/60">
-              {tx.from} → {tx.to}
-            </p>
-            <p className="text-green-400">
-              {tx.amount} OPN
-            </p>
-            <p className="text-xs text-white/40">
-              Status: {tx.status || "pending"}
-            </p>
-          </div>
-        ))}
-      </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                return (
+                                                                                                                                                                                                                                                                                                                                                                                                                                    <div className="min-h-screen bg-black text-white p-6">
 
-    </div>
-  );
-}
+                                                                                                                                                                                                                                                                                                                                                                                                                                          {/* HEADER */}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                <div className="mb-6">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                        <h1 className="text-2xl font-bold">IOPN Pay</h1>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                <p className="text-white/60">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                          Balance: {formatBalance(balance)} {tokenSymbol}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </p>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          {txHash && (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <p className="text-green-400 text-xs mt-2 break-all">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Last Tx: {txHash}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  )}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {/* FORM */}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div className="space-y-4">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <input
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      className="w-full p-3 bg-white/10 rounded"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                placeholder="Recipient address"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          value={recipient}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    onChange={(e) => setRecipient(e.target.value)}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            />
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <input
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              className="w-full p-3 bg-white/10 rounded"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        placeholder="Amount (OPN)"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  value={amount}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            onChange={(e) => setAmount(e.target.value)}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    />
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <button
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      onClick={sendTx}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                className="w-full p-3 bg-green-500 text-black font-bold rounded"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        >
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  Send OPN
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </button>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      {/* LIVE TX */}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div className="mt-10">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <h2 className="text-lg font-bold mb-3">Live Transactions</h2>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {liveTxs.length === 0 && (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <p className="text-white/40">No transactions yet</p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              )}
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      {liveTxs.map((tx, i) => (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div key={i} className="p-3 border-b border-white/10">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <p className="text-sm text-white/60">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          {tx.from} → {tx.to}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <p className="text-green-400">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {tx.amount} OPN
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <p className="text-xs text-white/40">
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      Status: {tx.status || "pending"}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </p>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ))}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                );
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }
