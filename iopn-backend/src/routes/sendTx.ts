@@ -1,43 +1,41 @@
 import express from "express";
-import { wallet } from "../services/signer";
-import Transaction from "../db/Transaction";
+import Transaction from "../models/Transaction";
 
 const router = express.Router();
 
-/* ================= REAL WEB3 SEND ================= */
+/* ================= STORE TRANSACTION ONLY ================= */
 router.post("/", async (req, res) => {
   try {
-    const { from, to, amount } = req.body;
+      const { from, to, amount, hash, token, chainId } = req.body;
 
-    if (!to || !amount) {
-      return res.status(400).json({ error: "Missing fields" });
-    }
+          if (!hash || !from || !to || !amount) {
+                return res.status(400).json({ error: "Missing fields" });
+                    }
 
-    // convert ETH amount
-    const txResponse = await wallet.sendTransaction({
-      to,
-      value: ethers.parseEther(amount.toString()),
-    });
+                        // prevent duplicates
+                            const exists = await Transaction.findOne({ hash });
+                                if (exists) {
+                                      return res.json({ success: true, tx: exists });
+                                          }
 
-    // save pending tx
-    const tx = await Transaction.create({
-      hash: txResponse.hash,
-      from,
-      to,
-      amount,
-      token: "OPN",
-      status: "pending",
-      chainId: 984,
-    });
+                                              const tx = await Transaction.create({
+                                                    hash,
+                                                          from,
+                                                                to,
+                                                                      amount,
+                                                                            token: token || "OPN",
+                                                                                  status: "pending",
+                                                                                        chainId: chainId || 984,
+                                                                                            });
 
-    return res.json({
-      success: true,
-      tx,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Transaction failed" });
-  }
-});
+                                                                                                return res.json({
+                                                                                                      success: true,
+                                                                                                            tx,
+                                                                                                                });
+                                                                                                                  } catch (err) {
+                                                                                                                      console.error(err);
+                                                                                                                          res.status(500).json({ error: "Failed to store transaction" });
+                                                                                                                            }
+                                                                                                                            });
 
-export default router;
+                                                                                                                            export default router;
