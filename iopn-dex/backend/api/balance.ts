@@ -1,11 +1,14 @@
 import { ethers } from "ethers";
 
-const provider = new ethers.JsonRpcProvider("https://rpc.iopn.testnet");
+const provider = new ethers.JsonRpcProvider(
+  "https://testnet-rpc.iopn.tech"
+  );
 
-export async function getBalance(address: string) {
-  const balance = await provider.getBalance(address);
+  export async function getBalance(address: string) {
+    const balance = await provider.getBalance(address);
 
-    return {
-        balance: ethers.formatEther(balance),
-          };
-          }
+      return {
+          success: true,
+              balance: ethers.formatEther(balance),
+                };
+                }
