@@ -1,24 +1,21 @@
 import { ethers } from "ethers";
 
-const RPC = "https://rpc.iopn.testnet";
-const provider = new ethers.JsonRpcProvider(RPC);
+const provider = new ethers.JsonRpcProvider("https://rpc.iopn.testnet");
 
-export async function sendTx(req: any, res: any) {
-  try {
-    const { privateKey, to, amount } = req.body;
+export async function sendTransaction(
+  to: string,
+    amount: string,
+      privateKey: string
+      ) {
+        const wallet = new ethers.Wallet(privateKey, provider);
 
-    const wallet = new ethers.Wallet(privateKey, provider);
+          const tx = await wallet.sendTransaction({
+              to,
+                  value: ethers.parseEther(amount),
+                    });
 
-    const tx = await wallet.sendTransaction({
-      to,
-      value: ethers.parseEther(amount),
-    });
-
-    res.json({
-      success: true,
-      hash: tx.hash,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-}
+                      return {
+                          success: true,
+                              hash: tx.hash,
+                                };
+                                }

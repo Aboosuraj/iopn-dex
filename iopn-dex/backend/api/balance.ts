@@ -2,12 +2,10 @@ import { ethers } from "ethers";
 
 const provider = new ethers.JsonRpcProvider("https://rpc.iopn.testnet");
 
-export async function getBalance(req: any, res: any) {
-  const { address } = req.query;
-
+export async function getBalance(address: string) {
   const balance = await provider.getBalance(address);
 
-  res.json({
-    balance: ethers.formatEther(balance),
-  });
-}
+    return {
+        balance: ethers.formatEther(balance),
+          };
+          }

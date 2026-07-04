@@ -1,20 +1,15 @@
 import { Server } from "socket.io";
 import { startListener } from "./indexer/listener";
 
-startListener(io);
-
 export function createSocket(server: any) {
   const io = new Server(server, {
-    cors: { origin: "*" },
-  });
+      cors: {
+            origin: "*",
+                  methods: ["GET", "POST"],
+                      },
+                        });
 
-  io.on("connection", (socket) => {
-    console.log("🟢 Client connected");
+                          startListener(io);
 
-    socket.on("subscribe", (address) => {
-      socket.join(address);
-    });
-  });
-
-  return io;
-}
+                            return io;
+                            }

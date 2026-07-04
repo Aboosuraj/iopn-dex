@@ -36,7 +36,6 @@ export async function startListener(io?: any) {
           token: "OPN",
           status: "confirmed",
           chainId: 984,
-          blockNumber,
         });
 
         if (io) {
