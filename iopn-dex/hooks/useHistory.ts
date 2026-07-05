@@ -1,23 +1,21 @@
-"use client";
-
 import { useEffect, useState } from "react";
+
+const API = "https://iopndex.onrender.com";
 
 export function useHistory(address?: string) {
   const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!address) return;
+    async function load() {
+      if (!address) return;
 
-    async function fetchHistory() {
-      const res = await fetch(
-        `http://localhost:4000/api/history?address=${address}`
-      );
-
+      const res = await fetch(`${API}/api/history?address=${address}`);
       const data = await res.json();
+
       setHistory(data);
     }
 
-    fetchHistory();
+    load();
   }, [address]);
 
   return history;

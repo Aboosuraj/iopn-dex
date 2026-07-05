@@ -1,26 +1,32 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:4000");
+const SOCKET_URL = "https://iopndex.onrender.com";
 
-export function useSocket(address?: string) {
+export function useSocket() {
   const [txs, setTxs] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!address) return;
+    const socket = io(SOCKET_URL);
 
-    socket.emit("subscribe", address);
-
-    socket.on("newTx", (data) => {
-      setTxs((prev) => [data, ...prev]);
+    socket.on("connect", () => {
+      console.log("Socket connected");
     });
 
-    return () => {
-      socket.off("newTx");
-    };
-  }, [address]);
+    socket.on("newTx", (tx) => {
+      setTxs((prev) => [tx, ...prev]);
+    });
+
+    socket.on("txConfirmed", (data) => {
+      setTxs((prev) =>
+        prev.map((t) =>
+          t.hash === data.hash ? { ...t, status: "confirmed" } : t
+        )
+      );
+    });
+
+    return () => socket.disconnect();
+  }, []);
 
   return txs;
 }

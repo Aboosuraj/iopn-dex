@@ -10,7 +10,7 @@ export function useBalance(address?: string) {
 
     async function fetchBalance() {
       const res = await fetch(
-        `http://localhost:4000/api/balance?address=${address}`
+        `http://iopndex.onrender.com/api/balance?address=${address}`
       );
 
       const data = await res.json();
