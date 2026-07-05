@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 
-const API = "http://localhost:5000/api/tx";
+const API = "https://iopndex.onrender.com";
 
 export function useHistory(address?: string) {
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(API);
+      if (!address) return;
+
+      const res = await fetch(`${API}/api/history?address=${address}`);
       const data = await res.json();
+
       setHistory(data);
     }
 
