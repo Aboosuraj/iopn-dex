@@ -1,30 +1,40 @@
-import { ethers } from "ethers";
+export async function sendTransaction(data: {
+      from: string;
+        to: string;
+          amount: string;
+            token: string;
+              hash: string;
+                chainId: number;
+                }) {
+                  try {
+                      console.log("New transaction received:");
 
-const provider = new ethers.JsonRpcProvider(
-  "https://testnet-rpc.iopn.tech"
-  );
+                          console.log({
+                                from: data.from,
+                                      to: data.to,
+                                            amount: data.amount,
+                                                  token: data.token,
+                                                        hash: data.hash,
+                                                              chainId: data.chainId,
+                                                                    time: new Date().toISOString(),
+                                                                        });
 
-  export async function sendTransaction(
-    to: string,
-      amount: string,
-        privateKey: string
-        ) {
-          try {
-              const wallet = new ethers.Wallet(privateKey, provider);
-
-                  const tx = await wallet.sendTransaction({
-                        to,
-                              value: ethers.parseEther(amount),
-                                  });
-
-                                      return {
-                                            success: true,
-                                                  hash: tx.hash,
-                                                      };
-                                                        } catch (err: any) {
-                                                            return {
-                                                                  success: false,
-                                                                        error: err.message,
-                                                                            };
-                                                                              }
-                                                                              }
+                                                                            return {
+                                                                                  success: true,
+                                                                                        message: "Transaction recorded successfully",
+                                                                                              transaction: {
+                                                                                                      from: data.from,
+                                                                                                              to: data.to,
+                                                                                                                      amount: data.amount,
+                                                                                                                              token: data.token,
+                                                                                                                                      hash: data.hash,
+                                                                                                                                              chainId: data.chainId,
+                                                                                                                                                    },
+                                                                                                                                                        };
+                                                                                                                                                          } catch (err: any) {
+                                                                                                                                                              return {
+                                                                                                                                                                    success: false,
+                                                                                                                                                                          error: err.message,
+                                                                                                                                                                              };
+                                                                                                                                                                                }
+                                                                                                                                                                                }

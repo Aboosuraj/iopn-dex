@@ -15,67 +15,107 @@ app.use(express.json());
 const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
-  cors: { origin: "*" },
-  });
+  cors: {
+      origin: "*",
+        },
+        });
 
-  /* ================= BALANCE ================= */
-  app.get("/api/balance", async (req, res) => {
-    try {
-        const address = req.query.address as string;
+        /* ================= HEALTH ================= */
 
-            const data = await getBalance(address);
+        app.get("/", (_, res) => {
+          res.json({
+              status: "IOPN Backend Running 🚀",
+                  chain: "IOPN Testnet",
+                    });
+                    });
 
-                res.json(data);
-                  } catch (err: any) {
-                      res.status(500).json({
-                            success: false,
-                                  error: err.message,
-                                      });
-                                        }
-                                        });
+                    /* ================= BALANCE ================= */
 
-                                        /* ================= HISTORY ================= */
-                                        app.get("/api/history", async (req, res) => {
-                                          try {
-                                              const address = req.query.address as string;
+                    app.get("/api/balance", async (req, res) => {
+                      try {
+                          const address = req.query.address as string;
 
-                                                  const data = await getHistory(address);
+                              const data = await getBalance(address);
 
-                                                      res.json(data);
-                                                        } catch (err: any) {
-                                                            res.status(500).json({
-                                                                  success: false,
-                                                                        error: err.message,
-                                                                            });
-                                                                              }
-                                                                              });
+                                  res.json(data);
+                                    } catch (err: any) {
+                                        res.status(500).json({
+                                              success: false,
+                                                    error: err.message,
+                                                        });
+                                                          }
+                                                          });
 
-                                                                              /* ================= SEND TX ================= */
-                                                                              app.post("/api/send", async (req, res) => {
-                                                                                try {
-                                                                                    const { to, amount, privateKey } = req.body;
+                                                          /* ================= HISTORY ================= */
 
-                                                                                        if (!to || !amount || !privateKey) {
-                                                                                              return res.status(400).json({
-                                                                                                      success: false,
-                                                                                                              message: "Missing fields",
-                                                                                                                    });
-                                                                                                                        }
+                                                          app.get("/api/history", async (req, res) => {
+                                                            try {
+                                                                const address = req.query.address as string;
 
-                                                                                                                            const result = await sendTransaction(to, amount, privateKey);
+                                                                    const data = await getHistory(address);
 
-                                                                                                                                res.json(result);
-                                                                                                                                  } catch (err: any) {
-                                                                                                                                      res.status(500).json({
-                                                                                                                                            success: false,
-                                                                                                                                                  error: err.message,
-                                                                                                                                                      });
-                                                                                                                                                        }
-                                                                                                                                                        });
+                                                                        res.json(data);
+                                                                          } catch (err: any) {
+                                                                              res.status(500).json({
+                                                                                    success: false,
+                                                                                          error: err.message,
+                                                                                              });
+                                                                                                }
+                                                                                                });
 
-                                                                                                                                                        /* ================= START ================= */
-                                                                                                                                                        const PORT = process.env.PORT || 4000;
+                                                                                                /* ================= SEND ================= */
 
-                                                                                                                                                        httpServer.listen(PORT, () => {
-                                                                                                                                                          console.log("🚀 Backend running on", PORT);
-                                                                                                                                                          });
+                                                                                                app.post("/api/send", async (req, res) => {
+                                                                                                  try {
+                                                                                                      const {
+                                                                                                            from,
+                                                                                                                  to,
+                                                                                                                        amount,
+                                                                                                                              token,
+                                                                                                                                    hash,
+                                                                                                                                          chainId,
+                                                                                                                                              } = req.body;
+
+                                                                                                                                                  if (!from || !to || !amount || !hash) {
+                                                                                                                                                        return res.status(400).json({
+                                                                                                                                                                success: false,
+                                                                                                                                                                        message: "Missing required fields",
+                                                                                                                                                                              });
+                                                                                                                                                                                  }
+
+                                                                                                                                                                                      const result = await sendTransaction({
+                                                                                                                                                                                            from,
+                                                                                                                                                                                                  to,
+                                                                                                                                                                                                        amount,
+                                                                                                                                                                                                              token,
+                                                                                                                                                                                                                    hash,
+                                                                                                                                                                                                                          chainId,
+                                                                                                                                                                                                                              });
+
+                                                                                                                                                                                                                                  io.emit("newTx", {
+                                                                                                                                                                                                                                        from,
+                                                                                                                                                                                                                                              to,
+                                                                                                                                                                                                                                                    amount,
+                                                                                                                                                                                                                                                          token,
+                                                                                                                                                                                                                                                                hash,
+                                                                                                                                                                                                                                                                      chainId,
+                                                                                                                                                                                                                                                                            status: "pending",
+                                                                                                                                                                                                                                                                                  timestamp: Date.now(),
+                                                                                                                                                                                                                                                                                      });
+
+                                                                                                                                                                                                                                                                                          res.json(result);
+                                                                                                                                                                                                                                                                                            } catch (err: any) {
+                                                                                                                                                                                                                                                                                                res.status(500).json({
+                                                                                                                                                                                                                                                                                                      success: false,
+                                                                                                                                                                                                                                                                                                            error: err.message,
+                                                                                                                                                                                                                                                                                                                });
+                                                                                                                                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                  });
+
+                                                                                                                                                                                                                                                                                                                  /* ================= START SERVER ================= */
+
+                                                                                                                                                                                                                                                                                                                  const PORT = Number(process.env.PORT) || 5000;
+
+                                                                                                                                                                                                                                                                                                                  httpServer.listen(PORT, () => {
+                                                                                                                                                                                                                                                                                                                    console.log(`✔ Backend running on ${PORT}`);
+                                                                                                                                                                                                                                                                                                                    });

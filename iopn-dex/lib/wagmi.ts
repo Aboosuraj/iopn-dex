@@ -28,7 +28,7 @@ export const IOPN_CHAIN = defineChain({
                                                                 });
 
                                                                 export const config = getDefaultConfig({
-                                                                  appName: "IOPN Dex",
+                                                                  appName: "IOPn Dex",
                                                                     projectId: "2f556cee5880c8a19600fcfc8238056d",
                                                                       chains: [IOPN_CHAIN],
                                                                         ssr: true,
