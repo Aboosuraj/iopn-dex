@@ -1,19 +1,37 @@
+import { connectDB } from "../services/db";
 import Transaction from "../db/Transaction";
 
 export async function getHistory(address: string) {
   try {
-    const txs = await Transaction.find({
-      $or: [{ from: address }, { to: address }],
-    }).sort({ createdAt: -1 });
+      await connectDB();
 
-    return {
-      success: true,
-      data: txs,
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: "Failed to fetch history",
-    };
-  }
-}
+          if (!address) {
+                return {
+                        success: false,
+                                error: "Wallet address is required",
+                                      };
+                                          }
+
+                                              const txs = await Transaction.find({
+                                                    $or: [
+                                                            { from: address },
+                                                                    { to: address },
+                                                                          ],
+                                                                              })
+                                                                                    .sort({ createdAt: -1 })
+                                                                                          .lean();
+
+                                                                                              return {
+                                                                                                    success: true,
+                                                                                                          history: txs,
+                                                                                                              };
+                                                                                                                } catch (err: any) {
+                                                                                                                    console.error("History Error:", err);
+
+                                                                                                                        return {
+                                                                                                                              success: false,
+                                                                                                                                    error: err.message,
+                                                                                                                                          history: [],
+                                                                                                                                              };
+                                                                                                                                                }
+                                                                                                                                                }
