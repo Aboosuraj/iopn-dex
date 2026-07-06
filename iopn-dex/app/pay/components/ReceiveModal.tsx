@@ -1,85 +1,38 @@
 "use client";
 
-import { useEffect } from "react";
+import { QRCodeSVG } from "qrcode.react";
 
-type Props = {
-  isOpen: boolean;
-    onClose: () => void;
-      address?: string;
-      };
+export default function ReceiveModal({
+  isOpen,
+    onClose,
+      address,
+      }: any) {
+        if (!isOpen) return null;
 
-      export default function ReceiveModal({
-        isOpen,
-          onClose,
-            address,
-            }: Props) {
-              if (!isOpen) return null;
+          return (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
 
-                function copyAddress() {
-                    if (!address) return;
-                        navigator.clipboard.writeText(address);
-                            alert("Address copied 📋");
-                              }
+                    <div className="bg-black border p-6 rounded-xl">
 
-                                return (
-                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                            <h2 className="text-white mb-4">Receive</h2>
 
-                                          {/* MODAL BOX */}
-                                                <div className="w-full max-w-md rounded-3xl border border-white/10 bg-neutral-900 p-6 shadow-2xl">
+                                    <div className="bg-white p-3">
+                                              <QRCodeSVG value={address || ""} size={180} />
+                                                      </div>
 
-                                                        {/* HEADER */}
-                                                                <div className="mb-4 flex items-center justify-between">
-                                                                          <h2 className="text-lg font-bold text-white">
-                                                                                      Receive Funds
-                                                                                                </h2>
+                                                              <p className="text-xs text-white mt-3 break-all">
+                                                                        {address}
+                                                                                </p>
 
-                                                                                                          <button
-                                                                                                                      onClick={onClose}
-                                                                                                                                  className="text-white/60 hover:text-white"
-                                                                                                                                            >
-                                                                                                                                                        ✕
-                                                                                                                                                                  </button>
-                                                                                                                                                                          </div>
+                                                                                        <button
+                                                                                                  onClick={onClose}
+                                                                                                            className="mt-4 bg-green-500 w-full p-2"
+                                                                                                                    >
+                                                                                                                              Close
+                                                                                                                                      </button>
 
-                                                                                                                                                                                  {/* QR BOX */}
-                                                                                                                                                                                          <div className="flex flex-col items-center justify-center">
+                                                                                                                                            </div>
 
-                                                                                                                                                                                                    <div className="mb-4 h-40 w-40 rounded-2xl bg-white p-2 flex items-center justify-center">
-                                                                                                                                                                                                                {/* QR PLACEHOLDER (we'll upgrade later) */}
-                                                                                                                                                                                                                            <span className="text-xs text-black text-center">
-                                                                                                                                                                                                                                          QR CODE
-                                                                                                                                                                                                                                                        <br />
-                                                                                                                                                                                                                                                                      (wallet address)
-                                                                                                                                                                                                                                                                                  </span>
-                                                                                                                                                                                                                                                                                            </div>
-
-                                                                                                                                                                                                                                                                                                      {/* ADDRESS */}
-                                                                                                                                                                                                                                                                                                                <p className="mb-4 break-all text-center text-sm text-white/70">
-                                                                                                                                                                                                                                                                                                                            {address || "Wallet not connected"}
-                                                                                                                                                                                                                                                                                                                                      </p>
-
-                                                                                                                                                                                                                                                                                                                                              </div>
-
-                                                                                                                                                                                                                                                                                                                                                      {/* ACTIONS */}
-                                                                                                                                                                                                                                                                                                                                                              <div className="flex gap-3">
-
-                                                                                                                                                                                                                                                                                                                                                                        <button
-                                                                                                                                                                                                                                                                                                                                                                                    onClick={copyAddress}
-                                                                                                                                                                                                                                                                                                                                                                                                className="flex-1 rounded-2xl bg-green-500 py-3 font-bold text-black"
-                                                                                                                                                                                                                                                                                                                                                                                                          >
-                                                                                                                                                                                                                                                                                                                                                                                                                      Copy
-                                                                                                                                                                                                                                                                                                                                                                                                                                </button>
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                          <button
-                                                                                                                                                                                                                                                                                                                                                                                                                                                      onClick={onClose}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                  className="flex-1 rounded-2xl bg-white/10 py-3 text-white"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Close
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </button>
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+                                                                                                                                                </div>
+                                                                                                                                                  );
+                                                                                                                                                  }
