@@ -1,28 +1,54 @@
 "use client";
 
-import { QrReader } from "react-qr-reader";
+import { useEffect } from "react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 export default function Scanner({ isOpen, onClose, onScan }: any) {
-  if (!isOpen) return null;
+  useEffect(() => {
+      if (!isOpen) return;
 
-    return (
-        <div className="fixed inset-0 bg-black z-50">
+          const scanner = new Html5QrcodeScanner(
+                "reader",
+                      {
+                              fps: 10,
+                                      qrbox: 250,
+                                            },
+                                                  false
+                                                      );
 
-              <div className="p-3 text-white flex justify-between">
-                      <span>Scan QR</span>
-                              <button onClick={onClose}>Close</button>
-                                    </div>
+                                                          scanner.render(
+                                                                (decodedText) => {
+                                                                        onScan(decodedText);
+                                                                                scanner.clear();
+                                                                                        onClose();
+                                                                                              },
+                                                                                                    (error) => {
+                                                                                                            // ignore scan errors
+                                                                                                                  }
+                                                                                                                      );
 
-                                          <QrReader
-                                                  constraints={{ facingMode: "environment" }}
-                                                          onResult={(result: any) => {
-                                                                    if (result?.text?.startsWith("0x")) {
-                                                                                onScan(result.text);
-                                                                                            onClose();
-                                                                                                      }
-                                                                                                              }}
-                                                                                                                    />
+                                                                                                                          return () => {
+                                                                                                                                scanner.clear().catch(() => {});
+                                                                                                                                    };
+                                                                                                                                      }, [isOpen]);
 
-                                                                                                                        </div>
-                                                                                                                          );
-                                                                                                                          }
+                                                                                                                                        if (!isOpen) return null;
+
+                                                                                                                                          return (
+                                                                                                                                              <div className="fixed inset-0 bg-black z-50 flex flex-col">
+
+                                                                                                                                                    {/* HEADER */}
+                                                                                                                                                          <div className="p-4 flex justify-between text-white">
+                                                                                                                                                                  <h2 className="font-bold">Scan QR</h2>
+
+                                                                                                                                                                          <button onClick={onClose}>Close</button>
+                                                                                                                                                                                </div>
+
+                                                                                                                                                                                      {/* SCANNER */}
+                                                                                                                                                                                            <div className="flex-1 flex items-center justify-center">
+                                                                                                                                                                                                    <div id="reader" className="w-full max-w-md" />
+                                                                                                                                                                                                          </div>
+
+                                                                                                                                                                                                              </div>
+                                                                                                                                                                                                                );
+                                                                                                                                                                                                                }

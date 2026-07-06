@@ -1,6 +1,7 @@
 "use client";
 
 import { QRCodeSVG } from "qrcode.react";
+import { useMemo } from "react";
 
 export default function ReceiveModal({
   isOpen,
@@ -9,30 +10,78 @@ export default function ReceiveModal({
       }: any) {
         if (!isOpen) return null;
 
-          return (
-              <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          /* ================= DEEP LINK ================= */
+            const deepLink = useMemo(() => {
+                if (!address) return "";
+                    return `iopn://pay/${address}`;
+                      }, [address]);
 
-                    <div className="bg-black border p-6 rounded-xl">
+                        /* ================= COPY ADDRESS ================= */
+                          function copyAddress() {
+                              if (!address) return;
+                                  navigator.clipboard.writeText(address);
+                                      alert("Address copied ✅");
+                                        }
 
-                            <h2 className="text-white mb-4">Receive</h2>
+                                          /* ================= COPY LINK ================= */
+                                            function copyLink() {
+                                                navigator.clipboard.writeText(deepLink);
+                                                    alert("Payment link copied ✅");
+                                                      }
 
-                                    <div className="bg-white p-3">
-                                              <QRCodeSVG value={address || ""} size={180} />
-                                                      </div>
+                                                        return (
+                                                            <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
 
-                                                              <p className="text-xs text-white mt-3 break-all">
-                                                                        {address}
-                                                                                </p>
+                                                                  <div className="bg-black border border-white/10 p-6 rounded-xl w-full max-w-sm">
 
-                                                                                        <button
-                                                                                                  onClick={onClose}
-                                                                                                            className="mt-4 bg-green-500 w-full p-2"
-                                                                                                                    >
-                                                                                                                              Close
-                                                                                                                                      </button>
+                                                                          {/* TITLE */}
+                                                                                  <h2 className="text-white mb-4 text-center font-bold">
+                                                                                            Receive Payment
+                                                                                                    </h2>
 
-                                                                                                                                            </div>
+                                                                                                            {/* QR CODE */}
+                                                                                                                    <div className="bg-white p-3 flex justify-center rounded">
+                                                                                                                              <QRCodeSVG value={`iopn://pay/${address}`} size={180} />
+                                                                                                                                      </div>
 
-                                                                                                                                                </div>
-                                                                                                                                                  );
-                                                                                                                                                  }
+                                                                                                                                              {/* ADDRESS */}
+                                                                                                                                                      <p className="text-xs text-white mt-3 break-all text-center">
+                                                                                                                                                                {address}
+                                                                                                                                                                        </p>
+
+                                                                                                                                                                                {/* DEEP LINK */}
+                                                                                                                                                                                        <p className="text-xs text-white/50 mt-2 break-all text-center">
+                                                                                                                                                                                                  {deepLink}
+                                                                                                                                                                                                          </p>
+
+                                                                                                                                                                                                                  {/* BUTTONS */}
+                                                                                                                                                                                                                          <div className="mt-4 space-y-2">
+
+                                                                                                                                                                                                                                    <button
+                                                                                                                                                                                                                                                onClick={copyAddress}
+                                                                                                                                                                                                                                                            className="bg-white/10 w-full p-2 rounded text-white"
+                                                                                                                                                                                                                                                                      >
+                                                                                                                                                                                                                                                                                  Copy Address
+                                                                                                                                                                                                                                                                                            </button>
+
+                                                                                                                                                                                                                                                                                                      <button
+                                                                                                                                                                                                                                                                                                                  onClick={copyLink}
+                                                                                                                                                                                                                                                                                                                              className="bg-white/10 w-full p-2 rounded text-white"
+                                                                                                                                                                                                                                                                                                                                        >
+                                                                                                                                                                                                                                                                                                                                                    Copy Payment Link
+                                                                                                                                                                                                                                                                                                                                                              </button>
+
+                                                                                                                                                                                                                                                                                                                                                                        <button
+                                                                                                                                                                                                                                                                                                                                                                                    onClick={onClose}
+                                                                                                                                                                                                                                                                                                                                                                                                className="bg-green-500 w-full p-2 rounded text-black font-bold"
+                                                                                                                                                                                                                                                                                                                                                                                                          >
+                                                                                                                                                                                                                                                                                                                                                                                                                      Close
+                                                                                                                                                                                                                                                                                                                                                                                                                                </button>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                              </div>
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                  </div>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    );
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
