@@ -13,7 +13,7 @@ export default function ReceiveModal({
           /* ================= DEEP LINK ================= */
             const deepLink = useMemo(() => {
                 if (!address) return "";
-                    return `iopn://pay/${address}`;
+                    return `iopndex://pay/${address}`;
                       }, [address]);
 
                         /* ================= COPY ADDRESS ================= */
@@ -41,7 +41,7 @@ export default function ReceiveModal({
 
                                                                                                             {/* QR CODE */}
                                                                                                                     <div className="bg-white p-3 flex justify-center rounded">
-                                                                                                                              <QRCodeSVG value={`iopn://pay/${address}`} size={180} />
+                                                                                                                              <QRCodeSVG value={`iopndex://pay/${address}`} size={180} />
                                                                                                                                       </div>
 
                                                                                                                                               {/* ADDRESS */}
