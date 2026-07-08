@@ -59,244 +59,406 @@ export default function SwapCard({
 }: Props) {
 
 
-return (
+  return (
 
-<div className="relative z-50 mx-auto w-full max-w-md rounded-3xl border border-white/20 bg-black/40 p-5 backdrop-blur-xl shadow-2xl">
+    <div className="
+      w-full
+      max-w-md
+      rounded-3xl
+      border
+      border-white/10
+      bg-black/40
+      backdrop-blur-xl
+      shadow-2xl
+      p-5
+    ">
 
 
-{/* TITLE */}
+      {/* HEADER */}
 
-<div className="mb-6 text-center">
+      <div className="mb-6 text-center">
 
-<h1 className="text-3xl font-bold text-white">
-IOPN Swap
-</h1>
+        <h1 className="
+          text-3xl
+          font-bold
+          text-white
+        ">
+          IOPN Swap
+        </h1>
 
-<p className="text-sm text-white/60">
-Trade tokens on IOPN Testnet
-</p>
 
-</div>
+        <p className="
+          mt-1
+          text-sm
+          text-white/60
+        ">
+          Trade tokens on IOPN Testnet
+        </p>
 
+      </div>
 
 
-{/* TOKEN IN */}
 
-<div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+      {/* INPUT TOKEN */}
 
+      <div className="
+        rounded-3xl
+        border
+        border-white/10
+        bg-white/5
+        p-4
+      ">
 
-<div className="flex justify-between text-sm text-white/60">
 
-<span>
-You Pay
-</span>
+        <div className="
+          flex
+          justify-between
+          text-sm
+          text-white/60
+        ">
 
+          <span>
+            You Pay
+          </span>
 
-<span>
-Balance: {balance}
-</span>
 
+          <span className="truncate max-w-[180px]">
+            Balance: {balance}
+          </span>
 
-</div>
+        </div>
 
 
 
-<div className="mt-3 flex items-center gap-3">
+        <div className="
+          mt-4
+          flex
+          items-center
+          gap-3
+        ">
 
 
-<input
+          <input
 
-type="number"
+            type="number"
 
-value={amountIn}
+            value={amountIn}
 
-onChange={(e)=>setAmountIn(e.target.value)}
+            onChange={(e)=>
+              setAmountIn(e.target.value)
+            }
 
-placeholder="0.0"
+            placeholder="0.0"
 
-className="w-full flex-1 bg-transparent text-4xl font-bold text-white outline-none"
+            className="
+              min-w-0
+              flex-1
+              bg-transparent
+              text-3xl
+              font-bold
+              text-white
+              outline-none
+            "
 
-/>
+          />
 
 
 
-<button
+          <button
 
-type="button"
+            type="button"
 
-onClick={openTokenIn}
+            onClick={openTokenIn}
 
-className="rounded-2xl bg-green-400 px-4 py-3 font-bold text-black"
+            className="
+              shrink-0
+              rounded-2xl
+              bg-green-400
+              px-4
+              py-3
+              font-bold
+              text-black
+            "
 
->
+          >
 
-{tokenIn.symbol} ▼
+            {tokenIn.symbol}
 
-</button>
+            <span>
+              ▼
+            </span>
 
+          </button>
 
-</div>
 
-</div>
+        </div>
 
 
+      </div>
 
 
 
-{/* FLIP */}
 
-<div className="flex justify-center py-4">
 
+      {/* FLIP */}
 
-<button
 
-type="button"
+      <div className="
+        flex
+        justify-center
+        py-4
+      ">
 
-onClick={onFlip}
 
-className="h-14 w-14 rounded-full bg-green-400 text-2xl font-bold text-black"
+        <button
 
->
+          type="button"
 
-⇅
+          onClick={onFlip}
 
-</button>
+          className="
+            h-14
+            w-14
+            rounded-full
+            bg-green-400
+            text-2xl
+            font-bold
+            text-black
+            transition
+            hover:rotate-180
+          "
 
+        >
 
-</div>
+          ⇅
 
+        </button>
 
 
+      </div>
 
 
-{/* TOKEN OUT */}
 
-<div className="rounded-3xl border border-white/10 bg-white/5 p-4">
 
 
-<div className="text-sm text-white/60">
 
-You Receive
 
-</div>
+      {/* OUTPUT TOKEN */}
 
 
-<div className="mt-3 flex items-center gap-3">
+      <div className="
+        rounded-3xl
+        border
+        border-white/10
+        bg-white/5
+        p-4
+      ">
 
 
-<div className="flex-1 text-4xl font-bold text-green-400">
+        <div className="
+          text-sm
+          text-white/60
+        ">
+          You Receive
+        </div>
 
-{amountOut || "0.0"}
 
-</div>
 
 
+        <div className="
+          mt-4
+          flex
+          items-center
+          gap-3
+        ">
 
-<button
 
-type="button"
+          <div className="
+            min-w-0
+            flex-1
+            truncate
+            text-2xl
+            font-bold
+            text-green-400
+          ">
 
-onClick={openTokenOut}
+            {amountOut || "0.0"}
 
-className="rounded-2xl bg-green-400 px-4 py-3 font-bold text-black"
+          </div>
 
->
 
-{tokenOut.symbol} ▼
 
-</button>
 
+          <button
 
-</div>
+            type="button"
 
+            onClick={openTokenOut}
 
-</div>
+            className="
+              shrink-0
+              rounded-2xl
+              bg-green-400
+              px-4
+              py-3
+              font-bold
+              text-black
+            "
 
+          >
 
+            {tokenOut.symbol}
 
+            <span>
+              ▼
+            </span>
 
+          </button>
 
-{/* INFO */}
 
-<div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm">
+        </div>
 
 
-<div className="flex justify-between">
+      </div>
 
-<span className="text-white/50">
-Network
-</span>
 
-<span className="text-white">
-IOPN Testnet
-</span>
 
 
-</div>
 
 
 
-<div className="mt-3 flex justify-between">
+      {/* INFO */}
 
-<span className="text-white/50">
-Slippage
-</span>
 
-<span className="text-white">
-0.5%
-</span>
+      <div className="
+        mt-5
+        rounded-2xl
+        border
+        border-white/10
+        bg-white/5
+        p-4
+        text-sm
+      ">
 
 
-</div>
+        <div className="
+          flex
+          justify-between
+        ">
 
+          <span className="text-white/50">
+            Network
+          </span>
 
-</div>
 
+          <span className="text-white">
+            IOPN Testnet
+          </span>
 
 
+        </div>
 
 
-{/* IMPORT */}
 
-<button
+        <div className="
+          mt-3
+          flex
+          justify-between
+        ">
 
-type="button"
+          <span className="text-white/50">
+            Slippage
+          </span>
 
-onClick={onImport}
 
-className="mt-5 w-full rounded-2xl border border-green-400 py-3 font-bold text-green-400 hover:bg-green-400 hover:text-black"
+          <span className="text-white">
+            0.5%
+          </span>
 
->
 
-+ Import Token
+        </div>
 
-</button>
 
+      </div>
 
 
 
 
-{/* ACTION */}
 
-<button
 
-type="button"
 
-onClick={onAction}
+      {/* IMPORT */}
 
-disabled={loading}
 
-className="mt-4 w-full rounded-2xl bg-green-400 py-4 text-lg font-bold text-black disabled:opacity-50"
+      <button
 
->
+        type="button"
 
-{loading ? "Processing..." : actionText}
+        onClick={onImport}
 
-</button>
+        className="
+          mt-5
+          w-full
+          rounded-2xl
+          border
+          border-green-400
+          py-3
+          font-bold
+          text-green-400
+          transition
+          hover:bg-green-400
+          hover:text-black
+        "
 
+      >
 
-</div>
+        + Import Token
 
-);
+      </button>
+
+
+
+
+
+
+
+      {/* ACTION */}
+
+
+      <button
+
+        type="button"
+
+        onClick={onAction}
+
+        disabled={loading}
+
+        className="
+          mt-4
+          w-full
+          rounded-2xl
+          bg-green-400
+          py-4
+          text-lg
+          font-bold
+          text-black
+          transition
+          disabled:opacity-50
+        "
+
+      >
+
+        {loading
+          ? "Processing..."
+          : actionText
+        }
+
+
+      </button>
+
+
+    </div>
+
+  );
 
 }

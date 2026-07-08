@@ -2,159 +2,247 @@
 
 import { useState } from "react";
 
-
 type Token = {
-
-symbol:string;
-
-address:string;
-
-decimals:number;
-
-native:boolean;
-
+  symbol: string;
+  address: string;
+  decimals: number;
+  native: boolean;
 };
-
 
 
 type Props = {
-
-open:boolean;
-
-onClose:()=>void;
-
-onImport:(token:Token)=>void;
-
+  open: boolean;
+  onClose: () => void;
+  onImport: (token: Token) => void;
 };
-
 
 
 export default function TokenImport({
+  open,
+  onClose,
+  onImport,
 
-open,
+}: Props) {
 
-onClose,
 
-onImport,
+  const [address, setAddress] = useState("");
 
-}:Props){
+  const [error, setError] = useState("");
 
 
-const [address,setAddress]=useState("");
 
+  if (!open) return null;
 
 
-if(!open) return null;
 
 
+  function handleImport() {
 
-function handleImport(){
 
+    setError("");
 
-if(!address.startsWith("0x")){
 
-return;
 
-}
+    if (!address) {
 
+      setError("Enter token address");
 
+      return;
 
-const token:Token={
+    }
 
-symbol:"CUSTOM",
 
-address,
 
-decimals:18,
+    if (!address.startsWith("0x") || address.length !== 42) {
 
-native:false,
+      setError("Invalid token address");
 
-};
+      return;
 
+    }
 
 
-onImport(token);
 
 
-setAddress("");
+    const token: Token = {
 
-onClose();
+      symbol: "CUSTOM",
 
+      address,
 
-}
+      decimals: 18,
 
+      native: false,
 
+    };
 
-return (
 
-<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4">
 
+    onImport(token);
 
-<div className="w-full max-w-md rounded-3xl bg-zinc-900 p-6 text-white shadow-2xl">
 
 
-<h2 className="mb-4 text-2xl font-bold">
+    setAddress("");
 
-Import Token
+    onClose();
 
-</h2>
 
+  }
 
 
-<input
 
-value={address}
 
-onChange={(e)=>setAddress(e.target.value)}
 
-placeholder="Token contract address"
+  return (
 
-className="w-full rounded-xl bg-white/10 p-4 outline-none"
+    <div className="
+      fixed
+      inset-0
+      z-[999]
+      flex
+      items-center
+      justify-center
+      bg-black/70
+      px-4
+    ">
 
-/>
 
 
+      <div className="
+        w-full
+        max-w-md
+        rounded-3xl
+        border
+        border-white/10
+        bg-zinc-900
+        p-6
+        text-white
+        shadow-2xl
+      ">
 
 
-<button
 
-type="button"
+        <h2 className="
+          mb-5
+          text-2xl
+          font-bold
+        ">
+          Import Token
+        </h2>
 
-onClick={handleImport}
 
-className="mt-4 w-full rounded-xl bg-green-400 py-3 font-bold text-black"
 
->
 
-Import
 
-</button>
+        <input
 
+          value={address}
 
+          onChange={(e)=>{
 
+            setAddress(e.target.value);
 
-<button
+            setError("");
 
-type="button"
+          }}
 
-onClick={onClose}
+          placeholder="0x token contract address"
 
-className="mt-3 w-full rounded-xl border border-white/20 py-3"
+          className="
+            w-full
+            rounded-2xl
+            border
+            border-white/10
+            bg-white/10
+            p-4
+            text-white
+            outline-none
+          "
 
->
+        />
 
-Cancel
 
-</button>
 
 
 
-</div>
+        {error && (
 
+          <p className="
+            mt-3
+            text-sm
+            text-red-400
+          ">
 
-</div>
+            {error}
 
-);
+          </p>
+
+        )}
+
+
+
+
+
+
+
+        <button
+
+          type="button"
+
+          onClick={handleImport}
+
+          className="
+            mt-5
+            w-full
+            rounded-2xl
+            bg-green-400
+            py-3
+            font-bold
+            text-black
+          "
+
+        >
+
+          Import Token
+
+        </button>
+
+
+
+
+
+
+
+        <button
+
+          type="button"
+
+          onClick={onClose}
+
+          className="
+            mt-3
+            w-full
+            rounded-2xl
+            border
+            border-white/20
+            py-3
+            text-white
+          "
+
+        >
+
+          Cancel
+
+        </button>
+
+
+
+      </div>
+
+
+    </div>
+
+  );
 
 
 }
