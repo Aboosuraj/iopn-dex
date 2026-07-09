@@ -1,192 +1,394 @@
 "use client";
 
-import { useAccount, useBalance } from "wagmi";
-import WalletButton from "@/components/WalletButton";
+import Link from "next/link";
 
-export default function Home() {
-  const { address, isConnected } = useAccount();
-  const { data: opnBalance } = useBalance({
-    address,
-    });
+import {
+  useAccount,
+  useBalance,
+} from "wagmi";
 
-    return (
-        <main className="min-h-screen text-white pb-24 bg-gradient-to-b from-purple-950 via-black to-green-950">
+import {
+  formatUnits
+} from "viem";
 
-              <div className="p-5">
 
-                      {/* Header */}
-                              <div className="rounded-3xl p-6 bg-white/5 backdrop-blur-lg border border-purple-500/30">
-                                <div className="flex items-center justify-between">
 
-                                    <div>
-                                          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-purple-400 to-green-400 bg-clip-text text-transparent">
-                                                  IOPn Dex
-                                                        </h1>
+export default function Home(){
 
-                                                              <p className="text-zinc-400 mt-2">
-                                                                      Trade • Pay • Earn on OPN Testnet
-                                                                            </p>
-                                                                                </div>
 
-                                                                                    <WalletButton />
+const {
+address,
+isConnected
 
-                                                                                      </div>
-                                                                                      </div>
+}=useAccount();
 
-                                                                                                              {/* Wallet Card */}
-                                                                                                                      <div className="mt-6 rounded-3xl p-6 bg-gradient-to-r from-purple-600 to-green-500">
 
-                                                                                                                                <p className="text-sm opacity-80">
-                                                                                                                                            Wallet Status
-                                                                                                                                                      </p>
 
-                                                                                                                                                                <h2 className="text-xl font-bold mt-2 break-all">
-                                                                                                                                                                            {isConnected
-                                                                                                                                                                                          ? `${address?.slice(0, 6)}...${address?.slice(-4)}`
-                                                                                                                                                                                                        : "Wallet Not Connected"}
-                                                                                                                                                                                                                  </h2>
+const {
+data:balance
 
-                                                                                                                                                                                                                            <div className="mt-3">
-                                                                                                                                                                                                                                  <p className="text-sm">
-                                                                                                                                                                                                                                      OPN Testnet • Chain ID 984
-                                                                                                                                                                                                                                        </p>
+}=useBalance({
 
-                                                                                                                                                                                                                                          <p className="font-bold text-lg mt-2">
-                                                                                                                                                                                                                                              {opnBalance?.formatted
-                                                                                                                                                                                                                                                    ? Number(opnBalance.formatted).toFixed(4)
-                                                                                                                                                                                                                                                          : "0.0000"} OPN
-                                                                                                                                                                                                                                                            </p>
-                                                                                                                                                                                                                                                            </div>
+address,
 
-                                                                                                                                                                                                                                                          </div>
+});
 
-                                                                                                                                                                                                                                                                  {/* Quick Actions */}
-                                                                                                                                                                                                                                                                          <div className="grid grid-cols-2 gap-4 mt-6">
 
-                                                                                                                                                                                                                                                                                    <a
-                                                                                                                                                                                                                                                                                                href="/pay"
-                                                                                                                                                                                                                                                                                                            className="rounded-3xl p-6 bg-green-500 text-black font-bold text-center"
-                                                                                                                                                                                                                                                                                                                      >
-                                                                                                                                                                                                                                                                                                                                  💸 PAY
-                                                                                                                                                                                                                                                                                                                                            </a>
 
-                                                                                                                                                                                                                                                                                                                                                      <a
-                                                                                                                                                                                                                                                                                                                                                                  href="/trade"
-                                                                                                                                                                                                                                                                                                                                                                              className="rounded-3xl p-6 bg-purple-500 font-bold text-center"
-                                                                                                                                                                                                                                                                                                                                                                                        >
-                                                                                                                                                                                                                                                                                                                                                                                                    🔄 TRADE
-                                                                                                                                                                                                                                                                                                                                                                                                              </a>
+const quickActions=[
 
-                                                                                                                                                                                                                                                                                                                                                                                                                        <a
-                                                                                                                                                                                                                                                                                                                                                                                                                                    href="/staking"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                className="rounded-3xl p-6 bg-yellow-500 text-black font-bold text-center"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                          >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                      💎 STAKE
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </a>
+{
+name:"Swap",
+icon:"🔄",
+path:"/swap"
+},
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <a
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      href="/portfolio"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  className="rounded-3xl p-6 bg-blue-500 font-bold text-center"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        💼 WALLET
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </a>
+{
+name:"Pay",
+icon:"💳",
+path:"/pay"
+},
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
+{
+name:"Portfolio",
+icon:"📊",
+path:"/portfolio"
+},
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  {/* Supported Tokens */}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <div className="mt-6 rounded-3xl p-6 bg-white/5 backdrop-blur-lg border border-white/10">
+{
+name:"Liquidity",
+icon:"💧",
+path:"/staking"
+},
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <h3 className="text-xl font-semibold">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Supported Tokens
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </h3>
+];
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div className="space-y-3 mt-4">
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <div className="flex justify-between">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <span>WOPN</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <span>OPN Testnet</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <div className="flex justify-between">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <span>OPNT</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <span>OPN Testnet</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </div>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div className="flex justify-between">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <span>tUSDT</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <span>OPN Testnet</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>
+return (
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <div className="flex justify-between">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <span>tBNB</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <span>OPN Testnet</span>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+<main className="
+min-h-screen
+bg-gradient-to-br
+from-black
+via-[#06261a]
+to-black
+px-5
+py-8
+text-white
+">
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </div>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </div>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {/* Announcement Board */}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <div className="mt-6 rounded-3xl p-6 bg-white/5 backdrop-blur-lg border border-white/10">
+{/* HERO */}
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <h2 className="text-xl font-semibold mb-3">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            📢 Ecosystem Updates
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </h2>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <ul className="space-y-2 text-zinc-300">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <li>🚀 OPN Testnet Live</li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <li>💸 IOPn Pay Available</li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <li>🔄 Trade OPNT & WOPN</li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <li>💎 Staking Coming Soon</li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <li>🎁 Ecosystem Rewards Coming</li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </ul>
+<section className="
+rounded-3xl
+border
+border-white/10
+bg-white/5
+p-6
+backdrop-blur-xl
+">
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {/* QUICK LINKS */}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <div className="mt-6 rounded-3xl border border-white/10 bg-[#111111] p-6">
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <h2 className="text-lg font-bold text-white mb-5">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    🌐 Quick Links
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </h2>
+<p className="
+text-sm
+text-white/50
+">
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <div className="grid grid-cols-3 gap-4">
+Welcome to
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <a
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  href="https://x.com/iopndex_xyz"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        target="_blank"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              rel="noopener noreferrer"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    className="rounded-2xl border border-white/10 bg-black/40 p-4 text-center hover:border-cyan-400 transition"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <div className="text-3xl mb-2">𝕏</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <p className="text-sm text-white/80">X</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </a>
+</p>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <a
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  href="https://faucet.iopn.tech"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        target="_blank"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              rel="noopener noreferrer"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    className="rounded-2xl border border-white/10 bg-black/40 p-4 text-center hover:border-cyan-400 transition"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <div className="text-3xl mb-2">🚰</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <p className="text-sm text-white/80">Faucet</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </a>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <a
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  href="https://testnet.iopn.tech"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        target="_blank"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              rel="noopener noreferrer"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    className="rounded-2xl border border-white/10 bg-black/40 p-4 text-center hover:border-cyan-400 transition"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <div className="text-3xl mb-2">🔍</div>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <p className="text-sm text-white/80">Explorer</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </a>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
+<h1 className="
+mt-2
+text-4xl
+font-black
+">
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </div>
+IOPn DEX
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+</h1>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </main>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+
+
+<p className="
+mt-2
+text-white/60
+">
+
+Trade, swap and manage assets on OPN Chain
+
+</p>
+
+
+
+</section>
+
+
+
+
+
+
+
+{/* BALANCE */}
+
+
+<section className="
+mt-5
+rounded-3xl
+bg-green-400
+p-6
+text-black
+">
+
+
+<p className="
+text-sm
+font-semibold
+opacity-70
+">
+
+Wallet Balance
+
+</p>
+
+
+<h2 className="
+mt-2
+text-4xl
+font-black
+">
+
+{
+
+isConnected && balance
+
+?
+
+Number(
+formatUnits(
+balance.value,
+18
+)
+).toFixed(4)
+
+:
+
+"0.0000"
+
+}
+
+ OPN
+
+</h2>
+
+
+
+{
+
+address &&
+
+<p className="
+mt-3
+text-xs
+font-bold
+opacity-60
+">
+
+{address.slice(0,6)}
+...
+{address.slice(-4)}
+
+</p>
+
+}
+
+
+</section>
+
+
+
+
+
+
+
+
+{/* ACTIONS */}
+
+
+<section className="
+mt-6
+grid
+grid-cols-2
+gap-4
+">
+
+
+{
+
+quickActions.map((item)=>(
+
+
+<Link
+
+key={item.path}
+
+href={item.path}
+
+className="
+rounded-3xl
+border
+border-white/10
+bg-white/5
+p-5
+text-center
+transition
+hover:bg-white/10
+"
+
+
+>
+
+
+<div className="
+text-3xl
+">
+
+{item.icon}
+
+</div>
+
+
+<div className="
+mt-2
+font-bold
+">
+
+{item.name}
+
+</div>
+
+
+</Link>
+
+
+))
+
+
+}
+
+
+</section>
+
+
+
+
+
+
+
+
+
+{/* MARKETS */}
+
+
+<section className="
+mt-8
+">
+
+
+<h2 className="
+mb-4
+text-xl
+font-bold
+">
+
+Markets
+
+</h2>
+
+
+
+<div className="
+space-y-3
+">
+
+
+{
+
+[
+
+["OPN / tUSDT","1.00"],
+
+["OPNT / OPN","0.45"],
+
+["IDEX / OPN","0.12"]
+
+].map((pair)=>(
+
+
+<div
+
+key={pair[0]}
+
+className="
+flex
+items-center
+justify-between
+rounded-2xl
+border
+border-white/10
+bg-white/5
+p-4
+"
+
+>
+
+
+<span className="font-bold">
+
+{pair[0]}
+
+</span>
+
+
+<span className="
+text-green-400
+font-bold
+">
+
+{pair[1]}
+
+</span>
+
+
+</div>
+
+
+))
+
+
+}
+
+
+</div>
+
+
+</section>
+
+
+
+
+
+
+
+</main>
+
+);
+
+}

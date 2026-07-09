@@ -1,24 +1,118 @@
 "use client";
 
-import { useEffect, useState } from "react";
 
-export function useBalance(address?: string) {
-  const [balance, setBalance] = useState("0");
+import {
 
-  useEffect(() => {
-    if (!address) return;
+useAccount,
 
-    async function fetchBalance() {
-      const res = await fetch(
-        `http://iopndex.onrender.com/api/balance?address=${address}`
-      );
+useBalance as useNativeBalance,
 
-      const data = await res.json();
-      setBalance(data.balance);
-    }
+useReadContract
 
-    fetchBalance();
-  }, [address]);
+} from "wagmi";
 
-  return balance;
+
+import {ERC20_ABI} from "@/lib/erc20";
+
+import {formatUnits} from "viem";
+
+import type {Token} from "./useTokens";
+
+
+
+export function useTokenBalance(token:Token){
+
+
+const {address}=useAccount();
+
+
+
+const {
+
+data:native
+
+}=useNativeBalance({
+
+address,
+
+});
+
+
+const {
+
+data:erc20
+
+}=useReadContract({
+
+address:
+
+!token.native
+
+?
+
+token.address as `0x${string}`
+
+:
+
+undefined,
+
+
+abi:ERC20_ABI,
+
+
+functionName:"balanceOf",
+
+
+args:
+
+address && !token.native
+
+?
+
+[address]
+
+:
+
+undefined,
+
+
+query:{
+
+enabled:
+
+!!address && !token.native
+
+}
+
+});
+
+
+
+
+
+if(token.native){
+
+return native?.formatted || "0";
+
+}
+
+
+
+if(erc20){
+
+return formatUnits(
+
+erc20 as bigint,
+
+token.decimals
+
+);
+
+}
+
+
+
+return "0";
+
+
 }

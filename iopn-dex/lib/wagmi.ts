@@ -1,35 +1,21 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { defineChain } from "viem";
 
-export const IOPN_CHAIN = defineChain({
-  id: 984,
-    name: "OPN Testnet",
+import {
+  iopnTestnet,
+} from "./chains";
 
-      nativeCurrency: {
-          name: "OPN",
-              symbol: "OPN",
-                  decimals: 18,
-                    },
 
-                      rpcUrls: {
-                          default: {
-                                http: ["https://testnet-rpc.iopn.tech"],
-                                    },
-                                      },
+export const Config = getDefaultConfig({
 
-                                        blockExplorers: {
-                                            default: {
-                                                  name: "OPN Explorer",
-                                                        url: "https://testnet.iopn.tech",
-                                                            },
-                                                              },
+  appName: "IOPn DEX",
 
-                                                                testnet: true,
-                                                                });
+  projectId:
+    "2f556cee5880c8a19600fcfc8238056d",
 
-                                                                export const config = getDefaultConfig({
-                                                                  appName: "IOPn Dex",
-                                                                    projectId: "2f556cee5880c8a19600fcfc8238056d",
-                                                                      chains: [IOPN_CHAIN],
-                                                                        ssr: true,
-                                                                        });
+  chains: [
+    iopnTestnet,
+  ],
+
+  ssr: true,
+
+});
