@@ -1,52 +1,43 @@
 "use client";
 
-
 import {
   useWriteContract,
   useAccount,
 } from "wagmi";
-
 
 import {
   readContract,
   waitForTransactionReceipt,
 } from "wagmi/actions";
 
-
 import {
   parseUnits,
   formatUnits,
 } from "viem";
 
-
-import { useState } from "react";
-
+import {
+  useState,
+} from "react";
 
 import {
   ROUTER_ADDRESS,
   WOPN_ADDRESS,
 } from "@/lib/router";
 
-
 import {
   ROUTER_ABI,
 } from "@/lib/routerAbi";
-
 
 import {
   Config,
 } from "@/lib/wagmi";
 
-
 import type { Token } from "./useTokens";
-
 
 import { toast } from "sonner";
 
 
-
 export function useSwap(){
-
 
   const { address } = useAccount();
 
@@ -57,28 +48,25 @@ export function useSwap(){
   } = useWriteContract();
 
 
-
   const [swapSuccess,setSwapSuccess] = useState(false);
 
 
 
-
   function getPath(
-    tokenIn: Token,
-    tokenOut: Token
+    tokenIn:Token,
+    tokenOut:Token
   ){
 
-
-    const input = tokenIn.native
+    const input =
+      tokenIn.native
       ? WOPN_ADDRESS
       : tokenIn.address;
 
 
-
-    const output = tokenOut.native
+    const output =
+      tokenOut.native
       ? WOPN_ADDRESS
       : tokenOut.address;
-
 
 
     return [
@@ -98,56 +86,55 @@ export function useSwap(){
     tokenOut:Token
   ){
 
-
     if(!amount)
       return "0";
 
 
-
-    const path = getPath(
-      tokenIn,
-      tokenOut
-    );
-
-
-
-    const value = parseUnits(
-      amount,
-      tokenIn.decimals
-    );
+    const path =
+      getPath(
+        tokenIn,
+        tokenOut
+      );
 
 
-
-    const result = await readContract(
-      Config,
-      {
-        address:
-          ROUTER_ADDRESS as `0x${string}`,
-
-        abi:
-          ROUTER_ABI,
-
-        functionName:
-          "getAmountsOut",
-
-        args:[
-          value,
-          path
-        ],
-      }
-    );
+    const value =
+      parseUnits(
+        amount,
+        tokenIn.decimals
+      );
 
 
+    const result =
+      await readContract(
+        Config,
+        {
 
-    const amounts = result as bigint[];
+          address:
+            ROUTER_ADDRESS as `0x${string}`,
 
+          abi:
+            ROUTER_ABI,
+
+          functionName:
+            "getAmountsOut",
+
+          args:[
+            value,
+            path
+          ],
+
+        }
+      );
+
+
+    const amounts =
+      result as bigint[];
 
 
     return formatUnits(
       amounts[amounts.length - 1],
       tokenOut.decimals
     );
-
 
   }
 
@@ -156,7 +143,10 @@ export function useSwap(){
 
 
 
-  async function waitSuccess(hash:`0x${string}`){
+
+  async function waitSuccess(
+    hash:`0x${string}`
+  ){
 
 
     toast.loading(
@@ -167,7 +157,6 @@ export function useSwap(){
     );
 
 
-
     await waitForTransactionReceipt(
       Config,
       {
@@ -176,9 +165,7 @@ export function useSwap(){
     );
 
 
-
     setSwapSuccess(true);
-
 
 
     toast.success(
@@ -207,7 +194,6 @@ export function useSwap(){
 
     if(!address)
       return;
-
 
 
     try{
@@ -248,7 +234,9 @@ export function useSwap(){
           tokenOut.decimals
         )
         *
-        BigInt(100 - slippage)
+        BigInt(
+          100 - slippage
+        )
         /
         100n;
 
@@ -256,7 +244,10 @@ export function useSwap(){
 
       const deadline =
         BigInt(
-          Math.floor(Date.now()/1000)+1200
+          Math.floor(
+            Date.now()/1000
+          )
+          +1200
         );
 
 
@@ -290,7 +281,6 @@ export function useSwap(){
               deadline
             ],
 
-
             value:
               amountIn,
 
@@ -300,7 +290,21 @@ export function useSwap(){
 
         await waitSuccess(hash);
 
-        return;
+
+
+        return {
+
+          hash,
+
+          tokenIn,
+
+          tokenOut,
+
+          amountIn:amount,
+
+          amountOut:quote,
+
+        };
 
       }
 
@@ -344,7 +348,21 @@ export function useSwap(){
 
         await waitSuccess(hash);
 
-        return;
+
+
+        return {
+
+          hash,
+
+          tokenIn,
+
+          tokenOut,
+
+          amountIn:amount,
+
+          amountOut:quote,
+
+        };
 
       }
 
@@ -385,6 +403,21 @@ export function useSwap(){
 
 
 
+      return {
+
+        hash,
+
+        tokenIn,
+
+        tokenOut,
+
+        amountIn:amount,
+
+        amountOut:quote,
+
+      };
+
+
     }
 
     catch(error){
@@ -401,10 +434,13 @@ export function useSwap(){
       );
 
 
+      return null;
+
     }
 
 
   }
+
 
 
 

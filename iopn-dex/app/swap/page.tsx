@@ -12,6 +12,9 @@ import {useSwap} from "@/hooks/useSwap";
 import {useTokenBalance} from "@/hooks/useBalance";
 import { useApproval } from "@/hooks/useApproval";
 
+import TransactionHistory from "@/components/history/TransactionHistory";
+import { useTransactionHistory } from "@/hooks/useTransactionHistory";
+
 import {useAccount} from "wagmi";
 
 function formatAmount(value:string | number){
@@ -46,6 +49,11 @@ tokens,
 addToken
 
 }=useTokens();
+
+const {
+  transactions,
+  addTransaction
+} = useTransactionHistory();
 
 const [tokenIn,setTokenIn]=useState<Token>(tokens[0]);
 
@@ -330,9 +338,10 @@ balance={balance}
 
 
 
-onSwap={() => {
+onSwap={async () => {
 
 if(!isConnected) return;
+
 
 if(needsApproval){
 
@@ -342,17 +351,39 @@ return;
 
 }
 
-swap(
 
-amountIn,
-
-tokenIn,
-
-tokenOut,
-
-slippage
-
+const result = await swap(
+  amountIn,
+  tokenIn,
+  tokenOut,
+  slippage
 );
+
+
+if(result){
+
+addTransaction({
+
+ id: result.hash,
+
+ tokenIn: result.tokenIn.symbol,
+
+ tokenOut: result.tokenOut.symbol,
+
+ amountIn: result.amountIn,
+
+ amountOut: result.amountOut,
+
+ hash: result.hash,
+
+ timestamp: Date.now(),
+
+ status:"success"
+
+});
+
+}
+
 
 }}
 
