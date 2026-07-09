@@ -8,6 +8,8 @@ import Header from "@/components/layout/Header";
 
 import BottomNav from "@/components/layout/BottomNav";
 
+import { Toaster } from "sonner";
+
 
 
 export const metadata: Metadata = {
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
 title: "IOPn DEX",
 
 description:
-"Decentralized exchange built on OPN Chain",
+"Decentralized exchange , swap , pay , stake , add liquidity and its built for OPN Chain ecosystem",
 
 };
 
@@ -77,6 +79,9 @@ pt-20
 
 
 </Providers>
+
+
+<Toaster position="top-center" />
 
 
 </body>

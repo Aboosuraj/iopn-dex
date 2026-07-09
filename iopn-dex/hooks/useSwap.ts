@@ -52,6 +52,9 @@ Config
 
 import type {Token} from "./useTokens";
 
+import { waitForTransactionReceipt } from "wagmi/actions";
+import { toast } from "sonner";
+
 
 
 export function useSwap(){
@@ -59,16 +62,10 @@ export function useSwap(){
 
 const {address}=useAccount();
 
-
 const {
-
-writeContract,
-
+writeContractAsync,
 isPending
-
 }=useWriteContract();
-
-
 
 
 
@@ -244,7 +241,21 @@ if(!address)
 
 return;
 
+try {
 
+ // existing swap code
+
+}
+
+catch(error){
+
+console.error(error);
+
+toast.error("Swap failed ❌",{
+id:"swap"
+});
+
+}
 
 const path=
 
@@ -334,7 +345,7 @@ tokenIn.native
 ){
 
 
-writeContract({
+const hash = await writeContractAsync({
 
 address:
 
@@ -393,7 +404,7 @@ tokenOut.native
 ){
 
 
-writeContract({
+const hash = await writeContractAsync({
 
 address:
 
@@ -424,6 +435,23 @@ deadline
 
 });
 
+toast.loading("Waiting for confirmation...",{
+id:"swap"
+});
+
+
+await waitForTransactionReceipt(
+Config,
+{
+hash
+}
+);
+
+
+toast.success("Swap successful ✅",{
+id:"swap"
+});
+
 
 return;
 
@@ -438,7 +466,7 @@ return;
 // TOKEN -> TOKEN
 
 
-writeContract({
+const hash = await writeContractAsync({
 
 address:
 

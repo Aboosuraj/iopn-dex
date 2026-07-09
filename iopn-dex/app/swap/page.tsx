@@ -10,6 +10,7 @@ import SlippageModal from "@/components/swap/SlippageModal";
 import {useTokens,Token} from "@/hooks/useTokens";
 import {useSwap} from "@/hooks/useSwap";
 import {useTokenBalance} from "@/hooks/useBalance";
+import { useApproval } from "@/hooks/useApproval";
 
 import {useAccount} from "wagmi";
 
@@ -46,17 +47,21 @@ addToken
 
 }=useTokens();
 
-
-
 const [tokenIn,setTokenIn]=useState<Token>(tokens[0]);
 
 const [tokenOut,setTokenOut]=useState<Token>(tokens[3]);
 
-
-
 const [amountIn,setAmountIn]=useState("");
 
 const [amountOut,setAmountOut]=useState("");
+
+const {
+  needsApproval,
+  approve,
+  isPending: approving,
+} = useApproval(tokenIn, amountIn);
+
+
 const [route,setRoute]=useState<string[]>([]);
 const [rate,setRate]=useState("");
 
@@ -89,14 +94,10 @@ isPending
 }=useSwap();
 
 
-
-
-const balance=
-
-useTokenBalance(tokenIn);
-
-
-
+const {
+  balance,
+  refetch: refetchBalance
+} = useTokenBalance(tokenIn);
 
 
 
@@ -322,7 +323,19 @@ balance={balance}
 
 
 
-onSwap={()=>swap(
+onSwap={() => {
+
+if(!isConnected) return;
+
+if(needsApproval){
+
+approve();
+
+return;
+
+}
+
+swap(
 
 amountIn,
 
@@ -332,9 +345,9 @@ tokenOut,
 
 slippage
 
-)}
+);
 
-
+}}
 
 buttonText={
 
@@ -346,13 +359,31 @@ buttonText={
 
 :
 
+!amountIn
+
+?
+
+"Enter Amount"
+
+:
+
+needsApproval
+
+?
+
+`Approve ${tokenIn.symbol}`
+
+:
+
 "Swap"
 
 }
 
+loading={
 
+isPending || approving
 
-loading={isPending}
+}
 
 
 />
