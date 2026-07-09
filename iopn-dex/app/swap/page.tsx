@@ -84,13 +84,10 @@ const [slippageOpen,setSlippageOpen]=useState(false);
 
 
 const {
-
-getQuote,
-
-swap,
-
-isPending
-
+  getQuote,
+  swap,
+  isPending,
+  swapSuccess
 }=useSwap();
 
 
@@ -99,7 +96,17 @@ const {
   refetch: refetchBalance
 } = useTokenBalance(tokenIn);
 
+useEffect(()=>{
 
+  if(swapSuccess){
+
+    refetchBalance();
+
+  }
+
+},[
+  swapSuccess
+]);
 
 
 useEffect(()=>{

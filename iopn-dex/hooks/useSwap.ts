@@ -2,57 +2,45 @@
 
 
 import {
-
-useWriteContract,
-
-useAccount
-
+  useWriteContract,
+  useAccount,
 } from "wagmi";
 
 
 import {
-
-readContract
-
+  readContract,
+  waitForTransactionReceipt,
 } from "wagmi/actions";
 
 
 import {
-
-parseUnits,
-
-formatUnits
-
+  parseUnits,
+  formatUnits,
 } from "viem";
 
 
+import { useState } from "react";
+
+
 import {
-
-ROUTER_ADDRESS,
-
-WOPN_ADDRESS
-
+  ROUTER_ADDRESS,
+  WOPN_ADDRESS,
 } from "@/lib/router";
 
 
 import {
-
-ROUTER_ABI
-
+  ROUTER_ABI,
 } from "@/lib/routerAbi";
 
 
 import {
-
-Config
-
+  Config,
 } from "@/lib/wagmi";
 
 
+import type { Token } from "./useTokens";
 
-import type {Token} from "./useTokens";
 
-import { waitForTransactionReceipt } from "wagmi/actions";
 import { toast } from "sonner";
 
 
@@ -60,461 +48,379 @@ import { toast } from "sonner";
 export function useSwap(){
 
 
-const {address}=useAccount();
+  const { address } = useAccount();
 
-const {
-writeContractAsync,
-isPending
-}=useWriteContract();
 
+  const {
+    writeContractAsync,
+    isPending,
+  } = useWriteContract();
 
 
-function getPath(
 
-tokenIn:Token,
+  const [swapSuccess,setSwapSuccess] = useState(false);
 
-tokenOut:Token
 
-){
 
 
-const input =
+  function getPath(
+    tokenIn: Token,
+    tokenOut: Token
+  ){
 
-tokenIn.native
 
-?
+    const input = tokenIn.native
+      ? WOPN_ADDRESS
+      : tokenIn.address;
 
-WOPN_ADDRESS
 
-:
 
-tokenIn.address;
+    const output = tokenOut.native
+      ? WOPN_ADDRESS
+      : tokenOut.address;
 
 
 
-const output =
+    return [
+      input as `0x${string}`,
+      output as `0x${string}`,
+    ];
 
-tokenOut.native
+  }
 
-?
 
-WOPN_ADDRESS
 
-:
 
-tokenOut.address;
 
+  async function getQuote(
+    amount:string,
+    tokenIn:Token,
+    tokenOut:Token
+  ){
 
 
+    if(!amount)
+      return "0";
 
-return [
 
-input as `0x${string}`,
 
-output as `0x${string}`
+    const path = getPath(
+      tokenIn,
+      tokenOut
+    );
 
-];
 
 
-}
+    const value = parseUnits(
+      amount,
+      tokenIn.decimals
+    );
 
 
 
+    const result = await readContract(
+      Config,
+      {
+        address:
+          ROUTER_ADDRESS as `0x${string}`,
 
+        abi:
+          ROUTER_ABI,
 
+        functionName:
+          "getAmountsOut",
 
+        args:[
+          value,
+          path
+        ],
+      }
+    );
 
-async function getQuote(
 
-amount:string,
 
-tokenIn:Token,
+    const amounts = result as bigint[];
 
-tokenOut:Token
 
-){
 
+    return formatUnits(
+      amounts[amounts.length - 1],
+      tokenOut.decimals
+    );
 
-if(!amount)
 
-return "0";
+  }
 
 
 
-const path =
 
-getPath(
 
-tokenIn,
 
-tokenOut
+  async function waitSuccess(hash:`0x${string}`){
 
-);
 
+    toast.loading(
+      "Waiting for confirmation...",
+      {
+        id:"swap"
+      }
+    );
 
 
-const value =
 
-parseUnits(
+    await waitForTransactionReceipt(
+      Config,
+      {
+        hash
+      }
+    );
 
-amount,
 
-tokenIn.decimals
 
-);
+    setSwapSuccess(true);
 
 
 
+    toast.success(
+      "Swap successful ✅",
+      {
+        id:"swap"
+      }
+    );
 
 
-const result =
+  }
 
-await readContract(
 
-Config,
 
-{
 
-address:
 
-ROUTER_ADDRESS as `0x${string}`,
 
-abi:
 
-ROUTER_ABI,
+  async function swap(
+    amount:string,
+    tokenIn:Token,
+    tokenOut:Token,
+    slippage:number
+  ){
 
-functionName:
 
-"getAmountsOut",
+    if(!address)
+      return;
 
 
-args:[
 
-value,
+    try{
 
-path
 
-]
+      setSwapSuccess(false);
 
-}
 
-);
 
+      const path =
+        getPath(
+          tokenIn,
+          tokenOut
+        );
 
 
-const amounts =
-result as bigint[];
 
+      const amountIn =
+        parseUnits(
+          amount,
+          tokenIn.decimals
+        );
 
 
-return formatUnits(
 
-amounts[amounts.length-1],
+      const quote =
+        await getQuote(
+          amount,
+          tokenIn,
+          tokenOut
+        );
 
-tokenOut.decimals
 
-);
 
+      const minimum =
+        parseUnits(
+          quote,
+          tokenOut.decimals
+        )
+        *
+        BigInt(100 - slippage)
+        /
+        100n;
 
-}
 
 
+      const deadline =
+        BigInt(
+          Math.floor(Date.now()/1000)+1200
+        );
 
 
 
 
 
-async function swap(
+      // OPN -> TOKEN
 
-amount:string,
+      if(
+        tokenIn.native &&
+        !tokenOut.native
+      ){
 
-tokenIn:Token,
 
-tokenOut:Token,
+        const hash =
+          await writeContractAsync({
 
-slippage:number
+            address:
+              ROUTER_ADDRESS as `0x${string}`,
 
-){
+            abi:
+              ROUTER_ABI,
 
+            functionName:
+              "swapExactOPNForTokens",
 
-if(!address)
+            args:[
+              minimum,
+              path,
+              address,
+              deadline
+            ],
 
-return;
 
-try {
+            value:
+              amountIn,
 
- // existing swap code
+          });
 
-}
 
-catch(error){
 
-console.error(error);
+        await waitSuccess(hash);
 
-toast.error("Swap failed ❌",{
-id:"swap"
-});
+        return;
 
-}
+      }
 
-const path=
 
-getPath(
 
-tokenIn,
 
-tokenOut
 
-);
 
 
+      // TOKEN -> OPN
 
-const amountIn=
+      if(
+        !tokenIn.native &&
+        tokenOut.native
+      ){
 
-parseUnits(
 
-amount,
+        const hash =
+          await writeContractAsync({
 
-tokenIn.decimals
+            address:
+              ROUTER_ADDRESS as `0x${string}`,
 
-);
+            abi:
+              ROUTER_ABI,
 
+            functionName:
+              "swapExactTokensForOPN",
 
+            args:[
+              amountIn,
+              minimum,
+              path,
+              address,
+              deadline
+            ],
 
-const quote=
+          });
 
-await getQuote(
 
-amount,
 
-tokenIn,
+        await waitSuccess(hash);
 
-tokenOut
+        return;
 
-);
+      }
 
 
 
-const minimum=
 
-parseUnits(
 
-quote,
 
-tokenOut.decimals
 
-)
+      // TOKEN -> TOKEN
 
-*
 
-BigInt(
+      const hash =
+        await writeContractAsync({
 
-100-slippage
+          address:
+            ROUTER_ADDRESS as `0x${string}`,
 
-)
+          abi:
+            ROUTER_ABI,
 
-/
+          functionName:
+            "swapExactTokensForTokens",
 
-100n;
+          args:[
+            amountIn,
+            minimum,
+            path,
+            address,
+            deadline
+          ],
 
+        });
 
 
-const deadline=
 
-BigInt(
+      await waitSuccess(hash);
 
-Math.floor(Date.now()/1000)+1200
 
-);
 
+    }
 
+    catch(error){
 
 
+      console.error(error);
 
-// OPN -> TOKEN
 
+      toast.error(
+        "Swap failed ❌",
+        {
+          id:"swap"
+        }
+      );
 
-if(
 
-tokenIn.native
+    }
 
-&&
 
-!tokenOut.native
+  }
 
-){
 
 
-const hash = await writeContractAsync({
 
-address:
 
-ROUTER_ADDRESS as `0x${string}`,
+  return {
 
-abi:
+    getQuote,
 
-ROUTER_ABI,
+    swap,
 
-functionName:
+    isPending,
 
-"swapExactOPNForTokens",
+    swapSuccess,
 
-
-args:[
-
-minimum,
-
-path,
-
-address,
-
-deadline
-
-],
-
-
-value:
-
-amountIn
-
-});
-
-
-return;
-
-}
-
-
-
-
-
-
-
-// TOKEN -> OPN
-
-
-if(
-
-!tokenIn.native
-
-&&
-
-tokenOut.native
-
-){
-
-
-const hash = await writeContractAsync({
-
-address:
-
-ROUTER_ADDRESS as `0x${string}`,
-
-abi:
-
-ROUTER_ABI,
-
-functionName:
-
-"swapExactTokensForOPN",
-
-
-args:[
-
-amountIn,
-
-minimum,
-
-path,
-
-address,
-
-deadline
-
-]
-
-});
-
-toast.loading("Waiting for confirmation...",{
-id:"swap"
-});
-
-
-await waitForTransactionReceipt(
-Config,
-{
-hash
-}
-);
-
-
-toast.success("Swap successful ✅",{
-id:"swap"
-});
-
-
-return;
-
-}
-
-
-
-
-
-
-
-// TOKEN -> TOKEN
-
-
-const hash = await writeContractAsync({
-
-address:
-
-ROUTER_ADDRESS as `0x${string}`,
-
-abi:
-
-ROUTER_ABI,
-
-functionName:
-
-"swapExactTokensForTokens",
-
-
-args:[
-
-amountIn,
-
-minimum,
-
-path,
-
-address,
-
-deadline
-
-]
-
-});
-
-
-}
-
-
-
-
-
-
-
-return {
-
-getQuote,
-
-swap,
-
-isPending
-
-};
+  };
 
 
 }
