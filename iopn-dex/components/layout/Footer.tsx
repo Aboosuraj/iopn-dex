@@ -2,139 +2,86 @@
 
 import Link from "next/link";
 
-export default function Footer(){
+export default function Footer() {
+  return (
+    <footer className="mt-10 mb-24">
+      <div
+        className="
+          rounded-3xl
+          border
+          border-white/10
+          bg-gradient-to-br
+          from-white/5
+          via-green-900/10
+          to-black/40
+          p-6
+          backdrop-blur-xl
+        "
+      >
+        {/* Brand */}
 
-return (
+        <h2 className="text-center text-3xl font-black text-white">
+          IOPn DEX
+        </h2>
 
-<footer
-className="
-mt-10
-rounded-3xl
-border
-border-white/10
-bg-white/5
-p-6
-text-white
-backdrop-blur-xl
-"
->
+        <p className="mt-2 text-center text-sm text-white/60">
+          Built for the OPN Ecosystem
+        </p>
 
-<h2
-className="
-text-xl
-font-black
-"
->
-IOPn DEX
-</h2>
+        {/* Quick Links */}
 
+        <div className="mt-8 flex items-center justify-center gap-6 text-sm font-semibold">
+          <Link
+            href="https://x.com/IOPnDex_xyz"
+            target="_blank"
+            className="transition hover:text-green-400"
+          >
+            𝕏 IOPnDex
+          </Link>
 
-<p
-className="
-mt-2
-text-sm
-text-white/60
-"
->
-Built on OPN Chain Testnet
-</p>
+          <Link
+            href="https://faucet.iopn.tech"
+            target="_blank"
+            className="transition hover:text-green-400"
+          >
+            💧 Faucet
+          </Link>
 
+          <Link
+            href="https://testnet.iopn.tech"
+            target="_blank"
+            className="transition hover:text-green-400"
+          >
+            🔍 Explorer
+          </Link>
+        </div>
 
+        {/* Network */}
 
-<div
-className="
-mt-5
-grid
-grid-cols-2
-gap-3
-"
->
+        <div className="mt-8 text-center">
+          <p className="text-sm font-semibold text-green-400">
+            🟢 OPN Testnet
+          </p>
 
+          <p className="mt-1 text-xs text-white/50">
+            Version v1.0 Beta
+          </p>
+        </div>
 
-<a
-href="https://x.com/iopndex_xyz"
-target="_blank"
-className="
-rounded-xl
-bg-white/10
-p-3
-text-center
-font-bold
-hover:bg-white/20
-"
->
-𝕏 IOPn X
-</a>
+        {/* Divider */}
 
+        <div className="my-6 h-px bg-white/10" />
 
+        {/* Bottom */}
 
-<a
-href="https://testnet.iopn.tech/faucet"
-target="_blank"
-className="
-rounded-xl
-bg-white/10
-p-3
-text-center
-font-bold
-hover:bg-white/20
-"
->
-💧 Faucet
-</a>
+        <p className="text-center text-sm text-white/60">
+          Built with ❤️ for OPN Chain
+        </p>
 
-
-
-<a
-href="https://testnet.iopn.tech"
-target="_blank"
-className="
-rounded-xl
-bg-white/10
-p-3
-text-center
-font-bold
-hover:bg-white/20
-"
->
-🔎 Explorer
-</a>
-
-
-
-<Link
-href="/swap"
-className="
-rounded-xl
-bg-green-400
-p-3
-text-center
-font-bold
-text-black
-"
->
-🚀 Trade
-</Link>
-
-
-</div>
-
-
-
-<p
-className="
-mt-6
-text-center
-text-xs
-text-white/40
-"
->
-© 2026 IOPn DEX. All rights reserved.
-</p>
-
-
-</footer>
-
-);
-
+        <p className="mt-2 text-center text-xs text-white/40">
+          © 2026 IOPn DEX
+        </p>
+      </div>
+    </footer>
+  );
 }

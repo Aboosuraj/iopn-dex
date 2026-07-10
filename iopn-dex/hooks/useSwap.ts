@@ -36,6 +36,8 @@ import type { Token } from "./useTokens";
 
 import { toast } from "sonner";
 
+import { saveSwap } from "@/lib/history";
+
 
 export function useSwap(){
 
@@ -417,7 +419,16 @@ export function useSwap(){
 
       await waitSuccess(hash);
 
+      await waitSuccess(hash);
 
+saveSwap({
+  hash,
+  tokenIn: tokenIn.symbol,
+  tokenOut: tokenOut.symbol,
+  amountIn: amount,
+  amountOut: quote,
+  timestamp: Date.now(),
+});
 
       return {
 

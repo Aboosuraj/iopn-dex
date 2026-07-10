@@ -15,6 +15,8 @@ import { useApproval } from "@/hooks/useApproval";
 import TransactionHistory from "@/components/history/TransactionHistory";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 
+import SwapHistory from "@/components/swap/SwapHistory";
+
 import {useAccount} from "wagmi";
 
 function formatAmount(value:string | number){
@@ -688,6 +690,7 @@ setSlippage={setSlippage}
 
 />
 
+<SwapHistory />
 
 
 </main>
