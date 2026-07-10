@@ -1,5 +1,7 @@
 "use client";
 
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+
 function formatBalance(balance: string) {
   const value = Number(balance);
 
@@ -364,37 +366,50 @@ export default function SwapCard({
 
       {/* SWAP BUTTON */}
 
-
+    {buttonText === "Connect Wallet" ? (
+  <ConnectButton.Custom>
+    {({ openConnectModal, mounted }) => (
       <button
-
-        onClick={onSwap}
-
-        disabled={loading}
-
+        onClick={openConnectModal}
+        disabled={!mounted}
         className="
-        mt-6
-        w-full
-        rounded-2xl
-        bg-green-400
-        py-4
-        text-lg
-        font-black
-        text-black
-        disabled:opacity-50
+          mt-6
+          w-full
+          rounded-2xl
+          bg-green-400
+          py-4
+          text-lg
+          font-black
+          text-black
+          transition
+          hover:brightness-110
         "
-
       >
-
-        {
-          loading
-          ?
-          "Processing..."
-          :
-          buttonText
-        }
-
-
+        Connect Wallet
       </button>
+    )}
+  </ConnectButton.Custom>
+) : (
+  <button
+    onClick={onSwap}
+    disabled={loading}
+    className="
+      mt-6
+      w-full
+      rounded-2xl
+      bg-green-400
+      py-4
+      text-lg
+      font-black
+      text-black
+      transition
+      hover:brightness-110
+      disabled:opacity-50
+    "
+  >
+    {loading ? "Processing..." : buttonText}
+  </button>
+)}
 
 
 
