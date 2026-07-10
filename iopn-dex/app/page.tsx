@@ -11,7 +11,7 @@ import {
   formatUnits
 } from "viem";
 
-
+import Footer from "@/components/layout/Footer";
 
 export default function Home(){
 
@@ -122,7 +122,7 @@ mt-2
 text-white/60
 ">
 
-Trade, swap and manage assets on OPN Chain
+Trade, swap, pay and manage assets on OPN Chain
 
 </p>
 
@@ -296,38 +296,37 @@ font-bold
 
 {/* MARKETS */}
 
-
 <section className="
 mt-8
 ">
-
 
 <h2 className="
 mb-4
 text-xl
 font-bold
 ">
-
-Markets
-
+Live Markets
 </h2>
-
 
 
 <div className="
 space-y-3
 ">
 
-
 {
 
 [
+["OPN / tUSDT","1.00","+2.4%"],
 
-["OPN / tUSDT","1.00"],
+["OPNT / OPN","0.45","+5.8%"],
 
-["OPNT / OPN","0.45"],
+["IDEX / OPN","0.12","-1.2%"],
 
-["IDEX / OPN","0.12"]
+["WOPN / OPN","1.00","+0.1%"],
+
+["tBNB / OPN","25.40","+3.6%"],
+
+["tUSDT / OPN","1.01","+0.4%"]
 
 ].map((pair)=>(
 
@@ -337,9 +336,6 @@ space-y-3
 key={pair[0]}
 
 className="
-flex
-items-center
-justify-between
 rounded-2xl
 border
 border-white/10
@@ -349,22 +345,32 @@ p-4
 
 >
 
+<div className="
+flex
+justify-between
+"
+>
 
 <span className="font-bold">
-
 {pair[0]}
-
 </span>
 
 
-<span className="
-text-green-400
-font-bold
-">
-
+<span className="text-green-400 font-bold">
 {pair[1]}
-
 </span>
+
+</div>
+
+
+<p className="
+mt-2
+text-sm
+text-green-400
+"
+>
+{pair[2]}
+</p>
 
 
 </div>
@@ -378,13 +384,10 @@ font-bold
 
 </div>
 
-
 </section>
 
 
-
-
-
+<Footer />
 
 
 </main>
