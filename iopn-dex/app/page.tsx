@@ -58,7 +58,7 @@ path:"/portfolio"
 {
 name:"Liquidity",
 icon:"💧",
-path:"/staking"
+path:"/liquidity"
 },
 
 ];
