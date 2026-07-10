@@ -281,7 +281,7 @@ text-3xl
 font-black
 ">
 
-IOPn DEX SWAP
+OPn Chain
 
 </h1>
 
