@@ -39,6 +39,7 @@ import { toast } from "sonner";
 
 export function useSwap(){
 
+
   const { address } = useAccount();
 
 
@@ -48,7 +49,12 @@ export function useSwap(){
   } = useWriteContract();
 
 
-  const [swapSuccess,setSwapSuccess] = useState(false);
+
+  const [
+    swapSuccess,
+    setSwapSuccess
+  ] = useState(false);
+
 
 
 
@@ -57,16 +63,19 @@ export function useSwap(){
     tokenOut:Token
   ){
 
+
     const input =
       tokenIn.native
       ? WOPN_ADDRESS
       : tokenIn.address;
 
 
+
     const output =
       tokenOut.native
       ? WOPN_ADDRESS
       : tokenOut.address;
+
 
 
     return [
@@ -80,14 +89,17 @@ export function useSwap(){
 
 
 
+
   async function getQuote(
     amount:string,
     tokenIn:Token,
     tokenOut:Token
   ){
 
+
     if(!amount)
       return "0";
+
 
 
     const path =
@@ -97,11 +109,13 @@ export function useSwap(){
       );
 
 
+
     const value =
       parseUnits(
         amount,
         tokenIn.decimals
       );
+
 
 
     const result =
@@ -127,14 +141,17 @@ export function useSwap(){
       );
 
 
+
     const amounts =
       result as bigint[];
+
 
 
     return formatUnits(
       amounts[amounts.length - 1],
       tokenOut.decimals
     );
+
 
   }
 
@@ -157,6 +174,7 @@ export function useSwap(){
     );
 
 
+
     await waitForTransactionReceipt(
       Config,
       {
@@ -165,7 +183,9 @@ export function useSwap(){
     );
 
 
+
     setSwapSuccess(true);
+
 
 
     toast.success(
@@ -192,8 +212,17 @@ export function useSwap(){
   ){
 
 
-    if(!address)
-      return;
+
+    if(!address){
+
+      toast.error(
+        "Connect wallet first"
+      );
+
+      return null;
+
+    }
+
 
 
     try{
@@ -229,16 +258,20 @@ export function useSwap(){
 
 
       const minimum =
+      (
         parseUnits(
           quote,
           tokenOut.decimals
         )
         *
         BigInt(
-          100 - slippage
+          Math.floor(
+            100 - slippage
+          )
         )
-        /
-        100n;
+      )
+      /
+      100n;
 
 
 
@@ -247,10 +280,16 @@ export function useSwap(){
           Math.floor(
             Date.now()/1000
           )
-          +1200
+          +
+          1200
         );
 
 
+
+
+
+
+      let hash:`0x${string}`;
 
 
 
@@ -262,120 +301,88 @@ export function useSwap(){
       ){
 
 
-        const hash =
-          await writeContractAsync({
+        hash =
+        await writeContractAsync({
 
-            address:
-              ROUTER_ADDRESS as `0x${string}`,
+          address:
+            ROUTER_ADDRESS as `0x${string}`,
 
-            abi:
-              ROUTER_ABI,
+          abi:
+            ROUTER_ABI,
 
-            functionName:
-              "swapExactOPNForTokens",
+          functionName:
+            "swapExactOPNForTokens",
 
-            args:[
-              minimum,
-              path,
-              address,
-              deadline
-            ],
+          args:[
 
-            value:
-              amountIn,
+            minimum,
 
-          });
+            path,
 
+            address,
 
+            deadline
 
-        await waitSuccess(hash);
+          ],
 
 
+          value:
+            amountIn,
 
-        return {
+        });
 
-          hash,
-
-          tokenIn,
-
-          tokenOut,
-
-          amountIn:amount,
-
-          amountOut:quote,
-
-        };
 
       }
-
-
-
-
 
 
 
       // TOKEN -> OPN
 
-      if(
+      else if(
         !tokenIn.native &&
         tokenOut.native
       ){
 
 
-        const hash =
-          await writeContractAsync({
+        hash =
+        await writeContractAsync({
 
-            address:
-              ROUTER_ADDRESS as `0x${string}`,
+          address:
+            ROUTER_ADDRESS as `0x${string}`,
 
-            abi:
-              ROUTER_ABI,
+          abi:
+            ROUTER_ABI,
 
-            functionName:
-              "swapExactTokensForOPN",
+          functionName:
+            "swapExactTokensForOPN",
 
-            args:[
-              amountIn,
-              minimum,
-              path,
-              address,
-              deadline
-            ],
+          args:[
 
-          });
+            amountIn,
 
+            minimum,
 
+            path,
 
-        await waitSuccess(hash);
+            address,
 
+            deadline
 
+          ],
 
-        return {
+        });
 
-          hash,
-
-          tokenIn,
-
-          tokenOut,
-
-          amountIn:amount,
-
-          amountOut:quote,
-
-        };
 
       }
 
 
 
-
-
-
-
       // TOKEN -> TOKEN
 
+      else{
 
-      const hash =
+
+        hash =
         await writeContractAsync({
 
           address:
@@ -388,14 +395,23 @@ export function useSwap(){
             "swapExactTokensForTokens",
 
           args:[
+
             amountIn,
+
             minimum,
+
             path,
+
             address,
+
             deadline
+
           ],
 
         });
+
+
+      }
 
 
 
@@ -418,29 +434,40 @@ export function useSwap(){
       };
 
 
+
     }
 
-    catch(error){
+    catch(error:any){
 
 
-      console.error(error);
+      console.error(
+        "Swap Error:",
+        error
+      );
 
 
       toast.error(
+
+        error?.shortMessage ||
+
+        error?.message ||
+
         "Swap failed ❌",
+
         {
           id:"swap"
         }
+
       );
 
 
       return null;
 
+
     }
 
 
   }
-
 
 
 
