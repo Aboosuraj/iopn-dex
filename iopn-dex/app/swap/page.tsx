@@ -281,7 +281,7 @@ text-3xl
 font-black
 ">
 
-IOPn DEX
+IOPn DEX SWAP
 
 </h1>
 

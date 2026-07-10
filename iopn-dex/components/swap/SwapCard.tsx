@@ -92,7 +92,7 @@ export default function SwapCard({
         text-white
         "
       >
-        IOPn Swap
+         Swap
       </h2>
 
 
