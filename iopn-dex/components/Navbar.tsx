@@ -32,7 +32,7 @@ export default function Navbar() {
                                                                                                                                                                                                             </Link>
 
                                                                                                                                                                                                                     <Link
-                                                                                                                                                                                                                              href="/staking"
+                                                                                                                                                                                                                              href="/Liquidity"
                                                                                                                                                                                                                                         className="flex flex-col items-center text-yellow-400"
                                                                                                                                                                                                                                                 >
                                                                                                                                                                                                                                                           <span className="text-xl">💎</span>

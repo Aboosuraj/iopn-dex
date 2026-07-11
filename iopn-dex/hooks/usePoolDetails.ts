@@ -1,26 +1,36 @@
 "use client";
 
-
 import {
   useEffect,
   useState,
 } from "react";
 
-
 import {
   readContract,
 } from "wagmi/actions";
-
 
 import {
   Config,
 } from "@/lib/wagmi";
 
-
 import {
   PAIR_ABI,
 } from "@/lib/pairAbi";
 
+
+const ERC20_ABI = [
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [
+      {
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
 
 
 type Pool = {
@@ -30,6 +40,10 @@ type Pool = {
   token0:string;
 
   token1:string;
+
+  symbol0:string;
+
+  symbol1:string;
 
   reserve0:string;
 
@@ -50,6 +64,43 @@ export function usePoolDetails(
 
   const [loading,setLoading] =
     useState(true);
+
+
+
+  async function getSymbol(
+    address:string
+  ){
+
+    try{
+
+      const symbol =
+        await readContract(
+          Config,
+          {
+            address:
+              address as `0x${string}`,
+
+            abi:
+              ERC20_ABI,
+
+            functionName:
+              "symbol",
+          }
+        );
+
+
+      return symbol as string;
+
+
+    }catch{
+
+      return "TOKEN";
+
+    }
+
+  }
+
+
 
 
 
@@ -117,6 +168,16 @@ export function usePoolDetails(
 
 
 
+        const symbol0 =
+          await getSymbol(token0);
+
+
+
+        const symbol1 =
+          await getSymbol(token1);
+
+
+
         result.push({
 
           address:pair,
@@ -124,6 +185,10 @@ export function usePoolDetails(
           token0,
 
           token1,
+
+          symbol0,
+
+          symbol1,
 
           reserve0:
             reserves[0].toString(),
@@ -145,7 +210,7 @@ export function usePoolDetails(
     catch(error){
 
       console.error(
-        "Pair error:",
+        "Pair details error:",
         error
       );
 
@@ -162,6 +227,7 @@ export function usePoolDetails(
 
 
 
+
   useEffect(()=>{
 
     if(pairs.length){
@@ -171,6 +237,7 @@ export function usePoolDetails(
     }
 
   },[pairs]);
+
 
 
 

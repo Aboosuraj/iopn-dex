@@ -15,6 +15,10 @@ import { usePoolDetails } from "@/hooks/usePoolDetails";
 
 import { useLiquidity } from "@/hooks/useLiquidity";
 
+import { usePositions } from "@/hooks/usePositions";
+
+import { useMyLiquidity } from "@/hooks/useMyLiquidity";
+
 
 
 export default function LiquidityPage() {
@@ -24,6 +28,12 @@ export default function LiquidityPage() {
   const {
     isConnected
   } = useAccount();
+
+  const {
+      positions,
+        hasPositions,
+        } = usePositions();
+  
 
 const {
   addLiquidity,
@@ -62,8 +72,11 @@ const {
   );
 
 
-
-
+const {
+    positions,
+      loading: positionsLoading,
+      } = useMyLiquidity(pools);
+}
 
 
   return (
@@ -332,15 +345,10 @@ justify-between
 ">
 
 <h3 className="
-
 text-lg
-
 font-bold
-
 ">
-
-💧 Pool
-
+💧 {pool.symbol0} / {pool.symbol1}
 </h3>
 
 
@@ -379,7 +387,7 @@ space-y-2
 
 <p>
 
-Pair:
+Pair Address:
 
 {" "}
 
@@ -464,93 +472,59 @@ Add Liquidity
 </div>
 
 
-</section>
-
-
-
-
-
-
-
-
-
-<section className="
-
-mt-8
-
-rounded-3xl
-
-bg-white/5
-
-border
-
-border-white/10
-
-p-6
-
-">
-
-
-<h2 className="
-
-text-xl
-
-font-bold
-
-">
-
-My Liquidity
-
-</h2>
-
 
 
 {
+  !isConnected ? (
 
-isConnected ?
+    <p className="mt-4 text-zinc-300">
+      Connect wallet to view your positions.
+    </p>
 
+  ) : positionsLoading ? (
 
-<p className="
-
-mt-4
-
-text-zinc-300
-
-">
-
-No liquidity positions yet.
-
-Add liquidity to receive LP tokens.
-
+    <p className="mt-4 text-zinc-300">
+  Loading your liquidity...
 </p>
 
+) : positions.length === 0 ? (
 
-
-:
-
-
-<p className="
-
-mt-4
-
-text-zinc-300
-
-">
-
-Connect wallet to view positions.
-
+<p className="mt-4 text-zinc-300">
+  No liquidity positions found.
 </p>
 
+) : (
 
-}
+<div className="space-y-4 mt-4">
+
+  {positions.map((position) => (
+
+    <div
+      key={position.pair}
+      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+    >
+
+      <h3 className="font-bold text-lg">
+        {position.pair}
+      </h3>
+
+      <p>LP Balance: {position.lpBalance}</p>
+
+      <p>Pool Share: {position.poolShare}</p>
+
+      <p>Token 0: {position.token0Amount}</p>
+
+      <p>Token 1: {position.token1Amount}</p>
+
+    </div>
+
+  ))}
+
+</div>
+)}
 
 
 </section>
-
-
-
-
-
 
 
 
