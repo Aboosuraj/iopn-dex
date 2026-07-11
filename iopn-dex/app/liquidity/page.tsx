@@ -238,7 +238,7 @@ font-bold
 
 ">
 
-{pools.length}
+{pools?.length ?? 0}
 
 </h2>
 
@@ -246,7 +246,6 @@ font-bold
 </div>
 
 
-</div>
 </div>
 
 
@@ -291,7 +290,7 @@ Loading pools...
 
 {
 
-pools.map((pool)=>(
+pools?.map((pool)=>(
 
 
 <div
@@ -630,6 +629,7 @@ Token 1:
 
 
 </section>
+
 <section className="
 
 mt-8
