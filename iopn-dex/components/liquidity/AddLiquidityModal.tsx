@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { Token } from "@/hooks/useTokens";
+import { useApprove } from "@/hooks/useApprove";
+import { ROUTER_ADDRESS } from "@/lib/router";
 
 type Props = {
   open: boolean;
@@ -29,20 +31,66 @@ export default function AddLiquidityModal({
   const [amountA, setAmountA] = useState("");
   const [amountB, setAmountB] = useState("");
 
+  const approveA = useApprove(
+  tokenA?.address as `0x${string}` | undefined,
+  ROUTER_ADDRESS as `0x${string}`
+);
+
+const approveB = useApprove(
+  tokenB?.address as `0x${string}` | undefined,
+  ROUTER_ADDRESS as `0x${string}`
+);
+
   if (!open) return null;
 
   async function handleSupply() {
-    if (!tokenA || !tokenB) return;
 
-    await onSupply(
-      tokenA,
-      tokenB,
+  if (!tokenA || !tokenB) return;
+
+  if (
+    !tokenA.native &&
+    approveA.needsApproval(
       amountA,
-      amountB
+      tokenA.decimals
+    )
+  ) {
+
+    await approveA.approve(
+      amountA,
+      tokenA.decimals
     );
 
-    onClose();
+    return;
+
   }
+
+  if (
+    !tokenB.native &&
+    approveB.needsApproval(
+      amountB,
+      tokenB.decimals
+    )
+  ) {
+
+    await approveB.approve(
+      amountB,
+      tokenB.decimals
+    );
+
+    return;
+
+  }
+
+  await onSupply(
+    tokenA,
+    tokenB,
+    amountA,
+    amountB
+  );
+
+  onClose();
+
+}
 
   return (
     <div
@@ -375,7 +423,11 @@ export default function AddLiquidityModal({
 
 
           <button
-            disabled={loading}
+  disabled={
+    loading ||
+    !tokenA ||
+    !tokenB
+  }
             className="
               w-full
               rounded-2xl
@@ -390,7 +442,12 @@ export default function AddLiquidityModal({
               disabled:opacity-50
             "
           >
-            Approve Tokens
+            {
+  approveA.isPending ||
+  approveB.isPending
+    ? "Approving..."
+    : "Approve Tokens"
+}
           </button>
 
 
