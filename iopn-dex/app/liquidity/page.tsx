@@ -15,8 +15,6 @@ import { usePoolDetails } from "@/hooks/usePoolDetails";
 
 import { useLiquidity } from "@/hooks/useLiquidity";
 
-import { usePositions } from "@/hooks/usePositions";
-
 import { useMyLiquidity } from "@/hooks/useMyLiquidity";
 
 
@@ -24,21 +22,19 @@ import { useMyLiquidity } from "@/hooks/useMyLiquidity";
 export default function LiquidityPage() {
 
 
-
   const {
     isConnected
   } = useAccount();
 
-  const {
-      positions,
-        hasPositions,
-        } = usePositions();
-  
 
-const {
-  addLiquidity,
-  isPending
-} = useLiquidity();
+
+
+  const {
+    addLiquidity,
+    isPending
+  } = useLiquidity();
+
+
 
   const [
     showModal,
@@ -72,15 +68,20 @@ const {
   );
 
 
-const {
+
+
+  const {
     positions,
-      loading: positionsLoading,
-      } = useMyLiquidity(pools);
-}
+    loading:positionsLoading
+
+  } = useMyLiquidity(
+    pools
+  );
+
+
 
 
   return (
-
 
 <main className="
 
@@ -101,11 +102,7 @@ text-white
 ">
 
 
-
 <div className="p-5">
-
-
-
 
 
 <div className="
@@ -138,7 +135,6 @@ font-extrabold
 </h1>
 
 
-
 <p className="
 
 mt-3
@@ -155,12 +151,6 @@ and support the OPN ecosystem.
 
 
 </div>
-
-
-
-
-
-
 
 
 <div className="
@@ -216,8 +206,6 @@ Coming Soon
 </div>
 
 
-
-
 <div className="
 
 rounded-3xl
@@ -259,13 +247,7 @@ font-bold
 
 
 </div>
-
-
-
-
-
-
-
+</div>
 
 
 <section className="mt-8">
@@ -288,7 +270,6 @@ Liquidity Pools
 
 
 
-
 {
 (poolsLoading || detailsLoading)
 
@@ -301,8 +282,6 @@ Loading pools...
 </p>
 
 }
-
-
 
 
 
@@ -344,11 +323,17 @@ justify-between
 
 ">
 
+
 <h3 className="
+
 text-lg
+
 font-bold
+
 ">
+
 💧 {pool.symbol0} / {pool.symbol1}
+
 </h3>
 
 
@@ -472,64 +457,179 @@ Add Liquidity
 </div>
 
 
-
-
-{
-  !isConnected ? (
-
-    <p className="mt-4 text-zinc-300">
-      Connect wallet to view your positions.
-    </p>
-
-  ) : positionsLoading ? (
-
-    <p className="mt-4 text-zinc-300">
-  Loading your liquidity...
-</p>
-
-) : positions.length === 0 ? (
-
-<p className="mt-4 text-zinc-300">
-  No liquidity positions found.
-</p>
-
-) : (
-
-<div className="space-y-4 mt-4">
-
-  {positions.map((position) => (
-
-    <div
-      key={position.pair}
-      className="rounded-2xl border border-white/10 bg-white/5 p-4"
-    >
-
-      <h3 className="font-bold text-lg">
-        {position.pair}
-      </h3>
-
-      <p>LP Balance: {position.lpBalance}</p>
-
-      <p>Pool Share: {position.poolShare}</p>
-
-      <p>Token 0: {position.token0Amount}</p>
-
-      <p>Token 1: {position.token1Amount}</p>
-
-    </div>
-
-  ))}
-
-</div>
-)}
-
-
 </section>
 
 
 
 
 
+<section className="
+
+mt-8
+
+rounded-3xl
+
+bg-white/5
+
+border
+
+border-white/10
+
+p-6
+
+">
+
+
+<h2 className="
+
+text-xl
+
+font-bold
+
+">
+
+My Liquidity
+
+</h2>
+
+
+
+{
+
+!isConnected ? (
+
+<p className="mt-4 text-zinc-300">
+
+Connect wallet to view your positions.
+
+</p>
+
+
+) : positionsLoading ? (
+
+
+<p className="mt-4 text-zinc-300">
+
+Loading your liquidity...
+
+</p>
+
+
+) : positions.length === 0 ? (
+
+
+<p className="mt-4 text-zinc-300">
+
+No liquidity positions found.
+
+</p>
+
+
+) : (
+
+
+<div className="space-y-4 mt-4">
+
+
+{
+positions.map((position)=>(
+
+
+<div
+
+key={position.pair}
+
+className="
+
+rounded-2xl
+
+border
+
+border-white/10
+
+bg-white/5
+
+p-4
+
+"
+
+>
+
+
+<h3 className="font-bold text-lg">
+
+{position.pair}
+
+</h3>
+
+
+
+<p className="text-sm text-zinc-300 mt-2">
+
+LP Balance:
+
+{" "}
+
+{position.lpBalance}
+
+</p>
+
+
+
+<p className="text-sm text-zinc-300">
+
+Pool Share:
+
+{" "}
+
+{position.poolShare}
+
+</p>
+
+
+
+<p className="text-sm text-zinc-300">
+
+Token 0:
+
+{" "}
+
+{position.token0Amount}
+
+</p>
+
+
+
+<p className="text-sm text-zinc-300">
+
+Token 1:
+
+{" "}
+
+{position.token1Amount}
+
+</p>
+
+
+
+</div>
+
+
+))
+
+}
+
+
+</div>
+
+
+)
+
+
+}
+
+
+</section>
 <section className="
 
 mt-8
@@ -560,6 +660,7 @@ font-bold
 </h2>
 
 
+
 <p className="
 
 mt-3
@@ -576,9 +677,6 @@ and participate in future liquidity mining.
 
 
 </section>
-
-
-
 
 
 
@@ -627,6 +725,7 @@ amountB
 );
 
 
+
 setShowModal(false);
 
 
@@ -634,8 +733,6 @@ setShowModal(false);
 
 
 />
-
-
 
 
 
