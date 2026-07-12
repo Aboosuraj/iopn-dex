@@ -159,8 +159,7 @@ mt-3
 font-medium
 ">
 
-Provide liquidity, earn trading fees,
-stake LP tokens and support the OPN ecosystem.
+Provide liquidity, stake liquid assets $USDT $USDC and earn in OPN.
 
 </p>
 
@@ -442,26 +441,119 @@ text-zinc-400
 </div>
 
 
-
-
-
 {
-(poolsLoading || detailsLoading)
+(poolsLoading || detailsLoading) && (
 
-&&
-
-<p className="
-mt-5
-text-zinc-400
+<div className="
+mb-5
+rounded-2xl
+border
+border-yellow-500/20
+bg-yellow-500/10
+p-5
 ">
 
-Loading pools...
+<div className="flex items-center gap-3">
+
+<div
+className="
+h-6
+w-6
+animate-spin
+rounded-full
+border-4
+border-yellow-400
+border-t-transparent
+"
+/>
+
+<div>
+
+<p className="
+font-bold
+text-yellow-400
+">
+
+Loading Liquidity Pools...
 
 </p>
 
+<p className="
+mt-1
+text-sm
+text-zinc-300
+">
+
+Fetching pools from the IOPn blockchain.
+
+</p>
+
+</div>
+
+</div>
+
+<div className="
+mt-4
+h-2
+w-full
+overflow-hidden
+rounded-full
+bg-white/10
+">
+
+<div
+className="
+h-full
+w-1/2
+animate-pulse
+rounded-full
+bg-yellow-400
+"
+/>
+
+</div>
+
+</div>
+
+)
 }
 
 
+{(poolsLoading || detailsLoading) && (
+
+<div className="mt-5 space-y-4">
+
+{[1,2,3].map((item)=>(
+
+<div
+key={item}
+className="
+rounded-3xl
+border
+border-white/10
+bg-white/5
+p-5
+animate-pulse
+"
+>
+
+<div className="h-6 w-40 rounded bg-white/10" />
+
+<div className="mt-5 h-4 w-full rounded bg-white/10" />
+
+<div className="mt-3 h-4 w-3/4 rounded bg-white/10" />
+
+<div className="mt-3 h-4 w-1/2 rounded bg-white/10" />
+
+<div className="mt-6 h-12 w-full rounded-2xl bg-white/10" />
+
+</div>
+
+))}
+
+</div>
+
+)}
 
 
 
@@ -473,10 +565,11 @@ space-y-4
 
 {
 
-pools
+  !(poolsLoading || detailsLoading) &&
 
-?.filter((pool)=>{
-
+  pools
+  ?.filter((pool)=>{
+    
 const name =
 `${pool.symbol0} ${pool.symbol1}`
 .toLowerCase();
@@ -784,7 +877,7 @@ No liquidity positions found.
 
 <br />
 
-Add liquidity to start earning fees.
+Add liquidity to start earning.
 
 </div>
 
@@ -1124,9 +1217,7 @@ mt-4
 text-zinc-300
 ">
 
-Stake your liquidity provider tokens
-to earn OPN rewards and participate
-in liquidity mining.
+Stake liquid assets and earn rewards in OPN .
 
 </p>
 
@@ -1185,7 +1276,7 @@ text-xl
 font-black
 ">
 
-OPN / OPNT LP
+USDT / OPNT LP
 
 </h4>
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+
 
 import {
   readContract,
@@ -63,51 +65,61 @@ export function usePools(){
 
 
       const total =
-        Number(length);
+      Math.min(
+       Number(length),
+        15
+        );
 
 
 
-      const list:string[] = [];
+      const indexes = Array.from(
+  {
+    length: total
+  },
+  (_,i)=>BigInt(i)
+);
 
 
 
-      for(
-        let i = 0;
-        i < total;
-        i++
-      ){
+const list = await Promise.all(
+
+indexes.map(async(index)=>{
 
 
-        const pair =
-          await readContract(
-            Config,
-            {
+const pair = await readContract(
 
-              address:
-                FACTORY_ADDRESS as `0x${string}`,
+Config,
 
-              abi:
-                FACTORY_ABI,
+{
 
-              functionName:
-                "allPairs",
+address:
+FACTORY_ADDRESS as `0x${string}`,
 
-              args:[
-                BigInt(i)
-              ],
+abi:
+FACTORY_ABI,
 
-            }
-          );
+functionName:
+"allPairs",
 
+args:[
+index
+]
 
+}
 
-        list.push(pair);
-
-      }
+);
 
 
+return pair;
 
-      setPairs(list);
+
+})
+
+);
+
+
+
+setPairs(list);
 
 
     }
@@ -131,12 +143,14 @@ export function usePools(){
 
 
 
-  useEffect(()=>{
-
-    loadPools();
-
-  },[]);
-
+  const {
+      data,
+        isLoading,
+        } = useQuery({
+          queryKey: ["iopn-pools"],
+            queryFn: loadPools,
+              staleTime: 60 * 1000,
+              });
 
 
   return {
