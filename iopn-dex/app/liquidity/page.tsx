@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useState } from "react";
 
 import { useAccount } from "wagmi";
@@ -22,7 +21,6 @@ import { useMyLiquidity } from "@/hooks/useMyLiquidity";
 import { useRemoveLiquidity } from "@/hooks/useRemoveLiquidity";
 
 
-
 export default function LiquidityPage() {
 
 
@@ -32,16 +30,17 @@ export default function LiquidityPage() {
 
 
 
-
   const {
     addLiquidity,
     isPending
   } = useLiquidity();
 
+
+
   const {
-  removeLiquidity,
-  isPending: removing
-} = useRemoveLiquidity();
+    removeLiquidity,
+    isPending: removing
+  } = useRemoveLiquidity();
 
 
 
@@ -51,16 +50,37 @@ export default function LiquidityPage() {
   ] = useState(false);
 
 
+
   const [
-  showRemoveModal,
-  setShowRemoveModal
-] = useState(false);
+    showRemoveModal,
+    setShowRemoveModal
+  ] = useState(false);
 
 
-const [
-  selectedPosition,
-  setSelectedPosition
-] = useState<any>(null);
+
+  const [
+    selectedPosition,
+    setSelectedPosition
+  ] = useState<any>(null);
+
+
+
+  // New UI states only
+
+  const [
+    activeTab,
+    setActiveTab
+  ] = useState<
+    "pools" | "liquidity" | "stake"
+  >("pools");
+
+
+
+  const [
+    search,
+    setSearch
+  ] = useState("");
+
 
 
   const {
@@ -69,85 +89,64 @@ const [
 
 
 
-
   const {
     pairs,
     loading:poolsLoading
-
   } = usePools();
-
 
 
 
   const {
     pools,
     loading:detailsLoading
-
   } = usePoolDetails(
     pairs
   );
 
 
 
-
   const {
     positions,
     loading:positionsLoading
-
   } = useMyLiquidity(
     pools
   );
 
 
 
-
   return (
 
 <main className="
-
 min-h-screen
-
 pb-24
-
 bg-gradient-to-b
-
 from-yellow-950
-
 via-black
-
 to-purple-950
-
 text-white
-
 ">
 
 
 <div className="p-5">
 
 
+{/* HERO */}
+
 <div className="
-
 rounded-3xl
-
 p-8
-
 bg-gradient-to-r
-
-from-yellow-500
-
-to-orange-500
-
+from-yellow-400
+via-orange-500
+to-yellow-600
 text-black
-
+shadow-xl
 ">
 
 
 <h1 className="
-
 text-3xl
-
-font-extrabold
-
+font-black
 ">
 
 💧 IOPn Liquidity
@@ -156,16 +155,12 @@ font-extrabold
 
 
 <p className="
-
 mt-3
-
 font-medium
-
 ">
 
-Provide liquidity, stake liquid, earn yields 
-
-and support the OPN ecosystem.
+Provide liquidity, earn trading fees,
+stake LP tokens and support the OPN ecosystem.
 
 </p>
 
@@ -173,35 +168,32 @@ and support the OPN ecosystem.
 </div>
 
 
-<div className="
 
+
+
+{/* STATS */}
+
+<div className="
 mt-6
-
 grid
-
 grid-cols-2
-
 gap-4
-
 ">
 
 
 <div className="
-
 rounded-3xl
-
 bg-white/5
-
 border
-
 border-white/10
-
 p-5
-
 ">
 
 
-<p className="text-sm text-zinc-400">
+<p className="
+text-sm
+text-zinc-400
+">
 
 Total TVL
 
@@ -209,13 +201,9 @@ Total TVL
 
 
 <h2 className="
-
 mt-2
-
 text-2xl
-
-font-bold
-
+font-black
 ">
 
 Coming Soon
@@ -226,22 +214,22 @@ Coming Soon
 </div>
 
 
+
+
+
 <div className="
-
 rounded-3xl
-
 bg-white/5
-
 border
-
 border-white/10
-
 p-5
-
 ">
 
 
-<p className="text-sm text-zinc-400">
+<p className="
+text-sm
+text-zinc-400
+">
 
 Pools
 
@@ -249,13 +237,9 @@ Pools
 
 
 <h2 className="
-
 mt-2
-
 text-2xl
-
-font-bold
-
+font-black
 ">
 
 {pools?.length ?? 0}
@@ -269,103 +253,188 @@ font-bold
 </div>
 
 
+
+
+
+
+{/* TABS */}
+
+<div className="
+mt-8
+flex
+gap-2
+rounded-3xl
+bg-white/5
+border
+border-white/10
+p-2
+">
+
+
+<button
+
+onClick={()=>setActiveTab("pools")}
+
+className={`
+flex-1
+rounded-2xl
+py-3
+font-bold
+transition
+
+${
+activeTab==="pools"
+
+?
+
+"bg-yellow-400 text-black"
+
+:
+
+"text-white"
+
+}
+
+`}
+
+>
+
+Liquidity Pools
+
+</button>
+
+
+
+
+
+<button
+
+onClick={()=>setActiveTab("liquidity")}
+
+className={`
+flex-1
+rounded-2xl
+py-3
+font-bold
+transition
+
+${
+activeTab==="liquidity"
+
+?
+
+"bg-yellow-400 text-black"
+
+:
+
+"text-white"
+
+}
+
+`}
+
+>
+
+My Liquidity
+
+</button>
+
+
+
+
+
+<button
+
+onClick={()=>setActiveTab("stake")}
+
+className={`
+flex-1
+rounded-2xl
+py-3
+font-bold
+transition
+
+${
+activeTab==="stake"
+
+?
+
+"bg-yellow-400 text-black"
+
+:
+
+"text-white"
+
+}
+
+`}
+
+>
+
+Stake LP
+
+</button>
+
+
+</div>
+{/* LIQUIDITY POOLS TAB */}
+
+{
+activeTab === "pools" && (
+
 <section className="mt-8">
 
 
-<h2 className="
+<input
 
-mb-4
+value={search}
 
-text-xl
+onChange={(e)=>
+setSearch(e.target.value)
+}
 
-font-bold
+placeholder="🔍 Search pool..."
 
+className="
+w-full
+rounded-2xl
+bg-white/5
+border
+border-white/10
+p-4
+text-white
+outline-none
+placeholder:text-zinc-500
+"
+
+/>
+
+
+
+<div className="
+mt-6
+flex
+items-center
+justify-between
 ">
 
-Liquidity Pools
+
+<h2 className="
+text-xl
+font-black
+">
+
+All Pools
 
 </h2>
 
 
-
-
-{
-(poolsLoading || detailsLoading)
-
-&&
-
-<p className="text-zinc-400">
-
-Loading pools...
-
-</p>
-
-}
-
-
-
-
-<div className="space-y-4">
-
-
-{
-
-pools?.map((pool)=>(
-
-
-<div
-
-key={pool.address}
-
-className="
-
-rounded-3xl
-
-bg-white/5
-
-border
-
-border-white/10
-
-p-5
-
-"
-
->
-
-
-<div className="
-
-flex
-
-justify-between
-
-">
-
-
-<h3 className="
-
-text-lg
-
-font-bold
-
-">
-
-💧 {pool.symbol0} / {pool.symbol1}
-
-</h3>
-
-
-
 <span className="
-
-text-green-400
-
-font-bold
-
+text-sm
+text-zinc-400
 ">
 
-Active
+{pools?.length ?? 0} pools
 
 </span>
 
@@ -376,59 +445,196 @@ Active
 
 
 
+{
+(poolsLoading || detailsLoading)
+
+&&
+
+<p className="
+mt-5
+text-zinc-400
+">
+
+Loading pools...
+
+</p>
+
+}
+
+
+
+
+
 <div className="
-
-mt-4
-
-text-sm
-
-text-zinc-300
-
-space-y-2
-
+mt-5
+space-y-4
 ">
 
 
-<p>
+{
 
-Pair Address:
+pools
 
-{" "}
+?.filter((pool)=>{
 
-{pool.address.slice(0,8)}
-
-...
-
-{pool.address.slice(-6)}
-
-</p>
+const name =
+`${pool.symbol0} ${pool.symbol1}`
+.toLowerCase();
 
 
+return name.includes(
+search.toLowerCase()
+);
 
-<p>
+})
 
-Reserve 0:
-
-{" "}
-
-{pool.reserve0}
-
-</p>
+.map((pool)=>(
 
 
+<div
 
-<p>
+key={pool.address}
 
-Reserve 1:
+className="
+rounded-3xl
+bg-white/5
+border
+border-white/10
+p-5
+shadow-lg
+"
 
-{" "}
+>
 
-{pool.reserve1}
+
+
+<div className="
+flex
+items-center
+justify-between
+">
+
+
+<div>
+
+<h3 className="
+text-lg
+font-black
+">
+
+💧 {pool.symbol0} / {pool.symbol1}
+
+</h3>
+
+
+<p className="
+text-xs
+text-zinc-400
+mt-1
+">
+
+Active Pool
 
 </p>
 
 
 </div>
+
+
+
+
+<span className="
+rounded-full
+bg-green-500/20
+px-3
+py-1
+text-xs
+font-bold
+text-green-400
+">
+
+LIVE
+
+</span>
+
+
+</div>
+
+
+
+
+
+
+
+<div className="
+mt-5
+rounded-2xl
+bg-black/20
+p-4
+space-y-3
+text-sm
+text-zinc-300
+">
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+Pair
+</span>
+
+<span>
+{pool.address.slice(0,8)}
+...
+{pool.address.slice(-6)}
+</span>
+
+</div>
+
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+Reserve 0
+</span>
+
+<span>
+{pool.reserve0}
+</span>
+
+</div>
+
+
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+Reserve 1
+</span>
+
+<span>
+{pool.reserve1}
+</span>
+
+</div>
+
+
+
+</div>
+
+
+
 
 
 
@@ -439,21 +645,15 @@ Reserve 1:
 onClick={()=>setShowModal(true)}
 
 className="
-
 mt-5
-
 w-full
-
 rounded-2xl
-
 bg-yellow-400
-
-py-3
-
+py-4
 font-black
-
 text-black
-
+hover:brightness-110
+transition
 "
 
 >
@@ -478,38 +678,53 @@ Add Liquidity
 
 </section>
 
+)
 
+}
+{/* MY LIQUIDITY TAB */}
 
-
+{
+activeTab === "liquidity" && (
 
 <section className="
-
 mt-8
-
 rounded-3xl
-
 bg-white/5
-
 border
-
 border-white/10
-
 p-6
-
 ">
 
+
+<div className="
+flex
+items-center
+justify-between
+">
 
 <h2 className="
-
 text-xl
-
-font-bold
-
+font-black
 ">
 
-My Liquidity
+💧 Your Positions
 
 </h2>
+
+
+<span className="
+text-sm
+text-zinc-400
+">
+
+LP
+
+</span>
+
+
+</div>
+
+
 
 
 
@@ -517,40 +732,79 @@ My Liquidity
 
 !isConnected ? (
 
-<p className="mt-4 text-zinc-300">
+<div className="
+mt-6
+rounded-2xl
+bg-black/20
+p-5
+text-zinc-300
+">
 
-Connect wallet to view your positions.
+Connect wallet to view your liquidity positions.
 
-</p>
-
-
-) : positionsLoading ? (
+</div>
 
 
-<p className="mt-4 text-zinc-300">
+)
+
+:
+
+positionsLoading ? (
+
+
+<div className="
+mt-6
+rounded-2xl
+bg-black/20
+p-5
+text-zinc-300
+">
 
 Loading your liquidity...
 
-</p>
+</div>
 
 
-) : positions.length === 0 ? (
+)
+
+:
+
+positions.length === 0 ? (
 
 
-<p className="mt-4 text-zinc-300">
+<div className="
+mt-6
+rounded-2xl
+bg-black/20
+p-5
+text-zinc-300
+">
 
 No liquidity positions found.
 
-</p>
+<br />
+
+Add liquidity to start earning fees.
+
+</div>
 
 
-) : (
+)
+
+:
 
 
-<div className="space-y-4 mt-4">
+(
+
+
+<div className="
+mt-6
+space-y-4
+">
 
 
 {
+
 positions.map((position)=>(
 
 
@@ -559,125 +813,234 @@ positions.map((position)=>(
 key={position.pair}
 
 className="
-
-rounded-2xl
-
+rounded-3xl
+bg-black/20
 border
-
 border-white/10
-
-bg-white/5
-
-p-4
-
+p-5
 "
 
 >
 
 
-<h3 className="font-bold text-lg">
+
+<div className="
+flex
+items-center
+justify-between
+">
+
+
+<h3 className="
+text-lg
+font-black
+">
 
 {position.pair}
 
 </h3>
 
 
+<span className="
+rounded-full
+bg-yellow-400/20
+px-3
+py-1
+text-xs
+font-bold
+text-yellow-400
+">
 
-<p className="text-sm text-zinc-300 mt-2">
+LP
 
-LP Balance:
+</span>
 
-{" "}
+
+</div>
+
+
+
+
+
+
+<div className="
+mt-5
+space-y-3
+text-sm
+text-zinc-300
+">
+
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+LP Balance
+</span>
+
+<span className="font-bold">
 
 {position.lpBalance}
 
-</p>
+</span>
+
+</div>
 
 
 
-<p className="text-sm text-zinc-300">
 
-Pool Share:
+<div className="
+flex
+justify-between
+">
 
-{" "}
+<span>
+Pool Share
+</span>
+
+<span className="font-bold">
 
 {position.poolShare}
 
-</p>
+</span>
+
+</div>
 
 
 
-<p className="text-sm text-zinc-300">
 
-Token 0:
+<div className="
+flex
+justify-between
+">
 
-{" "}
+<span>
+Token 0
+</span>
+
+<span className="font-bold">
 
 {position.token0Amount}
 
-</p>
+</span>
+
+</div>
 
 
 
-<p className="text-sm text-zinc-300">
 
-Token 1:
+<div className="
+flex
+justify-between
+">
 
-{" "}
+<span>
+Token 1
+</span>
+
+<span className="font-bold">
 
 {position.token1Amount}
 
-</p>
+</span>
+
+</div>
 
 
 
-<div className="mt-4 flex gap-3">  <button
+</div>
+
+
+
+
+
+
+
+
+<div className="
+mt-6
+flex
+gap-3
+">
+
+
+<button
+
+onClick={()=>setShowModal(true)}
+
 className="
 flex-1
-rounded-xl
+rounded-2xl
 bg-yellow-400
 py-3
-font-bold
+font-black
 text-black
 "
 
-> 
+>
 
 Add More
 
-  </button>  <button
+</button>
+
+
+
+
+
+<button
+
 disabled={removing}
-onClick={() => {
 
-  setSelectedPosition(position);
+onClick={()=>{
 
-  setShowRemoveModal(true);
+setSelectedPosition(position);
+
+setShowRemoveModal(true);
 
 }}
-className="  
-  flex-1  
-  rounded-xl  
-  bg-red-500  
-  py-3  
-  font-bold  
-  text-white  
-  disabled:opacity-50  
+
+className="
+flex-1
+rounded-2xl
+bg-red-500
+py-3
+font-black
+text-white
+disabled:opacity-50
 "
 
-> 
+>
 
-{  
-  removing  
-    ? "Removing..."  
-    : "Remove"  
+{
+
+removing
+
+?
+
+"Removing..."
+
+:
+
+"Remove"
+
 }
 
-  </button>  </div>
+</button>
+
+
+
+</div>
+
+
 
 </div>
 
 
 ))
+
 
 }
 
@@ -691,77 +1054,391 @@ className="
 }
 
 
+
 </section>
 
+
+)
+
+}
+{/* STAKE LP TAB */}
+
+{
+activeTab === "stake" && (
+
 <section className="
-
 mt-8
+space-y-5
+">
 
+
+<div className="
 rounded-3xl
-
-bg-purple-900/30
-
+bg-white/5
 border
-
-border-purple-500/20
-
+border-white/10
 p-6
+">
 
+
+<div className="
+flex
+items-center
+justify-between
 ">
 
 
 <h2 className="
-
 text-xl
-
-font-bold
-
+font-black
 ">
 
-🌱 Farming & Rewards
+🌱 Stake LP Tokens
 
 </h2>
 
 
-
-<p className="
-
-mt-3
-
-text-zinc-300
-
+<span className="
+rounded-full
+bg-yellow-400/20
+px-3
+py-1
+text-xs
+font-bold
+text-yellow-400
 ">
 
-Stake LP tokens, earn OPN rewards,
+Coming Soon
 
-and participate in future liquidity mining.
+</span>
+
+
+</div>
+
+
+
+
+
+<p className="
+mt-4
+text-zinc-300
+">
+
+Stake your liquidity provider tokens
+to earn OPN rewards and participate
+in liquidity mining.
 
 </p>
 
 
+
+</div>
+
+
+
+
+
+
+
+
+<div className="
+rounded-3xl
+bg-black/20
+border
+border-white/10
+p-6
+">
+
+
+<h3 className="
+text-lg
+font-black
+">
+
+Select LP Position
+
+</h3>
+
+
+
+<div className="
+mt-5
+rounded-2xl
+bg-white/5
+p-5
+">
+
+
+<p className="
+text-sm
+text-zinc-400
+">
+
+LP Token
+
+</p>
+
+
+<h4 className="
+mt-2
+text-xl
+font-black
+">
+
+OPN / OPNT LP
+
+</h4>
+
+
+
+<div className="
+mt-5
+space-y-3
+text-sm
+text-zinc-300
+">
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+LP Balance
+</span>
+
+<span>
+--
+
+</span>
+
+</div>
+
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+APR
+
+</span>
+
+<span className="
+text-green-400
+font-bold
+">
+
+--
+
+</span>
+
+</div>
+
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+Pending Rewards
+
+</span>
+
+<span>
+0 OPN
+</span>
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+<button
+
+className="
+mt-6
+w-full
+rounded-2xl
+bg-yellow-400
+py-4
+font-black
+text-black
+"
+
+>
+
+Stake LP
+
+</button>
+
+
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<div className="
+rounded-3xl
+bg-purple-900/30
+border
+border-purple-500/20
+p-6
+">
+
+
+<h3 className="
+text-xl
+font-black
+">
+
+🎁 Rewards
+
+</h3>
+
+
+
+<div className="
+mt-5
+space-y-3
+text-zinc-300
+">
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+Staked LP
+
+</span>
+
+<span>
+--
+
+</span>
+
+</div>
+
+
+
+
+<div className="
+flex
+justify-between
+">
+
+<span>
+Earned OPN
+
+</span>
+
+<span>
+0.00 OPN
+</span>
+
+</div>
+
+
+
+
+<div className="
+flex
+gap-3
+mt-5
+">
+
+
+<button
+
+className="
+flex-1
+rounded-2xl
+bg-green-500
+py-3
+font-black
+text-white
+"
+
+>
+
+Claim
+
+</button>
+
+
+
+<button
+
+className="
+flex-1
+rounded-2xl
+bg-white/10
+py-3
+font-black
+text-white
+"
+
+>
+
+Unstake
+
+</button>
+
+
+
+</div>
+
+
+
+</div>
+
+
+</div>
+
+
+
+
 </section>
 
+)
 
-
-
-
+}
+{/* MODALS */}
 
 
 <AddLiquidityModal
 
-
 open={showModal}
 
-
 onClose={()=>setShowModal(false)}
-
 
 tokens={tokens}
 
 pools={pools}
 
 loading={isPending}
-
 
 onSupply={async(
 
@@ -789,7 +1466,6 @@ amountB
 );
 
 
-
 setShowModal(false);
 
 
@@ -798,31 +1474,46 @@ setShowModal(false);
 
 />
 
+
+
+
+
 <RemoveLiquidityModal
 
-  open={showRemoveModal}
+open={showRemoveModal}
 
-  onClose={() => {
+onClose={()=>{
 
-    setShowRemoveModal(false);
+setShowRemoveModal(false);
 
-  }}
+}}
 
-  position={selectedPosition}
+position={selectedPosition}
 
-  loading={removing}
+loading={removing}
 
-  onRemove={async(percent)=>{
+onRemove={async(percent)=>{
 
-    console.log(
-      "Remove percentage:",
-      percent,
-      selectedPosition
-    );
 
-  }}
+console.log(
+
+"Remove percentage:",
+
+percent,
+
+selectedPosition
+
+);
+
+
+}}
+
 
 />
+
+
+
+
 
 
 </div>
