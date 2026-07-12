@@ -463,7 +463,7 @@ export const ROUTER_ABI = [
 
     ],
 
-  }
+  },
 
   {
   type: "function",
