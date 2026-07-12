@@ -4,11 +4,13 @@ import { useState } from "react";
 import type { Token } from "@/hooks/useTokens";
 import { useApprove } from "@/hooks/useApprove";
 import { ROUTER_ADDRESS } from "@/lib/router";
+import { useLiquidityQuote } from "@/hooks/useLiquidityQuote";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   tokens: Token[];
+  pools: any[];
   onSupply: (
     tokenA: Token,
     tokenB: Token,
@@ -22,6 +24,7 @@ export default function AddLiquidityModal({
   open,
   onClose,
   tokens,
+  pools,
   onSupply,
   loading,
 }: Props) {
@@ -30,6 +33,17 @@ export default function AddLiquidityModal({
 
   const [amountA, setAmountA] = useState("");
   const [amountB, setAmountB] = useState("");
+
+  const {
+  amountB: quotedAmountB,
+  poolShare,
+  lpEstimate,
+} = useLiquidityQuote(
+  tokenA,
+  tokenB,
+  amountA,
+  pools
+);
 
   const approveA = useApprove(
   tokenA?.address as `0x${string}` | undefined,
@@ -336,7 +350,7 @@ const approveB = useApprove(
           <input
             type="number"
             placeholder="0.0"
-            value={amountB}
+            value={quotedAmountB || amountB}
             onChange={(e)=>
               setAmountB(
                 e.target.value
@@ -388,9 +402,9 @@ const approveB = useApprove(
               Pool Share
             </span>
 
-            <span>
-              --
-            </span>
+             <span>
+  Pool Share
+</span>
 
           </div>
 
@@ -407,8 +421,8 @@ const approveB = useApprove(
             </span>
 
             <span>
-              --
-            </span>
+  {lpEstimate}
+</span>
 
           </div>
 

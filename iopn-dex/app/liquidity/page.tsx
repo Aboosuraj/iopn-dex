@@ -758,6 +758,7 @@ onClose={()=>setShowModal(false)}
 
 tokens={tokens}
 
+pools={pools}
 
 loading={isPending}
 
