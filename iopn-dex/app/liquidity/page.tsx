@@ -7,6 +7,8 @@ import { useAccount } from "wagmi";
 
 import AddLiquidityModal from "@/components/liquidity/AddLiquidityModal";
 
+import RemoveLiquidityModal from "@/components/liquidity/RemoveLiquidityModal";
+
 import { useTokens } from "@/hooks/useTokens";
 
 import { usePools } from "@/hooks/usePools";
@@ -16,6 +18,8 @@ import { usePoolDetails } from "@/hooks/usePoolDetails";
 import { useLiquidity } from "@/hooks/useLiquidity";
 
 import { useMyLiquidity } from "@/hooks/useMyLiquidity";
+
+import { useRemoveLiquidity } from "@/hooks/useRemoveLiquidity";
 
 
 
@@ -34,6 +38,11 @@ export default function LiquidityPage() {
     isPending
   } = useLiquidity();
 
+  const {
+  removeLiquidity,
+  isPending: removing
+} = useRemoveLiquidity();
+
 
 
   const [
@@ -41,6 +50,17 @@ export default function LiquidityPage() {
     setShowModal
   ] = useState(false);
 
+
+  const [
+  showRemoveModal,
+  setShowRemoveModal
+] = useState(false);
+
+
+const [
+  selectedPosition,
+  setSelectedPosition
+] = useState<any>(null);
 
 
   const {
@@ -143,7 +163,7 @@ font-medium
 
 ">
 
-Provide liquidity, earn trading fees,
+Provide liquidity, stake liquid, earn yields 
 
 and support the OPN ecosystem.
 
@@ -611,6 +631,49 @@ Token 1:
 
 
 
+<div className="mt-4 flex gap-3">  <button
+className="
+flex-1
+rounded-xl
+bg-yellow-400
+py-3
+font-bold
+text-black
+"
+
+> 
+
+Add More
+
+  </button>  <button
+disabled={removing}
+onClick={() => {
+
+  setSelectedPosition(position);
+
+  setShowRemoveModal(true);
+
+}}
+className="  
+  flex-1  
+  rounded-xl  
+  bg-red-500  
+  py-3  
+  font-bold  
+  text-white  
+  disabled:opacity-50  
+"
+
+> 
+
+{  
+  removing  
+    ? "Removing..."  
+    : "Remove"  
+}
+
+  </button>  </div>
+
 </div>
 
 
@@ -734,6 +797,31 @@ setShowModal(false);
 
 />
 
+<RemoveLiquidityModal
+
+  open={showRemoveModal}
+
+  onClose={() => {
+
+    setShowRemoveModal(false);
+
+  }}
+
+  position={selectedPosition}
+
+  loading={removing}
+
+  onRemove={async(percent)=>{
+
+    console.log(
+      "Remove percentage:",
+      percent,
+      selectedPosition
+    );
+
+  }}
+
+/>
 
 
 </div>

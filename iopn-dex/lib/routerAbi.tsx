@@ -465,5 +465,41 @@ export const ROUTER_ABI = [
 
   }
 
+  {
+  type: "function",
+  name: "removeLiquidity",
+  stateMutability: "nonpayable",
+  inputs: [
+    { name: "tokenA", type: "address" },
+    { name: "tokenB", type: "address" },
+    { name: "liquidity", type: "uint256" },
+    { name: "amountAMin", type: "uint256" },
+    { name: "amountBMin", type: "uint256" },
+    { name: "to", type: "address" },
+    { name: "deadline", type: "uint256" }
+  ],
+  outputs: [
+    { type: "uint256" },
+    { type: "uint256" }
+  ]
+},
+
+{
+  type: "function",
+  name: "removeLiquidityOPN",
+  stateMutability: "nonpayable",
+  inputs: [
+    { name: "token", type: "address" },
+    { name: "liquidity", type: "uint256" },
+    { name: "amountTokenMin", type: "uint256" },
+    { name: "amountOPNMin", type: "uint256" },
+    { name: "to", type: "address" },
+    { name: "deadline", type: "uint256" }
+  ],
+  outputs: [
+    { type: "uint256" },
+    { type: "uint256" }
+  ]
+},
 
 ] as const;

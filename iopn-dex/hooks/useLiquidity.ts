@@ -42,6 +42,8 @@ import type {
   Token
 } from "@/hooks/useTokens";
 
+import { applySlippage } from "@/lib/slippage";
+
 
 
 export function useLiquidity(){
@@ -183,7 +185,9 @@ tokenB.decimals
 );
 
 
+const amountAMin = applySlippage(amountADesired);
 
+const amountBMin = applySlippage(amountBDesired);
 
 
 
@@ -270,9 +274,13 @@ token.address as `0x${string}`,
 
 amountToken,
 
-0n,
+amountToken === amountADesired
+  ? amountAMin
+  : amountBMin,
 
-0n,
+tokenA.native
+  ? amountBMin
+  : amountAMin,
 
 address,
 
@@ -324,12 +332,10 @@ tokenA.address as `0x${string}`,
 tokenB.address as `0x${string}`,
 
 amountADesired,
-
 amountBDesired,
 
-0n,
-
-0n,
+amountAMin,
+amountBMin,
 
 address,
 
