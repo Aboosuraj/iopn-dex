@@ -50,6 +50,12 @@ export default function LiquidityPage() {
   ] = useState(false);
 
 
+  const [
+selectedPool,
+setSelectedPool
+] = useState<any>(null);
+
+
 
   const [
     showRemoveModal,
@@ -735,7 +741,10 @@ Reserve 1
 
 <button
 
-onClick={()=>setShowModal(true)}
+onClick={()=>{
+  setSelectedPool(pool);
+    setShowModal(true);
+    }}
 
 className="
 mt-5
@@ -1522,6 +1531,8 @@ Unstake
 <AddLiquidityModal
 
 open={showModal}
+
+selectedPool={selectedPool}
 
 onClose={()=>setShowModal(false)}
 
