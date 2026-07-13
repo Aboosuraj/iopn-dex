@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 
+import { useAccount } from "wagmi";
+
 import type { Token } from "@/hooks/useTokens";
 
 import { useApprove } from "@/hooks/useApprove";
@@ -9,6 +11,8 @@ import { useApprove } from "@/hooks/useApprove";
 import { ROUTER_ADDRESS } from "@/lib/router";
 
 import { useLiquidityQuote } from "@/hooks/useLiquidityQuote";
+
+import { useTokenBalance } from "@/hooks/useTokenBalance";
 
 type Props = {
 
@@ -51,11 +55,26 @@ export default function AddLiquidityModal({
 }: Props)
 {
 
+  const { address } = useAccount();
+
   const [tokenA, setTokenA] =
     useState<Token | null>(null);
 
   const [tokenB, setTokenB] =
     useState<Token | null>(null);
+
+
+    const balanceA = useTokenBalance({
+        owner: address,
+          token: tokenA?.address as `0x${string}` | undefined,
+            native: tokenA?.native,
+            });
+
+            const balanceB = useTokenBalance({
+              owner: address,
+                token: tokenB?.address as `0x${string}` | undefined,
+                  native: tokenB?.native,
+                  });
 
     useEffect(()=>{
 
@@ -378,6 +397,10 @@ outline-none
 
 />
 
+<p className="mt-2 text-xs text-zinc-400">
+  Balance: {balanceA.loading ? "Loading..." : `${balanceA.balance} ${tokenA?.symbol ?? ""}`}
+  </p>
+
 </div>
 
 
@@ -499,7 +522,13 @@ outline-none
 
 />
 
+<p className="mt-2 text-xs text-zinc-400">
+    Balance: {balanceB.loading ? "Loading..." : `${balanceB.balance} ${tokenB?.symbol ?? ""}`}
+    </p>
+
 </div>
+
+
 {/* INFO */}
 
 <div
