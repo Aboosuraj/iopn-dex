@@ -4,7 +4,9 @@ import { formatUnits } from "viem";
 import { usePortfolio } from "@/lib/usePortfolio";
 import { TOKENS } from "@/lib/tokens";
 
+
 export default function PortfolioPage() {
+
 
   const {
     address,
@@ -13,7 +15,18 @@ export default function PortfolioPage() {
   } = usePortfolio();
 
 
+
   const isConnected = !!address;
+
+
+
+  const opnBalance =
+    nativeBalance.data
+      ? Number(
+          nativeBalance.data.formatted
+        ).toFixed(4)
+      : "0.0000";
+
 
 
   return (
@@ -27,134 +40,173 @@ export default function PortfolioPage() {
       "
     >
 
-      {/* Background glow */}
 
-      <div className="
+      {/* Background Glow */}
+
+      <div
+        className="
         fixed
         inset-0
         -z-10
         overflow-hidden
-      ">
+        "
+      >
 
-        <div className="
+        <div
+          className="
           absolute
-          top-0
+          top-10
           left-1/2
-          h-[400px]
-          w-[400px]
+          h-72
+          w-72
           -translate-x-1/2
           rounded-full
-          bg-blue-600/20
-          blur-[120px]
-        "/>
+          bg-blue-500/20
+          blur-[100px]
+          "
+        />
 
-        <div className="
+
+        <div
+          className="
           absolute
-          bottom-0
+          bottom-20
           right-0
-          h-[300px]
-          w-[300px]
+          h-64
+          w-64
           rounded-full
-          bg-purple-600/20
-          blur-[120px]
-        "/>
+          bg-purple-500/20
+          blur-[100px]
+          "
+        />
+
 
       </div>
 
 
 
-      <div className="
+
+      <div
+        className="
         mx-auto
-        max-w-3xl
-        p-5
-      ">
+        max-w-xl
+        px-4
+        pt-5
+        "
+      >
 
 
-        {/* HEADER */}
+
+
+        {/* PORTFOLIO HERO CARD */}
+
 
         <div
           className="
           relative
           overflow-hidden
-          rounded-[32px]
+          rounded-[28px]
           border
           border-white/10
-          bg-white/5
-          backdrop-blur-2xl
-          p-7
+          bg-gradient-to-br
+          from-[#101827]
+          via-[#16213b]
+          to-[#25104a]
+          p-5
           shadow-2xl
           "
         >
 
-          <div className="
+
+          {/* Glow */}
+
+          <div
+            className="
             absolute
-            right-0
-            top-0
+            right-[-40px]
+            top-[-40px]
             h-40
             w-40
             rounded-full
-            bg-cyan-500/20
+            bg-cyan-400/20
             blur-3xl
-          "/>
+            "
+          />
 
 
-          <div className="relative">
+
+          <div
+            className="
+            relative
+            "
+          >
 
 
-            <div className="
+
+            <div
+              className="
               flex
-              items-center
+              items-start
               justify-between
-            ">
+              "
+            >
 
 
               <div>
 
-                <p className="
-                  text-sm
-                  font-semibold
-                  uppercase
-                  tracking-widest
+
+                <p
+                  className="
+                  text-xs
+                  font-bold
+                  tracking-[0.25em]
                   text-cyan-400
-                ">
+                  "
+                >
                   IOPn DEX
                 </p>
 
 
-                <h1 className="
+
+                <h1
+                  className="
                   mt-2
-                  text-4xl
+                  text-3xl
                   font-black
-                ">
+                  "
+                >
                   Portfolio
                 </h1>
 
 
-                <p className="
-                  mt-2
+                <p
+                  className="
+                  mt-1
                   text-sm
-                  text-zinc-400
-                ">
-                  Track your digital assets
-                  on IOPn Testnet
+                  text-white/60
+                  "
+                >
+                  Your Web3 assets
                 </p>
 
 
               </div>
 
 
-              <div className="
+
+
+              <div
+                className="
                 flex
-                h-16
-                w-16
+                h-12
+                w-12
                 items-center
                 justify-center
-                rounded-3xl
-                bg-gradient-to-br
-                from-cyan-400
-                to-blue-600
-                text-3xl
-              ">
+                rounded-2xl
+                bg-cyan-400/20
+                text-2xl
+                "
+              >
                 💼
               </div>
 
@@ -162,176 +214,139 @@ export default function PortfolioPage() {
             </div>
 
 
-          </div>
-
-
-        </div>
 
 
 
+            {/* Balance */}
 
 
-        {/* WALLET */}
-
-        <div
-          className="
-          mt-5
-          flex
-          items-center
-          justify-between
-          rounded-3xl
-          border
-          border-white/10
-          bg-white/5
-          backdrop-blur-xl
-          p-5
-          "
-        >
+            <div
+              className="
+              mt-6
+              "
+            >
 
 
-          <div>
-
-            <p className="
-              text-xs
-              uppercase
-              tracking-wider
-              text-zinc-500
-            ">
-              Connected Wallet
-            </p>
-
-
-            <p className="
-              mt-2
-              font-bold
-              text-green-400
-            ">
-
-              {
-                isConnected
-                ?
-                `${address?.slice(0,6)}...${address?.slice(-4)}`
-                :
-                "Wallet Not Connected"
-              }
-
-            </p>
+              <p
+                className="
+                text-xs
+                uppercase
+                text-white/50
+                "
+              >
+                Total Balance
+              </p>
 
 
-          </div>
+
+              <div
+                className="
+                mt-1
+                flex
+                items-end
+                gap-2
+                "
+              >
+
+                <h2
+                  className="
+                  text-4xl
+                  font-black
+                  "
+                >
+
+                  {opnBalance}
+
+                </h2>
 
 
-          <div className="
-            flex
-            items-center
-            gap-2
-            rounded-full
-            border
-            border-green-500/20
-            bg-green-500/10
-            px-4
-            py-2
-          ">
-
-            <span className="
-              h-2
-              w-2
-              rounded-full
-              bg-green-400
-              animate-pulse
-            "/>
+                <span
+                  className="
+                  mb-1
+                  text-lg
+                  font-bold
+                  text-cyan-300
+                  "
+                >
+                  OPN
+                </span>
 
 
-            <span className="
-              text-xs
-              text-green-400
-            ">
-              {
-                isConnected
-                ?
-                "Online"
-                :
-                "Offline"
-              }
-            </span>
+              </div>
 
 
-          </div>
+            </div>
+                        {/* Wallet Address Inside Hero */}
+
+            <div
+              className="
+              mt-5
+              flex
+              items-center
+              justify-between
+              rounded-2xl
+              border
+              border-white/10
+              bg-black/20
+              px-4
+              py-3
+              "
+            >
 
 
-        </div>
-
-        {/* OPN BALANCE */}
-
-        <div
-          className="
-          mt-5
-          overflow-hidden
-          rounded-[32px]
-          bg-gradient-to-br
-          from-cyan-500
-          via-blue-600
-          to-purple-700
-          p-7
-          shadow-2xl
-          "
-        >
-
-          <p className="
-            text-sm
-            text-white/70
-          ">
-            Total OPN Balance
-          </p>
+              <div>
 
 
-          <div className="
-            mt-3
-            flex
-            items-end
-            gap-3
-          ">
+                <p
+                  className="
+                  text-[11px]
+                  uppercase
+                  tracking-wider
+                  text-white/40
+                  "
+                >
+                  Wallet
+                </p>
 
 
-            <h2 className="
-              text-5xl
-              font-black
-              tracking-tight
-            ">
 
-              {
-                nativeBalance.data
-                ?
-                Number(
-                  nativeBalance.data.formatted
-                ).toFixed(4)
-                :
-                "0.0000"
-              }
+                <p
+                  className="
+                  mt-1
+                  text-sm
+                  font-bold
+                  text-green-400
+                  "
+                >
 
-            </h2>
+                  {isConnected
+                    ? `${address?.slice(0,6)}...${address?.slice(-4)}`
+                    : "Not Connected"
+                  }
+
+                </p>
 
 
-            <span className="
-              mb-2
-              text-xl
-              font-bold
-              text-cyan-200
-            ">
-              OPN
-            </span>
+              </div>
+
+
+
+              <div
+                className="
+                h-2
+                w-2
+                rounded-full
+                bg-green-400
+                shadow-lg
+                shadow-green-400/50
+                "
+              />
+
+
+            </div>
 
 
           </div>
-
-
-          <p className="
-            mt-3
-            text-sm
-            text-white/70
-          ">
-            Native token balance
-          </p>
 
 
         </div>
@@ -345,61 +360,50 @@ export default function PortfolioPage() {
 
         <div
           className="
-          mt-6
-          rounded-[32px]
+          mt-5
+          rounded-[24px]
           border
           border-white/10
-          bg-white/5
-          backdrop-blur-2xl
-          p-6
+          bg-white/[0.04]
+          backdrop-blur-xl
+          p-4
           "
         >
 
 
-          <div className="
+
+          <div
+            className="
+            mb-4
             flex
             items-center
             justify-between
-          ">
+            "
+          >
 
 
-            <div>
-
-              <h2 className="
-                text-2xl
-                font-black
-              ">
-                Assets
-              </h2>
-
-
-              <p className="
-                mt-1
-                text-sm
-                text-zinc-400
-              ">
-                Your tokens on IOPn network
-              </p>
-
-
-            </div>
-
-
-            <div className="
-              rounded-full
-              border
-              border-cyan-400/20
-              bg-cyan-400/10
-              px-4
-              py-2
-              text-xs
+            <h2
+              className="
+              text-lg
               font-bold
-              text-cyan-400
-            ">
+              "
+            >
+              Assets
+            </h2>
 
-              {TOKENS.length + 1}
 
-            </div>
+            <span
+              className="
+              rounded-full
+              bg-cyan-400/10
+              px-3
+              py-1
+              text-xs
+              text-cyan-300
+              "
+            >
+              OPN Testnet
+            </span>
 
 
           </div>
@@ -408,110 +412,66 @@ export default function PortfolioPage() {
 
 
 
-          <div className="
-            mt-6
-            space-y-4
-          ">
+          {/* Native OPN */}
 
 
-
-
-            {/* NATIVE OPN */}
+          <div
+            className="
+            flex
+            items-center
+            justify-between
+            rounded-2xl
+            border
+            border-cyan-400/20
+            bg-cyan-400/10
+            px-4
+            py-3
+            "
+          >
 
 
             <div
               className="
               flex
               items-center
-              justify-between
-              rounded-3xl
-              border
-              border-cyan-400/20
-              bg-cyan-400/10
-              p-5
-              transition
-              hover:scale-[1.02]
+              gap-3
               "
             >
 
-
-              <div className="
+              <div
+                className="
                 flex
+                h-10
+                w-10
                 items-center
-                gap-4
-              ">
-
-
-                <div className="
-                  flex
-                  h-14
-                  w-14
-                  items-center
-                  justify-center
-                  rounded-2xl
-                  bg-gradient-to-br
-                  from-cyan-400
-                  to-blue-600
-                  text-2xl
-                  font-black
-                ">
-                  O
-                </div>
-
-
-                <div>
-
-                  <h3 className="
-                    text-lg
-                    font-bold
-                  ">
-                    OPN
-                  </h3>
-
-
-                  <p className="
-                    text-sm
-                    text-zinc-300
-                  ">
-                    Native Token
-                  </p>
-
-
-                </div>
-
-
+                justify-center
+                rounded-xl
+                bg-cyan-400/20
+                "
+              >
+                ⚡
               </div>
 
 
 
-              <div className="
-                text-right
-              ">
+              <div>
 
-
-                <p className="
-                  text-xl
-                  font-black
-                ">
-
-                  {
-                    nativeBalance.data
-                    ?
-                    Number(
-                      nativeBalance.data.formatted
-                    ).toFixed(4)
-                    :
-                    "0.0000"
-                  }
-
+                <p
+                  className="
+                  font-bold
+                  "
+                >
+                  OPN
                 </p>
 
 
-                <p className="
+                <p
+                  className="
                   text-xs
-                  text-cyan-300
-                ">
-                  Balance
+                  text-white/50
+                  "
+                >
+                  Native Token
                 </p>
 
 
@@ -520,26 +480,55 @@ export default function PortfolioPage() {
 
             </div>
 
-            {/* ERC20 TOKENS */}
 
-            {
-              TOKENS.map((token, index) => {
+
+
+            <p
+              className="
+              font-black
+              text-cyan-300
+              "
+            >
+              {opnBalance}
+            </p>
+
+
+          </div>
+
+
+
+
+
+          {/* ERC20 TOKENS */}
+
+          <div
+            className="
+            mt-3
+            space-y-3
+            "
+          >
+
+
+            {TOKENS.map(
+              (token,index)=>{
+
 
                 const balance =
-  tokenBalances?.data?.[index]?.result as bigint | undefined;
+                  tokenBalances
+                  ?.data?.[index]
+                  ?.result as bigint | undefined;
+
 
 
                 const formatted =
                   balance
-                  ?
-                  Number(
-                    formatUnits(
-                      balance,
-                      token.decimals
-                    )
-                  ).toFixed(4)
-                  :
-                  "0.0000";
+                    ? Number(
+                        formatUnits(
+                          balance,
+                          token.decimals
+                        )
+                      ).toFixed(4)
+                    : "0.0000";
 
 
 
@@ -551,71 +540,60 @@ export default function PortfolioPage() {
                     flex
                     items-center
                     justify-between
-                    rounded-3xl
+                    rounded-2xl
                     border
                     border-white/10
                     bg-black/20
-                    p-5
-                    transition
-                    duration-300
-                    hover:border-purple-400/40
-                    hover:bg-white/10
-                    hover:scale-[1.02]
+                    px-4
+                    py-3
                     "
                   >
 
 
-                    {/* TOKEN INFO */}
-
-                    <div className="
+                    <div
+                      className="
                       flex
                       items-center
-                      gap-4
-                    ">
-
+                      gap-3
+                      "
+                    >
 
                       <div
                         className="
                         flex
-                        h-14
-                        w-14
+                        h-9
+                        w-9
                         items-center
                         justify-center
-                        rounded-2xl
-                        bg-gradient-to-br
-                        from-purple-500
-                        to-indigo-600
-                        text-xl
-                        font-black
-                        shadow-lg
+                        rounded-full
+                        bg-purple-400/20
+                        text-sm
+                        font-bold
                         "
                       >
-
-                        {token.symbol.slice(0,1)}
-
+                        {token.symbol[0]}
                       </div>
 
 
 
                       <div>
 
-                        <h3 className="
-                          text-lg
-                          font-bold
-                        ">
-
+                        <p
+                          className="
+                          font-semibold
+                          "
+                        >
                           {token.symbol}
+                        </p>
 
-                        </h3>
 
-
-                        <p className="
-                          text-sm
-                          text-zinc-400
-                        ">
-
-                          ERC20 Token
-
+                        <p
+                          className="
+                          text-xs
+                          text-white/40
+                          "
+                        >
+                          ERC20
                         </p>
 
 
@@ -623,46 +601,24 @@ export default function PortfolioPage() {
 
 
                     </div>
-
-
-
-
-                    {/* BALANCE */}
-
-                    <div className="
-                      text-right
-                    ">
-
-
-                      <p className="
-                        text-xl
-                        font-black
-                      ">
-
+                                          <p
+                        className="
+                        font-bold
+                        text-white
+                        "
+                      >
                         {formatted}
-
-                      </p>
-
-
-                      <p className="
-                        text-xs
-                        text-zinc-500
-                      ">
-
-                        Balance
-
                       </p>
 
 
                     </div>
 
 
-                  </div>
-
                 );
 
 
               })
+
             }
 
 
@@ -671,62 +627,6 @@ export default function PortfolioPage() {
 
         </div>
 
-        {/* WALLET DISCONNECTED MESSAGE */}
-
-        {
-          !isConnected && (
-
-            <div
-              className="
-              mt-6
-              rounded-[32px]
-              border
-              border-yellow-400/20
-              bg-yellow-400/5
-              backdrop-blur-xl
-              p-6
-              text-center
-              "
-            >
-
-              <div className="
-                mx-auto
-                flex
-                h-16
-                w-16
-                items-center
-                justify-center
-                rounded-3xl
-                bg-yellow-400/10
-                text-3xl
-              ">
-                🔐
-              </div>
-
-
-              <h3 className="
-                mt-4
-                text-xl
-                font-black
-              ">
-                Wallet Not Connected
-              </h3>
-
-
-              <p className="
-                mt-2
-                text-sm
-                text-zinc-400
-              ">
-                Connect your wallet to view your
-                OPN and token balances.
-              </p>
-
-
-            </div>
-
-          )
-        }
 
 
       </div>
@@ -734,6 +634,8 @@ export default function PortfolioPage() {
 
     </main>
 
+
   );
+
 
 }
