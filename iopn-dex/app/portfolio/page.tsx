@@ -14,10 +14,11 @@ export default function PortfolioPage() {
     tokenBalances,
   } = usePortfolio();
 
-  const {
-      tokens: walletTokens,
+   const {
+      walletTokens,
         loading: tokensLoading,
         } = useWalletTokens();
+  
   
 
 
