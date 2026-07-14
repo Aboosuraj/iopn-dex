@@ -619,12 +619,11 @@ space-y-3
 onClick={handleApprove}
 
 disabled={
-loading ||
-!tokenA ||
-!tokenB ||
-!amountA ||
-!amountB
-}
+  loading ||
+  approveA.approving ||
+  approveB.approving ||
+  !tokenA ||
+  !tokenB}
 
 className="
 w-full
@@ -643,19 +642,11 @@ disabled:opacity-50
 >
 
 {
-
-approveA.isPending ||
-approveB.isPending
-
-?
-
-"Approving..."
-
-:
-
-"Approve Tokens"
-
-}
+    approveA.approving ||
+      approveB.approving
+          ? "Approving..."
+              : "Approve Tokens"
+              }
 
 </button>
 <button
@@ -663,17 +654,13 @@ approveB.isPending
 onClick={handleSupply}
 
 disabled={
-
-loading ||
-
-!tokenA ||
-
-!tokenB ||
-
-!amountA ||
-
-!amountB
-
+  loading ||
+  approveA.approving ||
+  approveB.approving ||
+  !tokenA ||
+  !tokenB ||
+  !amountA ||
+  !amountB
 }
 
 className="

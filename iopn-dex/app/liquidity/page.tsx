@@ -1163,7 +1163,7 @@ removing
 )
 
 }
-{/* STAKE LP TAB */}
+{/* STAKE TAB */}
 
 {
 activeTab === "stake" && (
@@ -1195,7 +1195,7 @@ text-xl
 font-black
 ">
 
-🌱 Stake LP Tokens
+🌱 Stake Liquid Tokens
 
 </h2>
 
@@ -1255,7 +1255,7 @@ text-lg
 font-black
 ">
 
-Select LP Position
+Select Stake Position
 
 </h3>
 
@@ -1274,7 +1274,7 @@ text-sm
 text-zinc-400
 ">
 
-LP Token
+Stake Token
 
 </p>
 
@@ -1285,7 +1285,7 @@ text-xl
 font-black
 ">
 
-USDT / OPNT LP
+USDT / OPNT 
 
 </h4>
 
@@ -1305,7 +1305,7 @@ justify-between
 ">
 
 <span>
-LP Balance
+stake Balance
 </span>
 
 <span>
@@ -1378,7 +1378,7 @@ text-black
 
 >
 
-Stake LP
+Stake
 
 </button>
 
@@ -1430,7 +1430,7 @@ justify-between
 ">
 
 <span>
-Staked LP
+Staked asset
 
 </span>
 

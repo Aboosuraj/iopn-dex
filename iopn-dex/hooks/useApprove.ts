@@ -1,7 +1,14 @@
 "use client";
 
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useReadContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
+
 import { parseUnits } from "viem";
+
 import { ERC20_ABI } from "@/lib/erc20";
 
 export function useApprove(
@@ -22,12 +29,15 @@ export function useApprove(
         ? [address, router]
         : undefined,
     query: {
-      enabled: !!token && !!router && !!address,
+      enabled:
+        !!token &&
+        !!router &&
+        !!address,
     },
   });
 
   const {
-    writeContract,
+    writeContractAsync,
     data: hash,
     isPending,
     error,
@@ -40,13 +50,13 @@ export function useApprove(
     hash,
   });
 
-  const approve = async (
+  async function approve(
     amount: string,
     decimals: number
-  ) => {
+  ) {
     if (!token || !router) return;
 
-    writeContract({
+    await writeContractAsync({
       address: token,
       abi: ERC20_ABI,
       functionName: "approve",
@@ -55,7 +65,7 @@ export function useApprove(
         parseUnits(amount, decimals),
       ],
     });
-  };
+  }
 
   const needsApproval = (
     amount: string,
@@ -63,8 +73,20 @@ export function useApprove(
   ) => {
     if (!allowance) return true;
 
-    return allowance < parseUnits(amount, decimals);
+    return (
+      allowance <
+      parseUnits(
+        amount,
+        decimals
+      )
+    );
   };
+
+  // Refresh allowance automatically
+  // after approval is confirmed
+  if (isSuccess) {
+    refetch();
+  }
 
   return {
     approve,
@@ -72,9 +94,16 @@ export function useApprove(
     allowance,
     refetch,
     hash,
+    error,
+
     isPending,
     confirming,
-    isSuccess,
-    error,
+
+    approving:
+      isPending ||
+      confirming,
+
+    approved:
+      isSuccess,
   };
 }
