@@ -2,7 +2,7 @@
 
 import { formatUnits } from "viem";
 import { usePortfolio } from "@/lib/usePortfolio";
-import { TOKENS } from "@/lib/tokens";
+import { useWalletTokens } from "@/hooks/useWalletTokens";
 
 
 export default function PortfolioPage() {
@@ -14,6 +14,11 @@ export default function PortfolioPage() {
     tokenBalances,
   } = usePortfolio();
 
+  const {
+      tokens: walletTokens,
+        loading: tokensLoading,
+        } = useWalletTokens();
+  
 
 
   const isConnected = !!address;
@@ -509,26 +514,14 @@ export default function PortfolioPage() {
           >
 
 
-            {TOKENS.map(
-              (token,index)=>{
-
-
-                const balance =
-                  tokenBalances
-                  ?.data?.[index]
-                  ?.result as bigint | undefined;
-
+            {
+            walletTokens.map(
+                  (token)=>{
+            
 
 
                 const formatted =
-                  balance
-                    ? Number(
-                        formatUnits(
-                          balance,
-                          token.decimals
-                        )
-                      ).toFixed(4)
-                    : "0.0000";
+  Number(token.balance).toFixed(4);
 
 
 
