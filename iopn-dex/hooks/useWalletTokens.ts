@@ -2,11 +2,9 @@
 
 import { useAccount, usePublicClient } from "wagmi";
 import { useEffect, useState } from "react";
-import {
-  parseAbiItem,
-  formatUnits,
-  erc20Abi,
-} from "viem";
+import { formatUnits } from "viem";
+import { TOKENS } from "@/lib/tokens";
+import { ERC20_ABI } from "@/lib/erc20";
 
 
 export type WalletToken = {
@@ -24,143 +22,148 @@ export function useWalletTokens() {
   const publicClient = usePublicClient();
 
 
-  const [walletTokens, setWalletTokens] = useState<WalletToken[]>([]);
+  const [walletTokens,setWalletTokens] =
+    useState<WalletToken[]>([]);
 
-  const [loading,setLoading] = useState(false);
+
+  const [loading,setLoading] =
+    useState(false);
 
 
 
   useEffect(()=>{
 
 
-    async function scanTokens(){
+    async function loadTokens(){
 
-      if(!address || !publicClient)
+
+      if(!address || !publicClient){
+
+        setWalletTokens([]);
+
         return;
 
+      }
 
-      try {
+
+      try{
 
         setLoading(true);
 
 
 
-        const logs = await publicClient.getLogs({
-
-          event: parseAbiItem(
-            "event Transfer(address indexed from,address indexed to,uint256 value)"
-          ),
-
-          args:{
-            to: address,
-          },
-
-          fromBlock: "earliest",
-
-          toBlock: "latest",
-
-        });
+        const results:WalletToken[] = [];
 
 
 
-        const tokenAddresses = [
-          ...new Set(
-            logs.map(
-              (log)=>log.address
-            )
-          )
-        ];
-
-
-
-        const results:WalletToken[]=[];
-
-
-
-        for(const tokenAddress of tokenAddresses){
+        for(const token of TOKENS){
 
 
           try{
 
 
-            const [
-              symbol,
-              decimals,
-              balance
-            ] = await Promise.all([
+            // Native OPN
+
+            if(token.native){
 
 
-              publicClient.readContract({
-
-                address:tokenAddress,
-
-                abi:erc20Abi,
-
-                functionName:"symbol",
-
-              }),
+              const balance =
+                await publicClient.getBalance({
+                  address,
+                });
 
 
 
-              publicClient.readContract({
-
-                address:tokenAddress,
-
-                abi:erc20Abi,
-
-                functionName:"decimals",
-
-              }),
+              if(balance > 0n){
 
 
+                results.push({
 
-              publicClient.readContract({
+                  address:token.address,
 
-                address:tokenAddress,
+                  symbol:token.symbol,
 
-                abi:erc20Abi,
+                  decimals:token.decimals,
 
-                functionName:"balanceOf",
+                  balance:
+                    formatUnits(
+                      balance,
+                      token.decimals
+                    ),
+
+                });
+
+
+              }
+
+
+              continue;
+
+            }
+
+
+
+
+
+            // ERC20 tokens
+
+            const balance =
+              await publicClient.readContract({
+
+                address:
+                  token.address,
+
+                abi:
+                  ERC20_ABI,
+
+                functionName:
+                  "balanceOf",
 
                 args:[
                   address
                 ],
 
-              })
-
-            ]);
+              });
 
 
 
             if(balance > 0n){
 
+
               results.push({
 
-                address:tokenAddress,
+                address:
+                  token.address,
 
-                symbol,
+                symbol:
+                  token.symbol,
 
-                decimals,
+                decimals:
+                  token.decimals,
 
                 balance:
                   formatUnits(
                     balance,
-                    decimals
+                    token.decimals
                   ),
 
               });
 
+
             }
+
 
 
           }catch(error){
 
             console.log(
-              "Token scan failed:",
-              tokenAddress
+              "Token balance error:",
+              token.symbol,
+              error
             );
 
           }
+
 
         }
 
@@ -173,13 +176,12 @@ export function useWalletTokens() {
       }catch(error){
 
         console.log(
-          "Wallet token scanner error:",
+          "Portfolio token loading error:",
           error
         );
 
-      }
 
-      finally{
+      }finally{
 
         setLoading(false);
 
@@ -189,7 +191,9 @@ export function useWalletTokens() {
     }
 
 
-    scanTokens();
+
+    loadTokens();
+
 
 
   },[
@@ -206,5 +210,6 @@ export function useWalletTokens() {
     loading,
 
   };
+
 
 }
