@@ -376,7 +376,7 @@ activeTab==="stake"
 
 >
 
-Stake LP
+Stake liquid
 
 </button>
 
@@ -1305,7 +1305,7 @@ justify-between
 ">
 
 <span>
-stake Balance
+Stake Balance
 </span>
 
 <span>
