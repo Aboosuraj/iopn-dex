@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 export default function Footer() {
   const year = new Date().getFullYear();
 
@@ -11,17 +9,32 @@ export default function Footer() {
 
         <div className="flex flex-wrap justify-center gap-8 text-sm text-white/70">
 
-          <Link href="/" className="hover:text-cyan-400 transition">
-            Home
-          </Link>
+          <a
+            href="https://faucet.iopn.tech"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan-400 transition"
+          >
+            Faucet
+          </a>
 
-          <Link href="/docs" className="hover:text-cyan-400 transition">
+          <a
+            href="https://docs.iopn.tech"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan-400 transition"
+          >
             Documentation
-          </Link>
+          </a>
 
-          <Link href="/explorer" className="hover:text-cyan-400 transition">
+          <a
+            href="https://testnet.iopn.tech"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan-400 transition"
+          >
             Explorer
-          </Link>
+          </a>
 
           <a
             href="https://x.com/IOPndex_xyz"
