@@ -507,116 +507,84 @@ export default function PortfolioPage() {
 
           {/* ERC20 TOKENS */}
 
+<div
+  className="
+  mt-3
+  space-y-3
+  "
+>
+  {walletTokens
+    .filter((token) => token.symbol.toUpperCase() !== "OPN")
+    .map((token) => {
+      const formatted = Number(token.balance).toFixed(4);
+
+      return (
+        <div
+          key={token.symbol}
+          className="
+          flex
+          items-center
+          justify-between
+          rounded-2xl
+          border
+          border-white/10
+          bg-black/20
+          px-4
+          py-3
+          "
+        >
           <div
             className="
-            mt-3
-            space-y-3
+            flex
+            items-center
+            gap-3
             "
           >
+            <div
+              className="
+              flex
+              h-9
+              w-9
+              items-center
+              justify-center
+              rounded-full
+              bg-purple-400/20
+              text-sm
+              font-bold
+              "
+            >
+              {token.symbol[0]}
+            </div>
 
+            <div>
+              <p className="font-semibold">
+                {token.symbol}
+              </p>
 
-            {
-            walletTokens.map(
-                  (token)=>{
-            
-
-
-                const formatted =
-  Number(token.balance).toFixed(4);
-
-
-
-                return (
-
-                  <div
-                    key={token.symbol}
-                    className="
-                    flex
-                    items-center
-                    justify-between
-                    rounded-2xl
-                    border
-                    border-white/10
-                    bg-black/20
-                    px-4
-                    py-3
-                    "
-                  >
-
-
-                    <div
-                      className="
-                      flex
-                      items-center
-                      gap-3
-                      "
-                    >
-
-                      <div
-                        className="
-                        flex
-                        h-9
-                        w-9
-                        items-center
-                        justify-center
-                        rounded-full
-                        bg-purple-400/20
-                        text-sm
-                        font-bold
-                        "
-                      >
-                        {token.symbol[0]}
-                      </div>
-
-
-
-                      <div>
-
-                        <p
-                          className="
-                          font-semibold
-                          "
-                        >
-                          {token.symbol}
-                        </p>
-
-
-                        <p
-                          className="
-                          text-xs
-                          text-white/40
-                          "
-                        >
-                          ERC20
-                        </p>
-
-
-                      </div>
-
-
-                    </div>
-                                          <p
-                        className="
-                        font-bold
-                        text-white
-                        "
-                      >
-                        {formatted}
-                      </p>
-
-
-                    </div>
-
-
-                );
-
-
-              })
-
-            }
-
-
+              <p
+                className="
+                text-xs
+                text-white/40
+                "
+              >
+                ERC20
+              </p>
+            </div>
           </div>
+
+          <p
+            className="
+            font-bold
+            text-white
+            "
+          >
+            {formatted}
+          </p>
+        </div>
+      );
+    })}
+</div>
+
 
 
         </div>

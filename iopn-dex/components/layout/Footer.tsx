@@ -3,84 +3,54 @@
 import Link from "next/link";
 
 export default function Footer() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="mt-10 mb-24">
-      <div
-        className="
-          rounded-3xl
-          border
-          border-white/10
-          bg-gradient-to-br
-          from-white/5
-          via-green-900/10
-          to-black/40
-          p-6
-          backdrop-blur-xl
-        "
-      >
-        {/* Brand */}
+    <footer className="mt-24 border-t border-white/10 bg-[#050816]">
+      <div className="mx-auto max-w-6xl px-6 py-12">
 
-        <h2 className="text-center text-3xl font-black text-white">
-          IOPn DEX
-        </h2>
+        <div className="flex flex-wrap justify-center gap-8 text-sm text-white/70">
 
-        <p className="mt-2 text-center text-sm text-white/60">
-          Built for the OPN Ecosystem
-        </p>
-
-        {/* Quick Links */}
-
-        <div className="mt-8 flex items-center justify-center gap-6 text-sm font-semibold">
-          <Link
-            href="https://x.com/IOPnDex_xyz"
-            target="_blank"
-            className="transition hover:text-green-400"
-          >
-            𝕏 IOPnDex
+          <Link href="/" className="hover:text-cyan-400 transition">
+            Home
           </Link>
 
-          <Link
-            href="https://faucet.iopn.tech"
-            target="_blank"
-            className="transition hover:text-green-400"
-          >
-            💧 Faucet
+          <Link href="/docs" className="hover:text-cyan-400 transition">
+            Documentation
           </Link>
 
-          <Link
-            href="https://testnet.iopn.tech"
-            target="_blank"
-            className="transition hover:text-green-400"
-          >
-            🔍 Explorer
+          <Link href="/explorer" className="hover:text-cyan-400 transition">
+            Explorer
           </Link>
+
+          <a
+            href="https://x.com/IOPndex_xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan-400 transition"
+          >
+            X (Twitter)
+          </a>
+
+          <a
+            href="https://discord.gg/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-cyan-400 transition"
+          >
+            Discord
+          </a>
+
         </div>
 
-        {/* Network */}
-
-        <div className="mt-8 text-center">
-          <p className="text-sm font-semibold text-green-400">
-            🟢 OPN Testnet
-          </p>
-
-          <p className="mt-1 text-xs text-white/50">
-            Version v1.0 Beta
-          </p>
-        </div>
-
-        {/* Divider */}
-
-        <div className="my-6 h-px bg-white/10" />
-
-        {/* Bottom */}
-
-        <p className="text-center text-sm text-white/60">
-          Built with ❤️ for OPN Chain
+        <p className="mt-8 text-center text-xs text-white/40">
+          Trade, swap, stake and explore assets on the IOPN Testnet ecosystem.
         </p>
 
-        <p className="mt-2 text-center text-xs text-white/40">
-          © 2026 IOPn DEX
+        <p className="mt-6 text-center text-xs text-white/30">
+          © {year} IOPn DEX • Built with 💜 on IOPN Chain
         </p>
+
       </div>
     </footer>
   );
