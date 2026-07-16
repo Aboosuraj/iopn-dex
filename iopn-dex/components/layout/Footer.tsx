@@ -19,7 +19,7 @@ export default function Footer() {
           </a>
 
           <a
-            href="https://docs.iopn.tech"
+            href="https://iopn.gitbook.io/iopn/developer-docs"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-cyan-400 transition"
@@ -42,7 +42,7 @@ export default function Footer() {
             rel="noopener noreferrer"
             className="hover:text-cyan-400 transition"
           >
-            X (Twitter)
+            𝕏 (Twitter)
           </a>
 
           <a
