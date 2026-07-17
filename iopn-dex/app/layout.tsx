@@ -13,12 +13,33 @@ import { Toaster } from "sonner";
 
 
 export const metadata: Metadata = {
+  title: "IOPn DEX",
+  description:
+    "Decentralized exchange, swap, pay, stake, add liquidity built for OPN Chain ecosystem",
 
-title: "IOPn DEX",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.ico",
+      },
+      {
+        url: "/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+    ],
 
-description:
-"Decentralized exchange , swap , pay , stake , add liquidity and its built for OPN Chain ecosystem",
+    apple: "/apple-touch-icon.png",
+  },
 
+  manifest: "/site.webmanifest",
+
+  themeColor: "#050816",
 };
 
 
