@@ -76,11 +76,6 @@ min-h-screen
 
 
 
-
-<Header />
-
-
-
 <main className="
 pb-24
 pt-20
@@ -90,10 +85,6 @@ pt-20
 
 
 </main>
-
-
-
-<BottomNav />
 
 
 </div>

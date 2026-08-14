@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { ROUTER_ABI } from "@/lib/routerAbi";
 import { ROUTER_ADDRESS } from "@/lib/router";
-import { Config } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 
 
 export function useRemoveLiquidity() {
@@ -108,7 +108,7 @@ export function useRemoveLiquidity() {
 
 
       await waitForTransactionReceipt(
-        Config,
+        config,
         {
           hash
         }

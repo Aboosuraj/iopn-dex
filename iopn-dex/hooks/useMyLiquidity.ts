@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { readContract } from "wagmi/actions";
 
-import { Config } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 import { PAIR_ABI } from "@/lib/pairAbi";
 
 export type MyLiquidityPosition = {
@@ -33,7 +33,7 @@ export function useMyLiquidity(pools: any[]) {
         const result: MyLiquidityPosition[] = [];
 
         for (const pool of pools) {
-          const lpBalance = await readContract(Config, {
+          const lpBalance = await readContract(config, {
             address: pool.address as `0x${string}`,
             abi: PAIR_ABI,
             functionName: "balanceOf",
@@ -42,7 +42,7 @@ export function useMyLiquidity(pools: any[]) {
 
           if (BigInt(lpBalance.toString()) === 0n) continue;
 
-          const totalSupply = await readContract(Config, {
+          const totalSupply = await readContract(config, {
             address: pool.address as `0x${string}`,
             abi: PAIR_ABI,
             functionName: "totalSupply",

@@ -1,7 +1,7 @@
 "use client";
 
 import { readContract } from "wagmi/actions";
-import { Config } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 
 const ERC20_ABI = [
   {
@@ -26,7 +26,7 @@ try{
 
 const symbol =
 await readContract(
-Config,
+config,
 {
 address:address as `0x${string}`,
 abi:ERC20_ABI,

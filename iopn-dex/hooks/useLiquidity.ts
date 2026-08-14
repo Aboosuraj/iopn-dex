@@ -34,7 +34,7 @@ import {
 
 
 import {
-  Config,
+  config,
 } from "@/lib/wagmi";
 
 
@@ -366,7 +366,7 @@ id:"liquidity"
 
 await waitForTransactionReceipt(
 
-Config,
+config,
 
 {
 hash

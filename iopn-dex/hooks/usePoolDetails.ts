@@ -10,7 +10,7 @@ import {
 } from "wagmi/actions";
 
 import {
-  Config,
+  config,
 } from "@/lib/wagmi";
 
 import {
@@ -80,7 +80,7 @@ export function usePoolDetails(
 
       const symbol =
         await readContract(
-          Config,
+          config,
           {
 
             address:
@@ -121,7 +121,7 @@ async function getPoolDetails(
     ] = await Promise.all([
 
       readContract(
-        Config,
+        config,
         {
           address: pair as `0x${string}`,
           abi: PAIR_ABI,
@@ -130,7 +130,7 @@ async function getPoolDetails(
       ),
 
       readContract(
-        Config,
+        config,
         {
           address: pair as `0x${string}`,
           abi: PAIR_ABI,
@@ -139,7 +139,7 @@ async function getPoolDetails(
       ),
 
       readContract(
-        Config,
+        config,
         {
           address: pair as `0x${string}`,
           abi: PAIR_ABI,

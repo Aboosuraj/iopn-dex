@@ -29,7 +29,7 @@ import {
 } from "@/lib/routerAbi";
 
 import {
-  Config,
+  config,
 } from "@/lib/wagmi";
 
 import type { Token } from "./useTokens";
@@ -122,7 +122,7 @@ export function useSwap(){
 
     const result =
       await readContract(
-        Config,
+        config,
         {
 
           address:
@@ -178,7 +178,7 @@ export function useSwap(){
 
 
     await waitForTransactionReceipt(
-      Config,
+      config,
       {
         hash
       }

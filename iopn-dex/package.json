@@ -19,7 +19,7 @@
     "express": "^5.2.1",
     "framer-motion": "^12.42.2",
     "html5-qrcode": "^2.3.8",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.31.0",
     "mongoose": "^9.7.3",
     "next": "^16.2.10",
     "qrcode.react": "^4.2.0",

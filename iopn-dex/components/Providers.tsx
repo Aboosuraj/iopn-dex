@@ -11,7 +11,7 @@ import {
 
 import { useState } from "react";
 
-import { Config } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 
 export default function Providers({
   children,
@@ -25,7 +25,7 @@ export default function Providers({
     );
 
   return (
-    <WagmiProvider config={Config}>
+    <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
           {children}

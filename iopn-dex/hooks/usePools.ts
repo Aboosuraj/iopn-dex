@@ -7,7 +7,7 @@ import {
 } from "wagmi/actions";
 
 import {
-  Config,
+  config,
 } from "@/lib/wagmi";
 
 import {
@@ -25,7 +25,7 @@ async function loadPools() {
 
   const length =
     await readContract(
-      Config,
+      config,
       {
         address:
           FACTORY_ADDRESS as `0x${string}`,
@@ -67,7 +67,7 @@ async function loadPools() {
 
           const pair =
             await readContract(
-              Config,
+              config,
               {
                 address:
                   FACTORY_ADDRESS as `0x${string}`,

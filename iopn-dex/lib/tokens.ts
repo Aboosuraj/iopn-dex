@@ -1,70 +1,89 @@
 export type Token = {
-
+  name: string;
   symbol: string;
-
   address: `0x${string}`;
-
   decimals: number;
-
   native: boolean;
 
+  logo: string;
+
+  price: number;
+
+  change24h: number;
+
+  verified: boolean;
 };
 
-
-
 export const TOKENS: Token[] = [
-
   {
+    name: "IOPn",
     symbol: "OPN",
-    address:
-      "0xA463ce9F738E0B4035D8d036B902D0efADb24d20",
+    address: "0xA463ce9F738E0B4035D8d036B902D0efADb24d20",
     decimals: 18,
     native: true,
+    logo: "/tokens/opn.png",
+    price: 1.00,
+    change24h: 2.6,
+    verified: true,
   },
 
-
   {
+    name: "Wrapped OPN",
     symbol: "WOPN",
-    address:
-      "0xBc022C9dEb5AF250A526321d16Ef52E39b4DBD84",
+    address: "0xBc022C9dEb5AF250A526321d16Ef52E39b4DBD84",
     decimals: 18,
     native: false,
+    logo: "/tokens/wopn.png",
+    price: 1.00,
+    change24h: 0.2,
+    verified: true,
   },
 
-
   {
+    name: "OPN Test Token",
     symbol: "OPNT",
-    address:
-      "0x2aEc1Db9197Ff284011A6A1d0752AD03F5782B0d",
+    address: "0x2aEc1Db9197Ff284011A6A1d0752AD03F5782B0d",
     decimals: 18,
     native: false,
+    logo: "/tokens/opnt.png",
+    price: 0.45,
+    change24h: 5.8,
+    verified: true,
   },
 
-
   {
+    name: "Tether USD",
     symbol: "tUSDT",
-    address:
-      "0x3e01b4d892E0D0A219eF8BBe7e260a6bc8d9B31b",
+    address: "0x3e01b4d892E0D0A219eF8BBe7e260a6bc8d9B31b",
     decimals: 18,
     native: false,
+    logo: "/tokens/usdt.png",
+    price: 1.00,
+    change24h: 0.3,
+    verified: true,
   },
 
-
   {
+    name: "Test BNB",
     symbol: "tBNB",
-    address:
-      "0x92cF36713a5622351c9489D5556B90B321873607",
+    address: "0x92cF36713a5622351c9489D5556B90B321873607",
     decimals: 18,
     native: false,
+    logo: "/tokens/bnb.png",
+    price: 25.40,
+    change24h: 3.6,
+    verified: true,
   },
-
 
   {
+    name: "IOPn DEX Token",
     symbol: "IDEX",
-    address:
-      "0xD5D72Ea6775D7618aFD4d8c42d2d8934638B75f9",
+    address: "0xD5D72Ea6775D7618aFD4d8c42d2d8934638B75f9",
     decimals: 18,
     native: false,
+    logo: "/tokens/idex.png",
+    price: 0.12,
+    change24h: -1.2,
+    verified: true,
   },
-
 ];

@@ -1,134 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useAccount } from "wagmi";
+import { Wallet } from "lucide-react";
 
-import WalletButton from "@/components/wallet/WalletButton";
+export default function Header() {
+  const { address, isConnected } = useAccount();
 
-import ProfileMenu from "./ProfileMenu";
+  return (
+    <header
+      className="
+      fixed
+      top-0
+      left-0
+      right-0
+      z-50
+      border-b
+      border-white/10
+      bg-[#050816]/80
+      backdrop-blur-xl
+      "
+    >
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
 
+        <Link
+          href="/app"
+          className="flex items-center gap-3"
+        >
+          <img
+            src="/logo.png"
+            alt="IOPn DEX"
+            className="h-10 w-10"
+          />
 
-export default function Header(){
+          <div>
 
+            <h1 className="font-black">
+              IOPn DEX
+            </h1>
 
-const [open,setOpen]=useState(false);
+            <p className="text-xs text-cyan-400">
+              OPN Testnet
+            </p>
 
+          </div>
 
-return (
+        </Link>
 
-<header className="
-fixed
-top-0
-left-0
-right-0
-z-50
-border-b
-border-white/10
-bg-black/70
-backdrop-blur-xl
-">
+        <div
+          className="
+          flex
+          items-center
+          gap-3
+          rounded-full
+          border
+          border-white/10
+          bg-white/[0.04]
+          px-4
+          py-2
+          "
+        >
 
+          <Wallet
+            size={18}
+            className="text-cyan-400"
+          />
 
-<div className="
-mx-auto
-flex
-h-20
-max-w-md
-items-center
-justify-between
-px-5
-">
+          <span className="text-sm font-semibold">
 
+            {isConnected
+              ? `${address?.slice(0,6)}...${address?.slice(-4)}`
+              : "Connect"}
 
-{/* BRAND */}
+          </span>
 
-<div>
+        </div>
 
-
-<h1 className="
-text-xl
-font-bold
-text-white
-">
-
-IOPn DEX
-
-</h1>
-
-
-<div className="
-text-xs
-text-green-400
-">
-
-● OPN Testnet
-
-</div>
-
-
-</div>
-
-
-
-
-
-{/* RIGHT */}
-
-<div className="
-flex
-items-center
-gap-3
-">
-
-
-<WalletButton />
-
-
-
-<button
-
-onClick={()=>setOpen(!open)}
-
-className="
-flex
-h-10
-w-10
-items-center
-justify-center
-rounded-full
-border
-border-white/20
-bg-white/10
-text-xl
-"
-
->
-
-👤
-
-</button>
-
-
-</div>
-
-
-</div>
-
-
-
-{
-
-open &&
-
-<ProfileMenu />
-
-}
-
-
-
-</header>
-
-
-);
-
-
+      </div>
+    </header>
+  );
 }
