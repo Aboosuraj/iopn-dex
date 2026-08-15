@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useAccount } from "wagmi";
-import { Wallet } from "lucide-react";
+
+import WalletButton from "@/components/wallet/WalletButton";
 
 export default function Header() {
-  const { address, isConnected } = useAccount();
-
   return (
     <header
       className="
@@ -21,8 +19,17 @@ export default function Header() {
       backdrop-blur-xl
       "
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
-
+      <div
+        className="
+        mx-auto
+        flex
+        h-16
+        max-w-7xl
+        items-center
+        justify-between
+        px-5
+        "
+      >
         <Link
           href="/app"
           className="flex items-center gap-3"
@@ -34,7 +41,6 @@ export default function Header() {
           />
 
           <div>
-
             <h1 className="font-black">
               IOPn DEX
             </h1>
@@ -42,40 +48,12 @@ export default function Header() {
             <p className="text-xs text-cyan-400">
               OPN Testnet
             </p>
-
           </div>
-
         </Link>
 
-        <div
-          className="
-          flex
-          items-center
-          gap-3
-          rounded-full
-          border
-          border-white/10
-          bg-white/[0.04]
-          px-4
-          py-2
-          "
-        >
-
-          <Wallet
-            size={18}
-            className="text-cyan-400"
-          />
-
-          <span className="text-sm font-semibold">
-
-            {isConnected
-              ? `${address?.slice(0,6)}...${address?.slice(-4)}`
-              : "Connect"}
-
-          </span>
-
+        <div className="flex items-center gap-3">
+          <WalletButton />
         </div>
-
       </div>
     </header>
   );

@@ -18,35 +18,56 @@ export default function SwapInput({
   onSelect,
 }: Props) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#111827] p-5">
+    <div
+      className="
+        rounded-2xl
+        border
+        border-white/10
+        bg-[#111827]
+        px-4
+        py-4
+      "
+    >
+      {/* TOP ROW */}
 
-      <div className="mb-4 flex items-center justify-between">
-
-        <span className="text-sm text-white/50">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-white/55">
           You Pay
         </span>
 
-        <span className="text-xs text-white/40">
+        <span
+          className="
+            max-w-[58%]
+            truncate
+            text-right
+            text-xs
+            text-white/40
+          "
+        >
           Balance: {balance || "0"}
         </span>
-
       </div>
 
-      <div className="flex items-center justify-between gap-4">
+      {/* AMOUNT + TOKEN */}
 
+      <div className="flex items-center gap-3">
         <input
           type="number"
+          inputMode="decimal"
           placeholder="0.0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           className="
-            w-full
+            min-w-0
+            flex-1
             bg-transparent
-            text-5xl
+            text-[42px]
             font-black
+            leading-none
+            tracking-tight
             text-white
             outline-none
-            placeholder:text-white/20
+            placeholder:text-white/15
           "
         />
 
@@ -54,19 +75,21 @@ export default function SwapInput({
           symbol={symbol}
           onClick={onSelect}
         />
-
       </div>
 
+      {/* MAX */}
+
       <button
+        type="button"
         onClick={() => setAmount(balance)}
         className="
-          mt-5
+          mt-4
           rounded-xl
           bg-cyan-500/15
           px-4
           py-2
-          text-sm
-          font-bold
+          text-xs
+          font-black
           text-cyan-400
           transition
           hover:bg-cyan-500/25
@@ -74,7 +97,6 @@ export default function SwapInput({
       >
         MAX
       </button>
-
     </div>
   );
 }

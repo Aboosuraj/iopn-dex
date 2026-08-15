@@ -7,11 +7,20 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#050816] text-white">
+    <div className="relative min-h-screen bg-[#050816] text-white">
 
       <Header />
 
-      <main className="pb-28 pt-20">
+      <main
+        className="
+          mx-auto
+          w-full
+          max-w-md
+          px-4
+          pt-[88px]
+          pb-28
+        "
+      >
         {children}
       </main>
 

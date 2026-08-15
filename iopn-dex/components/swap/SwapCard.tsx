@@ -52,14 +52,14 @@ export default function SwapCard({
   return (
     <div
       className="
-      rounded-3xl
-      border
-      border-white/10
-      bg-white/[0.04]
-      p-6
-      backdrop-blur-xl
-      shadow-[0_0_40px_rgba(6,182,212,.08)]
-    "
+        rounded-3xl
+        border
+        border-white/10
+        bg-white/[0.04]
+        p-4
+        backdrop-blur-xl
+        shadow-[0_0_40px_rgba(6,182,212,.08)]
+      "
     >
       <SwapHeader />
 
@@ -71,24 +71,29 @@ export default function SwapCard({
         onSelect={onSelectIn}
       />
 
-      <div className="flex justify-center py-6">
+      {/* FLIP */}
+
+      <div className="flex justify-center py-3">
         <button
+          type="button"
           onClick={onFlip}
+          aria-label="Flip tokens"
           className="
             flex
-            h-14
-            w-14
+            h-12
+            w-12
             items-center
             justify-center
             rounded-full
             border
             border-cyan-500/30
             bg-[#111827]
-            text-2xl
+            text-xl
             text-cyan-400
             transition
             hover:rotate-180
             hover:border-cyan-400
+            hover:bg-cyan-500/10
           "
         >
           ⇅

@@ -160,15 +160,16 @@ export default function SwapPage() {
   return (
     <main
       className="
+        relative
         min-h-screen
+        overflow-x-hidden
         bg-[#050816]
         px-4
         pb-28
-        pt-6
+        pt-2
         text-white
       "
     >
-
       {/* BACKGROUND GLOW */}
 
       <div
@@ -176,14 +177,14 @@ export default function SwapPage() {
           pointer-events-none
           fixed
           left-1/2
-          top-20
+          top-16
           -z-0
-          h-72
-          w-72
+          h-64
+          w-64
           -translate-x-1/2
           rounded-full
           bg-cyan-500/10
-          blur-[100px]
+          blur-[90px]
         "
       />
 
@@ -194,23 +195,21 @@ export default function SwapPage() {
           bottom-20
           right-0
           -z-0
-          h-64
-          w-64
+          h-56
+          w-56
           rounded-full
           bg-purple-500/10
-          blur-[100px]
+          blur-[90px]
         "
       />
 
-
       <div className="relative z-10 mx-auto w-full max-w-md">
-
 
         {/* PAGE HEADER */}
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
 
-          <div>
+          <div className="min-w-0">
 
             <div className="flex items-center gap-2">
 
@@ -219,6 +218,7 @@ export default function SwapPage() {
                   flex
                   h-9
                   w-9
+                  shrink-0
                   items-center
                   justify-center
                   rounded-xl
@@ -229,18 +229,17 @@ export default function SwapPage() {
                 <ArrowDownUp size={18} />
               </div>
 
-              <h1 className="text-2xl font-black">
+              <h1 className="text-2xl font-black tracking-tight">
                 Swap
               </h1>
 
             </div>
 
-            <p className="mt-2 text-sm text-white/40">
+            <p className="mt-1 text-sm text-white/40">
               Trade tokens instantly on IOPn Chain
             </p>
 
           </div>
-
 
           {/* SETTINGS */}
 
@@ -248,9 +247,11 @@ export default function SwapPage() {
             type="button"
             onClick={() => setSlippageOpen(true)}
             className="
+              ml-3
               flex
-              h-11
-              w-11
+              h-10
+              w-10
+              shrink-0
               items-center
               justify-center
               rounded-2xl
@@ -264,17 +265,16 @@ export default function SwapPage() {
               hover:text-cyan-400
             "
           >
-            <Settings2 size={19} />
+            <Settings2 size={18} />
           </button>
 
         </div>
-
 
         {/* NETWORK STATUS */}
 
         <div
           className="
-            mb-5
+            mb-4
             flex
             items-center
             justify-between
@@ -283,7 +283,7 @@ export default function SwapPage() {
             border-emerald-400/10
             bg-emerald-400/[0.04]
             px-4
-            py-3
+            py-2.5
           "
         >
 
@@ -305,12 +305,11 @@ export default function SwapPage() {
 
           </div>
 
-          <span className="text-xs text-emerald-400">
+          <span className="text-xs font-medium text-emerald-400">
             Network Online
           </span>
 
         </div>
-
 
         {/* SWAP CARD */}
 
@@ -368,22 +367,21 @@ export default function SwapPage() {
           loading={isPending || approving}
         />
 
-
         {/* SWAP DETAILS */}
 
         <div
           className="
-            mt-4
+            mt-3
             rounded-3xl
             border
             border-white/10
             bg-white/[0.04]
-            p-5
+            p-4
             backdrop-blur-xl
           "
         >
 
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between">
 
             <h2 className="font-black">
               Swap Details
@@ -395,8 +393,7 @@ export default function SwapPage() {
 
           </div>
 
-
-          <div className="space-y-4">
+          <div className="space-y-3">
 
             <div className="flex justify-between gap-4">
 
@@ -404,12 +401,11 @@ export default function SwapPage() {
                 Rate
               </span>
 
-              <span className="text-right text-sm font-semibold">
+              <span className="max-w-[65%] text-right text-sm font-semibold">
                 {rate || "--"}
               </span>
 
             </div>
-
 
             <div className="flex justify-between gap-4">
 
@@ -420,13 +416,13 @@ export default function SwapPage() {
               <span className="text-right text-sm font-semibold">
                 {amountOut
                   ? `${(
-                      Number(amountOut) * (1 - slippage / 100)
+                      Number(amountOut) *
+                      (1 - slippage / 100)
                     ).toFixed(6)} ${tokenOut.symbol}`
                   : "--"}
               </span>
 
             </div>
-
 
             <div className="flex justify-between gap-4">
 
@@ -441,7 +437,6 @@ export default function SwapPage() {
               </span>
 
             </div>
-
 
             <div className="flex justify-between">
 
@@ -459,10 +454,9 @@ export default function SwapPage() {
 
         </div>
 
-
         {/* QUICK TOOLS */}
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-2 gap-3">
 
           <button
             type="button"
@@ -476,7 +470,7 @@ export default function SwapPage() {
               border
               border-white/10
               bg-white/[0.04]
-              py-4
+              py-3
               text-sm
               font-bold
               text-white/70
@@ -486,10 +480,9 @@ export default function SwapPage() {
               hover:text-cyan-400
             "
           >
-            <Zap size={17} />
+            <Zap size={16} />
             Import Token
           </button>
-
 
           <button
             type="button"
@@ -503,7 +496,7 @@ export default function SwapPage() {
               border
               border-white/10
               bg-white/[0.04]
-              py-4
+              py-3
               text-sm
               font-bold
               text-white/70
@@ -513,25 +506,24 @@ export default function SwapPage() {
               hover:text-cyan-400
             "
           >
-            <Settings2 size={17} />
+            <Settings2 size={16} />
             Slippage
           </button>
 
         </div>
 
-
         {/* SECURITY NOTE */}
 
         <div
           className="
-            mt-4
+            mt-3
             flex
             gap-3
             rounded-2xl
             border
             border-white/10
             bg-white/[0.025]
-            p-4
+            p-3.5
           "
         >
 
@@ -548,14 +540,11 @@ export default function SwapPage() {
 
         </div>
 
-
         {/* HISTORY */}
 
         <SwapHistory />
 
-
       </div>
-
 
       {/* TOKEN SELECTOR */}
 
@@ -565,7 +554,6 @@ export default function SwapPage() {
         onClose={() => setSelector(null)}
         onSelect={select}
       />
-
 
       {/* TOKEN IMPORT */}
 
@@ -577,7 +565,6 @@ export default function SwapPage() {
           setTokenOut(token);
         }}
       />
-
 
       {/* SLIPPAGE */}
 

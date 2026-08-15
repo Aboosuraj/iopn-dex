@@ -40,8 +40,10 @@ const nav = [
 ];
 
 export default function BottomNav() {
-
   const pathname = usePathname();
+
+  // Hide on landing page only
+  if (pathname === "/") return null;
 
   return (
     <nav
@@ -61,41 +63,25 @@ export default function BottomNav() {
       "
     >
       <div className="flex justify-around py-3">
-
         {nav.map((item) => {
-
           const Icon = item.icon;
 
-          const active = pathname === item.href;
+          const active = pathname.startsWith(item.href);
 
           return (
-
             <Link
               key={item.href}
               href={item.href}
-              className="
-              flex
-              flex-col
-              items-center
-              gap-1
-              "
+              className="flex flex-col items-center gap-1"
             >
-
               <div
-                className={`
-                rounded-xl
-                p-2
-                transition
-                ${
+                className={`rounded-xl p-2 transition ${
                   active
                     ? "bg-cyan-500 text-black"
                     : "text-white/50"
-                }
-                `}
+                }`}
               >
-
                 <Icon size={20} />
-
               </div>
 
               <span
@@ -107,13 +93,9 @@ export default function BottomNav() {
               >
                 {item.label}
               </span>
-
             </Link>
-
           );
-
         })}
-
       </div>
     </nav>
   );

@@ -7,7 +7,7 @@ export default function AppDashboard() {
   return (
     <main className="min-h-screen bg-[#050816] text-white">
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 pb-8">
 
         <WalletCard />
 

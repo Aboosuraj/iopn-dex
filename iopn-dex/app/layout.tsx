@@ -3,14 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import Providers from "@/components/Providers";
-
-import Header from "@/components/layout/Header";
-
-import BottomNav from "@/components/layout/BottomNav";
-
 import { Toaster } from "sonner";
-
-
 
 export const metadata: Metadata = {
   title: "IOPn DEX",
@@ -42,66 +35,20 @@ export const metadata: Metadata = {
   themeColor: "#050816",
 };
 
-
-
 export default function RootLayout({
-
-children,
-
+  children,
 }: Readonly<{
-
-children: React.ReactNode;
-
+  children: React.ReactNode;
 }>) {
+  return (
+    <html lang="en">
+      <body className="bg-black text-white antialiased">
+        <Providers>
+          {children}
+        </Providers>
 
-
-return (
-
-<html lang="en">
-
-
-<body className="
-bg-black
-text-white
-antialiased
-">
-
-
-<Providers>
-
-
-<div className="
-min-h-screen
-">
-
-
-
-<main className="
-pb-24
-pt-20
-">
-
-{children}
-
-
-</main>
-
-
-</div>
-
-
-</Providers>
-
-
-<Toaster position="top-center" />
-
-
-</body>
-
-
-</html>
-
-);
-
-
+        <Toaster position="top-center" />
+      </body>
+    </html>
+  );
 }

@@ -43,7 +43,7 @@ export default function Hero() {
         <div className="mt-12 flex flex-wrap justify-center gap-4">
 
           <Link
-            href="/swap"
+            href="/app"
               className="rounded-2xl bg-cyan-500 px-8 py-4 font-bold text-black transition hover:bg-cyan-400"
               >
                 🚀 Launch App
