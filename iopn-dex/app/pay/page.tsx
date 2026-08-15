@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import {
   useAccount,
   useBalance,
   useSendTransaction,
 } from "wagmi";
+
 import { parseEther } from "viem";
 import { io } from "socket.io-client";
 
@@ -17,13 +19,17 @@ import {
   Activity,
   ShieldCheck,
   Zap,
+  Sparkles,
+  ArrowUpRight,
+  Copy,
+  Check,
+  ChevronDown,
+  Download,
+  ScanLine,
 } from "lucide-react";
 
 import { TOKENS } from "@/lib/tokens";
 
-import BalanceCard from "./components/BalanceCard";
-import TokenSelector from "./components/TokenSelector";
-import SendForm from "./components/SendForm";
 import ReceiveModal from "./components/ReceiveModal";
 import VirtualCard from "./components/VirtualCard";
 import TransactionHistory from "./components/TransactionHistory";
@@ -48,7 +54,29 @@ function formatBalance(value: any) {
     return "0.00";
   }
 
-  return Number(value.formatted || 0).toFixed(2);
+  const formatted = Number(value.formatted || 0);
+
+  if (!Number.isFinite(formatted)) {
+    return "0.00";
+  }
+
+  return formatted.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+
+/* =========================================================
+   SHORT ADDRESS
+========================================================= */
+
+function shortAddress(address?: string) {
+  if (!address) {
+    return "Not connected";
+  }
+
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 
@@ -64,11 +92,18 @@ export default function PayPage() {
   } = useAccount();
 
 
-  const [recipient, setRecipient] = useState("");
+  /* =======================================================
+     STATES
+  ======================================================= */
 
-  const [amount, setAmount] = useState("");
+  const [recipient, setRecipient] =
+    useState("");
 
-  const [tokenSymbol, setTokenSymbol] = useState("OPN");
+  const [amount, setAmount] =
+    useState("");
+
+  const [tokenSymbol, setTokenSymbol] =
+    useState("OPN");
 
   const [txHash, setTxHash] =
     useState<string | null>(null);
@@ -76,8 +111,13 @@ export default function PayPage() {
   const [liveTxs, setLiveTxs] =
     useState<any[]>([]);
 
+  const [copied, setCopied] =
+    useState(false);
 
-  /* MODALS */
+
+  /* =======================================================
+     MODALS
+  ======================================================= */
 
   const [showScanner, setShowScanner] =
     useState(false);
@@ -89,27 +129,59 @@ export default function PayPage() {
     useState(false);
 
 
-  /* TOKEN */
+  /* =======================================================
+     SEND FORM REF
+  ======================================================= */
+
+  const sendFormRef =
+    useRef<HTMLDivElement | null>(null);
+
+
+  /* =======================================================
+     TOKEN
+  ======================================================= */
 
   const token = useMemo(
     () =>
       TOKENS.find(
-        (t) => t.symbol === tokenSymbol
+        (t) =>
+          t.symbol === tokenSymbol
       ),
     [tokenSymbol]
   );
 
 
-  /* BALANCE */
+  /* =======================================================
+     SELECTED TOKEN ADDRESS
+  ======================================================= */
+
+  const selectedTokenAddress =
+    (token as any)?.address;
+
+
+  const isNativeToken =
+    tokenSymbol === "OPN" ||
+    (token as any)?.native === true ||
+    !selectedTokenAddress;
+
+
+  /* =======================================================
+     SELECTED TOKEN BALANCE
+  ======================================================= */
 
   const {
-    data: balance,
+    data: selectedBalance,
   } = useBalance({
     address,
+    token: isNativeToken
+      ? undefined
+      : selectedTokenAddress,
   });
 
 
-  /* SEND */
+  /* =======================================================
+     SEND
+  ======================================================= */
 
   const {
     sendTransactionAsync,
@@ -140,19 +212,26 @@ export default function PayPage() {
 
     try {
 
-      /* WALLET TRANSACTION */
+      /* =====================================================
+         WALLET TRANSACTION
+         Existing transaction engine preserved
+      ===================================================== */
 
       const tx =
         await sendTransactionAsync({
-          to: recipient as `0x${string}`,
-          value: parseEther(amount),
+          to:
+            recipient as `0x${string}`,
+          value:
+            parseEther(amount),
         });
 
 
       setTxHash(tx);
 
 
-      /* BACKEND RECORD */
+      /* =====================================================
+         BACKEND RECORD
+      ===================================================== */
 
       await fetch(
         "https://iopndex.onrender.com/api/send",
@@ -189,13 +268,63 @@ export default function PayPage() {
       setAmount("");
 
 
-      alert("Transaction sent 🚀");
+      alert(
+        "Transaction sent 🚀"
+      );
 
     } catch (err) {
 
       console.error(err);
 
-      alert("Transaction failed ❌");
+      alert(
+        "Transaction failed ❌"
+      );
+
+    }
+
+  }
+
+
+  /* =========================================================
+     SCROLL TO SEND
+  ========================================================= */
+
+  function openSendForm() {
+
+    sendFormRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+
+  }
+
+
+  /* =========================================================
+     COPY ADDRESS
+  ========================================================= */
+
+  async function copyAddress() {
+
+    if (!address) {
+      return;
+    }
+
+    try {
+
+      await navigator.clipboard.writeText(
+        address
+      );
+
+      setCopied(true);
+
+      setTimeout(
+        () => setCopied(false),
+        1600
+      );
+
+    } catch (error) {
+
+      console.error(error);
 
     }
 
@@ -289,7 +418,9 @@ export default function PayPage() {
 
   useEffect(() => {
 
-    if ("Notification" in window) {
+    if (
+      "Notification" in window
+    ) {
 
       Notification.requestPermission();
 
@@ -347,7 +478,6 @@ export default function PayPage() {
         title,
         {
           body,
-
           icon: "/icon.png",
         }
       );
@@ -365,15 +495,17 @@ export default function PayPage() {
 
     <main
       className="
+        relative
         min-h-screen
-        bg-[#050816]
+        overflow-hidden
+        bg-[#02050B]
         pb-28
         text-white
       "
     >
 
       {/* =====================================================
-          BACKGROUND GLOW
+          BACKGROUND
       ===================================================== */}
 
       <div
@@ -386,31 +518,63 @@ export default function PayPage() {
         "
       >
 
+        {/* Cyan glow */}
+
         <div
           className="
             absolute
-            left-1/2
-            top-0
-            h-80
-            w-80
-            -translate-x-1/2
+            left-[-100px]
+            top-[120px]
+            h-[320px]
+            w-[320px]
             rounded-full
-            bg-cyan-500/10
-            blur-[120px]
+            bg-cyan-500/[0.07]
+            blur-[130px]
           "
         />
 
 
+        {/* Purple glow */}
+
         <div
           className="
             absolute
-            bottom-20
-            right-[-80px]
-            h-72
-            w-72
+            right-[-140px]
+            top-[420px]
+            h-[380px]
+            w-[380px]
             rounded-full
-            bg-purple-500/10
-            blur-[120px]
+            bg-violet-600/[0.08]
+            blur-[140px]
+          "
+        />
+
+
+        {/* Blue glow */}
+
+        <div
+          className="
+            absolute
+            bottom-[-160px]
+            left-[15%]
+            h-[360px]
+            w-[360px]
+            rounded-full
+            bg-blue-600/[0.06]
+            blur-[140px]
+          "
+        />
+
+
+        {/* Grid */}
+
+        <div
+          className="
+            absolute
+            inset-0
+            opacity-[0.018]
+            [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]
+            [background-size:42px_42px]
           "
         />
 
@@ -419,11 +583,13 @@ export default function PayPage() {
 
       <div
         className="
+          relative
           mx-auto
           w-full
           max-w-xl
           px-4
-          pt-6
+          pt-5
+          sm:px-5
         "
       >
 
@@ -432,166 +598,470 @@ export default function PayPage() {
             HEADER
         ================================================= */}
 
-        <div
+        <header
           className="
-            mb-6
+            mb-5
             flex
             items-center
             justify-between
           "
         >
 
-          <div>
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+            "
+          >
 
             <div
               className="
+                relative
                 flex
+                h-11
+                w-11
                 items-center
-                gap-2
+                justify-center
+                overflow-hidden
+                rounded-2xl
+                border
+                border-cyan-400/20
+                bg-gradient-to-br
+                from-cyan-400/15
+                to-violet-500/15
+                shadow-[0_0_30px_rgba(34,211,238,0.08)]
+              "
+            >
+
+              <Send
+                size={20}
+                className="
+                  relative
+                  text-cyan-300
+                "
+              />
+
+            </div>
+
+
+            <div>
+
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                "
+              >
+
+                <h1
+                  className="
+                    text-[25px]
+                    font-black
+                    tracking-tight
+                  "
+                >
+                  IOPn Pay
+                </h1>
+
+                <Sparkles
+                  size={15}
+                  className="
+                    text-cyan-300
+                  "
+                />
+
+              </div>
+
+
+              <p
+                className="
+                  mt-0.5
+                  text-xs
+                  text-white/35
+                "
+              >
+                Your Web3 payment hub
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div
+            className="
+              flex
+              h-11
+              w-11
+              items-center
+              justify-center
+              rounded-2xl
+              border
+              border-white/[0.08]
+              bg-white/[0.025]
+              shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
+            "
+          >
+
+            <Activity
+              size={19}
+              className="
+                text-white/45
+              "
+            />
+
+          </div>
+
+        </header>
+
+
+        {/* =================================================
+            MAIN ASSET CARD
+        ================================================= */}
+
+        <section
+          className="
+            relative
+            overflow-hidden
+            rounded-[28px]
+            border
+            border-cyan-400/20
+            bg-gradient-to-br
+            from-[#0B1420]
+            via-[#080C15]
+            to-[#111021]
+            p-4
+            shadow-[0_20px_70px_rgba(0,0,0,0.35)]
+          "
+        >
+
+          {/* top glow */}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              right-[-80px]
+              top-[-100px]
+              h-48
+              w-48
+              rounded-full
+              bg-violet-500/[0.10]
+              blur-[80px]
+            "
+          />
+
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              left-[-60px]
+              bottom-[-100px]
+              h-40
+              w-40
+              rounded-full
+              bg-cyan-400/[0.08]
+              blur-[70px]
+            "
+          />
+
+
+          {/* =================================================
+              BALANCE HEADER
+          ================================================= */}
+
+          <div
+            className="
+              relative
+              flex
+              items-start
+              justify-between
+              gap-3
+            "
+          >
+
+            {/* TOKEN */}
+
+            <div>
+
+              <p
+                className="
+                  text-[10px]
+                  font-bold
+                  uppercase
+                  tracking-[0.18em]
+                  text-white/35
+                "
+              >
+                Payment Asset
+              </p>
+
+
+              <div
+                className="
+                  mt-3
+                  flex
+                  items-center
+                  gap-3
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    h-12
+                    w-12
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-gradient-to-br
+                    from-cyan-400
+                    to-violet-600
+                    text-lg
+                    font-black
+                    shadow-[0_0_28px_rgba(34,211,238,0.18)]
+                  "
+                >
+                  {tokenSymbol === "OPN"
+                    ? "O"
+                    : tokenSymbol === "WOPN"
+                    ? "N"
+                    : tokenSymbol.slice(0, 1)}
+                </div>
+
+
+                <div>
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-1
+                    "
+                  >
+
+                    <span
+                      className="
+                        text-xl
+                        font-black
+                      "
+                    >
+                      {tokenSymbol}
+                    </span>
+
+                    <ChevronDown
+                      size={16}
+                      className="
+                        text-white/35
+                      "
+                    />
+
+                  </div>
+
+
+                  <span
+                    className="
+                      mt-1
+                      inline-flex
+                      rounded-full
+                      bg-violet-500/10
+                      px-2.5
+                      py-1
+                      text-[10px]
+                      font-semibold
+                      text-violet-300
+                    "
+                  >
+                    OPN Testnet
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            {/* BALANCE */}
+
+            <div
+              className="
+                text-right
               "
             >
 
               <div
                 className="
                   flex
-                  h-9
-                  w-9
                   items-center
-                  justify-center
-                  rounded-xl
-                  bg-cyan-400/10
-                  text-cyan-400
+                  justify-end
+                  gap-2
                 "
               >
-                <Send size={18} />
+
+                <span
+                  className="
+                    h-2
+                    w-2
+                    rounded-full
+                    bg-violet-400
+                    shadow-[0_0_10px_rgba(167,139,250,0.8)]
+                  "
+                />
+
+                <span
+                  className="
+                    text-[10px]
+                    font-semibold
+                    text-white/45
+                  "
+                >
+                  Available Balance
+                </span>
+
               </div>
 
 
-              <h1
+              <div
                 className="
-                  text-2xl
-                  font-black
+                  mt-2
+                  flex
+                  items-baseline
+                  justify-end
+                  gap-1.5
                 "
               >
-                IOPn Pay
-              </h1>
+
+                <span
+                  className="
+                    text-3xl
+                    font-black
+                    tracking-tight
+                    sm:text-4xl
+                  "
+                >
+                  {formatBalance(
+                    selectedBalance
+                  )}
+                </span>
+
+              </div>
+
+
+              <span
+                className="
+                  text-sm
+                  font-bold
+                  text-cyan-300
+                "
+              >
+                {tokenSymbol}
+              </span>
 
             </div>
 
-
-            <p
-              className="
-                mt-1
-                text-sm
-                text-white/40
-              "
-            >
-              Send and receive assets on IOPn
-            </p>
-
           </div>
 
+
+          {/* =================================================
+              TOKEN CHIPS
+          ================================================= */}
 
           <div
             className="
-              flex
-              h-10
-              w-10
-              items-center
-              justify-center
-              rounded-xl
-              border
-              border-white/10
-              bg-white/[0.04]
-              text-white/50
-            "
-          >
-            <Activity size={18} />
-          </div>
-
-        </div>
-
-
-        {/* =================================================
-            NETWORK STATUS
-        ================================================= */}
-
-        <div
-          className="
-            mb-5
-            flex
-            items-center
-            justify-between
-            rounded-2xl
-            border
-            border-emerald-400/10
-            bg-emerald-400/[0.04]
-            px-4
-            py-3
-          "
-        >
-
-          <div
-            className="
-              flex
-              items-center
-              gap-2
+              relative
+              mt-5
+              overflow-x-auto
+              pb-1
+              scrollbar-none
             "
           >
 
-            <span
+            <div
               className="
-                h-2
-                w-2
-                animate-pulse
-                rounded-full
-                bg-emerald-400
-              "
-            />
-
-            <span
-              className="
-                text-xs
-                font-semibold
-                text-white/60
+                flex
+                min-w-max
+                gap-2
               "
             >
-              OPN Testnet
-            </span>
+
+              {TOKENS.map(
+                (item: any) => {
+
+                  const active =
+                    item.symbol ===
+                    tokenSymbol;
+
+                  return (
+
+                    <button
+                      key={item.symbol}
+                      type="button"
+                      onClick={() =>
+                        setTokenSymbol(
+                          item.symbol
+                        )
+                      }
+                      className={`
+                        flex
+                        items-center
+                        gap-2
+                        rounded-full
+                        border
+                        px-3
+                        py-2
+                        text-xs
+                        font-bold
+                        transition-all
+                        active:scale-95
+                        ${
+                          active
+                            ? "border-violet-400/70 bg-violet-500/15 text-white shadow-[0_0_18px_rgba(139,92,246,0.15)]"
+                            : "border-white/[0.07] bg-white/[0.025] text-white/55 hover:border-white/15 hover:text-white/80"
+                        }
+                      `}
+                    >
+
+                      <span
+                        className={`
+                          flex
+                          h-5
+                          w-5
+                          items-center
+                          justify-center
+                          rounded-full
+                          text-[8px]
+                          font-black
+                          ${
+                            active
+                              ? "bg-gradient-to-br from-cyan-300 to-violet-500 text-black"
+                              : "bg-white/10 text-white/70"
+                          }
+                        `}
+                      >
+                        {item.symbol.slice(
+                          0,
+                          1
+                        )}
+                      </span>
+
+                      {item.symbol}
+
+                    </button>
+
+                  );
+
+                }
+              )}
+
+            </div>
 
           </div>
 
-
-          <span
-            className="
-              text-xs
-              text-emerald-400
-            "
-          >
-            Network Online
-          </span>
-
-        </div>
-
-
-        {/* =================================================
-            BALANCE CARD
-        ================================================= */}
-
-        <BalanceCard
-          balance={formatBalance(balance)}
-          token={tokenSymbol}
-          address={address}
-          onReceive={() =>
-            setShowReceive(true)
-          }
-          onScanner={() =>
-            setShowScanner(true)
-          }
-          onVirtualCard={() =>
-            setShowCard(true)
-          }
-        />
+        </section>
 
 
         {/* =================================================
@@ -600,12 +1070,14 @@ export default function PayPage() {
 
         <div
           className="
-            mt-4
+            mt-3
             grid
-            grid-cols-3
-            gap-3
+            grid-cols-4
+            gap-2
           "
         >
+
+          {/* RECEIVE */}
 
           <button
             type="button"
@@ -613,30 +1085,49 @@ export default function PayPage() {
               setShowReceive(true)
             }
             className="
+              group
               flex
+              min-h-[82px]
               flex-col
               items-center
               justify-center
               gap-2
               rounded-2xl
               border
-              border-white/10
-              bg-white/[0.035]
-              py-4
-              transition
-              hover:border-cyan-400/20
-              hover:bg-cyan-400/[0.06]
+              border-white/[0.08]
+              bg-[#080D15]/90
+              px-2
+              py-3
+              transition-all
+              hover:-translate-y-0.5
+              hover:border-cyan-400/30
+              hover:bg-cyan-400/[0.05]
+              active:scale-[0.97]
             "
           >
 
-            <QrCode
-              size={20}
-              className="text-cyan-400"
-            />
+            <div
+              className="
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-xl
+                bg-cyan-400/10
+                text-cyan-300
+              "
+            >
+
+              <Download
+                size={18}
+              />
+
+            </div>
 
             <span
               className="
-                text-xs
+                text-[10px]
                 font-bold
                 text-white/60
               "
@@ -647,36 +1138,57 @@ export default function PayPage() {
           </button>
 
 
+          {/* SCAN */}
+
           <button
             type="button"
             onClick={() =>
               setShowScanner(true)
             }
             className="
+              group
               flex
+              min-h-[82px]
               flex-col
               items-center
               justify-center
               gap-2
               rounded-2xl
               border
-              border-white/10
-              bg-white/[0.035]
-              py-4
-              transition
-              hover:border-cyan-400/20
-              hover:bg-cyan-400/[0.06]
+              border-white/[0.08]
+              bg-[#080D15]/90
+              px-2
+              py-3
+              transition-all
+              hover:-translate-y-0.5
+              hover:border-violet-400/30
+              hover:bg-violet-400/[0.05]
+              active:scale-[0.97]
             "
           >
 
-            <QrCode
-              size={20}
-              className="text-purple-400"
-            />
+            <div
+              className="
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-xl
+                bg-violet-400/10
+                text-violet-300
+              "
+            >
+
+              <ScanLine
+                size={18}
+              />
+
+            </div>
 
             <span
               className="
-                text-xs
+                text-[10px]
                 font-bold
                 text-white/60
               "
@@ -687,36 +1199,120 @@ export default function PayPage() {
           </button>
 
 
+          {/* SEND */}
+
           <button
             type="button"
-            onClick={() =>
-              setShowCard(true)
-            }
+            onClick={openSendForm}
             className="
+              group
               flex
+              min-h-[82px]
               flex-col
               items-center
               justify-center
               gap-2
               rounded-2xl
               border
-              border-white/10
-              bg-white/[0.035]
-              py-4
-              transition
-              hover:border-cyan-400/20
-              hover:bg-cyan-400/[0.06]
+              border-cyan-400/20
+              bg-gradient-to-b
+              from-cyan-400/[0.08]
+              to-violet-500/[0.05]
+              px-2
+              py-3
+              transition-all
+              hover:-translate-y-0.5
+              hover:border-cyan-300/40
+              hover:shadow-[0_0_25px_rgba(34,211,238,0.10)]
+              active:scale-[0.97]
             "
           >
 
-            <CreditCard
-              size={20}
-              className="text-cyan-400"
-            />
+            <div
+              className="
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-xl
+                bg-gradient-to-br
+                from-cyan-400/15
+                to-violet-500/15
+                text-cyan-300
+              "
+            >
+
+              <ArrowUpRight
+                size={19}
+              />
+
+            </div>
 
             <span
               className="
-                text-xs
+                text-[10px]
+                font-bold
+                text-white/75
+              "
+            >
+              Send
+            </span>
+
+          </button>
+
+
+          {/* CARD */}
+
+          <button
+            type="button"
+            onClick={() =>
+              setShowCard(true)
+            }
+            className="
+              group
+              flex
+              min-h-[82px]
+              flex-col
+              items-center
+              justify-center
+              gap-2
+              rounded-2xl
+              border
+              border-white/[0.08]
+              bg-[#080D15]/90
+              px-2
+              py-3
+              transition-all
+              hover:-translate-y-0.5
+              hover:border-violet-400/30
+              hover:bg-violet-400/[0.05]
+              active:scale-[0.97]
+            "
+          >
+
+            <div
+              className="
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-xl
+                bg-violet-400/10
+                text-violet-300
+              "
+            >
+
+              <CreditCard
+                size={18}
+              />
+
+            </div>
+
+            <span
+              className="
+                text-[10px]
                 font-bold
                 text-white/60
               "
@@ -730,70 +1326,451 @@ export default function PayPage() {
 
 
         {/* =================================================
-            TOKEN SELECTOR
+            SEND PAYMENT
         ================================================= */}
 
         <section
+          ref={sendFormRef}
           className="
-            mt-5
-            rounded-3xl
+            mt-4
+            scroll-mt-5
+            rounded-[28px]
             border
-            border-white/10
-            bg-white/[0.035]
+            border-violet-400/15
+            bg-gradient-to-br
+            from-[#0A101A]
+            via-[#080C14]
+            to-[#0C0B17]
             p-4
-            backdrop-blur-xl
+            shadow-[0_20px_60px_rgba(0,0,0,0.30)]
           "
         >
 
+          {/* HEADER */}
+
           <div
             className="
-              mb-3
               flex
               items-center
-              gap-2
+              justify-between
             "
           >
 
-            <Wallet
-              size={16}
-              className="text-cyan-400"
-            />
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  h-10
+                  w-10
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-cyan-400/10
+                  text-cyan-300
+                "
+              >
+
+                <Send
+                  size={18}
+                />
+
+              </div>
+
+
+              <div>
+
+                <p
+                  className="
+                    text-base
+                    font-black
+                    uppercase
+                    tracking-wide
+                  "
+                >
+                  Send Payment
+                </p>
+
+                <p
+                  className="
+                    mt-0.5
+                    text-[10px]
+                    text-white/35
+                  "
+                >
+                  Fast blockchain payment
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* SELECTED TOKEN */}
+
+            <div
+              className="
+                flex
+                items-center
+                gap-2
+                rounded-full
+                border
+                border-violet-400/15
+                bg-violet-400/[0.07]
+                px-3
+                py-1.5
+              "
+            >
+
+              <span
+                className="
+                  flex
+                  h-5
+                  w-5
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-gradient-to-br
+                  from-cyan-300
+                  to-violet-500
+                  text-[8px]
+                  font-black
+                  text-black
+                "
+              >
+                {tokenSymbol.slice(
+                  0,
+                  1
+                )}
+              </span>
+
+              <span
+                className="
+                  text-[10px]
+                  font-bold
+                  text-violet-300
+                "
+              >
+                {tokenSymbol}
+              </span>
+
+            </div>
+
+          </div>
+
+
+          {/* AVAILABLE */}
+
+          <div
+            className="
+              mt-4
+              flex
+              items-center
+              justify-between
+              rounded-2xl
+              border
+              border-white/[0.06]
+              bg-white/[0.02]
+              px-3
+              py-2.5
+            "
+          >
 
             <span
               className="
-                text-sm
-                font-bold
+                text-[10px]
+                text-white/35
               "
             >
-              Payment Token
+              Available
+            </span>
+
+            <span
+              className="
+                text-xs
+                font-bold
+                text-cyan-300
+              "
+            >
+              {formatBalance(
+                selectedBalance
+              )}{" "}
+              {tokenSymbol}
             </span>
 
           </div>
 
 
-          <TokenSelector
-            value={tokenSymbol}
-            onChange={setTokenSymbol}
-          />
+          {/* RECIPIENT */}
 
-        </section>
+          <div
+            className="
+              mt-4
+            "
+          >
+
+            <label
+              className="
+                text-xs
+                font-semibold
+                text-white/55
+              "
+            >
+              Recipient Address
+            </label>
 
 
-        {/* =================================================
-            SEND
-        ================================================= */}
+            <div
+              className="
+                mt-2
+                flex
+                items-center
+                rounded-2xl
+                border
+                border-white/[0.08]
+                bg-black/20
+                px-4
+                transition
+                focus-within:border-cyan-400/30
+                focus-within:ring-1
+                focus-within:ring-cyan-400/10
+              "
+            >
 
-        <section className="mt-4">
+              <input
+                value={recipient}
+                onChange={(e) =>
+                  setRecipient(
+                    e.target.value
+                  )
+                }
+                placeholder="0x..."
+                className="
+                  min-w-0
+                  flex-1
+                  bg-transparent
+                  py-4
+                  text-sm
+                  text-white
+                  outline-none
+                  placeholder:text-white/20
+                "
+              />
 
-          <SendForm
-            recipient={recipient}
-            setRecipient={setRecipient}
-            amount={amount}
-            setAmount={setAmount}
-            tokenSymbol={tokenSymbol}
-            balance={formatBalance(balance)}
-            onSend={sendTx}
-          />
+              <button
+                type="button"
+                onClick={() =>
+                  setRecipient(
+                    address || ""
+                  )
+                }
+                className="
+                  rounded-xl
+                  p-2
+                  text-white/25
+                  transition
+                  hover:bg-white/5
+                  hover:text-cyan-300
+                "
+              >
+
+                <Wallet
+                  size={17}
+                />
+
+              </button>
+
+            </div>
+
+          </div>
+
+
+          {/* AMOUNT */}
+
+          <div
+            className="
+              mt-4
+            "
+          >
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+              "
+            >
+
+              <label
+                className="
+                  text-xs
+                  font-semibold
+                  text-white/55
+                "
+              >
+                Amount
+              </label>
+
+
+              <button
+                type="button"
+                onClick={() =>
+                  setAmount(
+                    selectedBalance?.formatted
+                      ? String(
+                          selectedBalance.formatted
+                        )
+                      : "0"
+                  )
+                }
+                className="
+                  text-xs
+                  font-black
+                  text-violet-300
+                  transition
+                  hover:text-violet-200
+                "
+              >
+                MAX
+              </button>
+
+            </div>
+
+
+            <div
+              className="
+                mt-2
+                flex
+                items-center
+                rounded-2xl
+                border
+                border-white/[0.08]
+                bg-black/20
+                px-4
+                transition
+                focus-within:border-violet-400/30
+                focus-within:ring-1
+                focus-within:ring-violet-400/10
+              "
+            >
+
+              <input
+                value={amount}
+                onChange={(e) =>
+                  setAmount(
+                    e.target.value
+                  )
+                }
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                className="
+                  min-w-0
+                  flex-1
+                  bg-transparent
+                  py-4
+                  text-lg
+                  font-semibold
+                  text-white
+                  outline-none
+                  placeholder:text-white/20
+                "
+              />
+
+
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  rounded-xl
+                  bg-white/[0.04]
+                  px-2.5
+                  py-2
+                "
+              >
+
+                <span
+                  className="
+                    flex
+                    h-5
+                    w-5
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-gradient-to-br
+                    from-cyan-300
+                    to-violet-500
+                    text-[8px]
+                    font-black
+                    text-black
+                  "
+                >
+                  {tokenSymbol.slice(
+                    0,
+                    1
+                  )}
+                </span>
+
+                <span
+                  className="
+                    text-xs
+                    font-bold
+                    text-white/70
+                  "
+                >
+                  {tokenSymbol}
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          {/* SEND BUTTON */}
+
+          <button
+            type="button"
+            onClick={sendTx}
+            className="
+              mt-5
+              flex
+              w-full
+              items-center
+              justify-center
+              gap-2.5
+              rounded-2xl
+              bg-gradient-to-r
+              from-cyan-300
+              via-violet-300
+              to-blue-500
+              py-4
+              text-sm
+              font-black
+              text-black
+              shadow-[0_10px_35px_rgba(59,130,246,0.18)]
+              transition-all
+              hover:-translate-y-0.5
+              hover:shadow-[0_15px_40px_rgba(139,92,246,0.25)]
+              active:scale-[0.98]
+            "
+          >
+
+            <Send
+              size={18}
+            />
+
+            Send Payment
+
+          </button>
 
         </section>
 
@@ -804,50 +1781,63 @@ export default function PayPage() {
 
         <div
           className="
-            mt-4
+            mt-3
             flex
+            items-center
             gap-3
             rounded-2xl
             border
-            border-white/10
-            bg-white/[0.025]
-            p-4
+            border-cyan-400/[0.08]
+            bg-cyan-400/[0.025]
+            px-4
+            py-3
           "
         >
 
-          <ShieldCheck
-            size={18}
+          <div
             className="
-              mt-0.5
+              flex
+              h-8
+              w-8
               shrink-0
-              text-cyan-400
+              items-center
+              justify-center
+              rounded-xl
+              bg-cyan-400/10
             "
-          />
+          >
+
+            <ShieldCheck
+              size={16}
+              className="
+                text-cyan-300
+              "
+            />
+
+          </div>
 
 
           <div>
 
             <p
               className="
-                text-xs
+                text-[10px]
                 font-bold
                 text-white/60
               "
             >
-              Secure payments
+              Secure wallet payment
             </p>
 
             <p
               className="
-                mt-1
-                text-xs
-                leading-5
-                text-white/35
+                mt-0.5
+                text-[9px]
+                text-white/30
               "
             >
-              Transactions are signed directly
-              by your connected wallet on the
-              IOPn network.
+              Transaction signed by your wallet
+              on IOPn Testnet.
             </p>
 
           </div>
@@ -856,15 +1846,97 @@ export default function PayPage() {
 
 
         {/* =================================================
-            TRANSACTION HISTORY
+            RECENT ACTIVITY
         ================================================= */}
 
-        <section className="mt-5">
+        <section
+          className="
+            mt-4
+            overflow-hidden
+            rounded-[26px]
+            border
+            border-white/[0.08]
+            bg-[#080D15]/80
+          "
+        >
 
-          <TransactionHistory
-            address={address}
-            liveTxs={liveTxs}
-          />
+          <div
+            className="
+              flex
+              items-center
+              justify-between
+              border-b
+              border-white/[0.06]
+              px-4
+              py-4
+            "
+          >
+
+            <div
+              className="
+                flex
+                items-center
+                gap-2.5
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  h-8
+                  w-8
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-cyan-400/10
+                "
+              >
+
+                <Activity
+                  size={15}
+                  className="
+                    text-cyan-300
+                  "
+                />
+
+              </div>
+
+              <span
+                className="
+                  text-sm
+                  font-black
+                  uppercase
+                  tracking-wide
+                "
+              >
+                Recent Activity
+              </span>
+
+            </div>
+
+
+            <ArrowUpRight
+              size={16}
+              className="
+                text-violet-300
+              "
+            />
+
+          </div>
+
+
+          <div
+            className="
+              p-2
+            "
+          >
+
+            <TransactionHistory
+              address={address}
+              liveTxs={liveTxs}
+            />
+
+          </div>
 
         </section>
 
@@ -877,12 +1949,12 @@ export default function PayPage() {
 
           <div
             className="
-              mt-4
+              mt-3
               rounded-2xl
               border
-              border-emerald-400/10
-              bg-emerald-400/[0.04]
-              p-4
+              border-emerald-400/15
+              bg-emerald-400/[0.025]
+              p-3
             "
           >
 
@@ -894,14 +1966,31 @@ export default function PayPage() {
               "
             >
 
-              <Zap
-                size={15}
-                className="text-emerald-400"
-              />
+              <div
+                className="
+                  flex
+                  h-7
+                  w-7
+                  items-center
+                  justify-center
+                  rounded-lg
+                  bg-emerald-400/10
+                "
+              >
+
+                <Zap
+                  size={14}
+                  className="
+                    text-emerald-400
+                  "
+                />
+
+              </div>
+
 
               <span
                 className="
-                  text-xs
+                  text-[10px]
                   font-bold
                   text-emerald-400
                 "
@@ -912,17 +2001,53 @@ export default function PayPage() {
             </div>
 
 
-            <p
+            <div
               className="
                 mt-2
-                break-all
-                font-mono
-                text-[10px]
-                text-white/40
+                flex
+                items-center
+                gap-2
+                rounded-xl
+                bg-black/20
+                px-3
+                py-2
               "
             >
-              {txHash}
-            </p>
+
+              <p
+                className="
+                  min-w-0
+                  flex-1
+                  truncate
+                  font-mono
+                  text-[9px]
+                  text-white/35
+                "
+              >
+                {txHash}
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigator.clipboard.writeText(
+                    txHash
+                  )
+                }
+                className="
+                  shrink-0
+                  text-white/30
+                  hover:text-white
+                "
+              >
+
+                <Copy
+                  size={13}
+                />
+
+              </button>
+
+            </div>
 
           </div>
 
@@ -953,7 +2078,9 @@ export default function PayPage() {
         onClose={() =>
           setShowCard(false)
         }
-        balance={formatBalance(balance)}
+        balance={formatBalance(
+          selectedBalance
+        )}
         token={tokenSymbol}
         address={address}
       />
@@ -968,9 +2095,18 @@ export default function PayPage() {
         onClose={() =>
           setShowScanner(false)
         }
-        onScan={(addr: string) =>
-          setRecipient(addr)
-        }
+        onScan={(addr: string) => {
+
+          setRecipient(addr);
+
+          setTimeout(
+            () => {
+              openSendForm();
+            },
+            150
+          );
+
+        }}
       />
 
     </main>

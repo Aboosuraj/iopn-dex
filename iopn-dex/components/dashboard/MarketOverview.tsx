@@ -1,56 +1,264 @@
 "use client";
 
+import {
+  BarChart3,
+  Activity,
+  Wallet,
+  Zap,
+  ArrowUpRight,
+} from "lucide-react";
+
 export default function MarketOverview() {
   const stats = [
     {
-      title: "Total Volume",
+      title: "24H Volume",
+      label: "TOTAL VOLUME",
       value: "$0",
-      color: "text-cyan-400",
+      icon: BarChart3,
+      iconStyle: "bg-cyan-400/10 text-cyan-300",
+      valueStyle: "text-cyan-300",
     },
     {
-      title: "Total Swaps",
-      value: "0",
-      color: "text-green-400",
+      title: "Chain Transactions",
+      label: "TOTAL TXN",
+      value: "386M+",
+      icon: Activity,
+      iconStyle: "bg-emerald-400/10 text-emerald-300",
+      valueStyle: "text-emerald-300",
     },
     {
-      title: "Listed Tokens",
-      value: "5+",
-      color: "text-yellow-400",
+      title: "Wallet Addresses",
+      label: "TOTAL WALLETS",
+      value: "33.3M+",
+      icon: Wallet,
+      iconStyle: "bg-violet-400/10 text-violet-300",
+      valueStyle: "text-violet-300",
     },
     {
-      title: "DEXs",
-      value: "1",
-      color: "text-purple-400",
+      title: "Daily Activity",
+      label: "DAILY TXN",
+      value: "—",
+      icon: Zap,
+      iconStyle: "bg-blue-400/10 text-blue-300",
+      valueStyle: "text-blue-300",
     },
   ];
 
   return (
-    <section className="mt-10">
+    <section className="mt-7">
 
-      <h2 className="mb-5 text-2xl font-black">
-        Market Overview
-      </h2>
+      {/* HEADER */}
+      <div className="mb-4 flex items-center justify-between">
 
-      <div className="grid grid-cols-2 gap-4">
-
-        {stats.map((item) => (
+        <div className="flex items-center gap-3">
 
           <div
-            key={item.title}
-            className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl"
+            className="
+              flex
+              h-10
+              w-10
+              items-center
+              justify-center
+              rounded-xl
+              border
+              border-cyan-400/15
+              bg-cyan-400/[0.06]
+              shadow-[0_0_20px_rgba(34,211,238,0.06)]
+            "
           >
+            <Activity
+              size={19}
+              className="text-cyan-300"
+              strokeWidth={2}
+            />
+          </div>
 
-            <p className="text-sm text-white/50">
-              {item.title}
+          <div>
+
+            <h2
+              className="
+                text-xl
+                font-black
+                tracking-tight
+                text-white
+              "
+            >
+              Market Overview
+            </h2>
+
+            <p className="mt-0.5 text-[11px] text-white/35">
+              OPN Chain network activity
             </p>
-
-            <h3 className={`mt-3 text-3xl font-black ${item.color}`}>
-              {item.value}
-            </h3>
 
           </div>
 
-        ))}
+        </div>
+
+
+        {/* LIVE */}
+        <div
+          className="
+            flex
+            items-center
+            gap-1.5
+            rounded-full
+            border
+            border-emerald-400/15
+            bg-emerald-400/[0.07]
+            px-3
+            py-1.5
+          "
+        >
+
+          <span
+            className="
+              h-1.5
+              w-1.5
+              animate-pulse
+              rounded-full
+              bg-emerald-400
+              shadow-[0_0_8px_rgba(52,211,153,0.8)]
+            "
+          />
+
+          <span
+            className="
+              text-[10px]
+              font-black
+              tracking-wide
+              text-emerald-300
+            "
+          >
+            LIVE
+          </span>
+
+        </div>
+
+      </div>
+
+
+      {/* STATS GRID */}
+      <div className="grid grid-cols-2 gap-2.5">
+
+        {stats.map((item) => {
+
+          const Icon = item.icon;
+
+          return (
+            <div
+              key={item.title}
+              className="
+                group
+                relative
+                overflow-hidden
+                rounded-[20px]
+                border
+                border-white/[0.07]
+                bg-[#0d121d]/90
+                p-3.5
+                shadow-[0_8px_30px_rgba(0,0,0,0.18)]
+                backdrop-blur-xl
+                transition-all
+                duration-200
+                hover:-translate-y-0.5
+                hover:border-cyan-400/15
+              "
+            >
+
+              {/* subtle glow */}
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  -right-8
+                  -top-8
+                  h-20
+                  w-20
+                  rounded-full
+                  bg-cyan-400/[0.035]
+                  blur-2xl
+                "
+              />
+
+
+              {/* TOP */}
+              <div className="relative flex items-center justify-between">
+
+                <div
+                  className={`
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-xl
+                    ${item.iconStyle}
+                  `}
+                >
+                  <Icon
+                    size={17}
+                    strokeWidth={2}
+                  />
+                </div>
+
+                <ArrowUpRight
+                  size={14}
+                  className="
+                    text-white/15
+                    transition
+                    group-hover:text-cyan-300/40
+                  "
+                />
+
+              </div>
+
+
+              {/* TITLE */}
+              <p
+                className="
+                  relative
+                  mt-3
+                  text-[10px]
+                  font-semibold
+                  text-white/35
+                "
+              >
+                {item.title}
+              </p>
+
+
+              {/* LABEL */}
+              <p
+                className="
+                  relative
+                  mt-1.5
+                  text-[9px]
+                  font-bold
+                  tracking-[0.14em]
+                  text-white/25
+                "
+              >
+                {item.label}
+              </p>
+
+
+              {/* VALUE */}
+              <h3
+                className={`
+                  relative
+                  mt-1
+                  text-2xl
+                  font-black
+                  tracking-tight
+                  ${item.valueStyle}
+                `}
+              >
+                {item.value}
+              </h3>
+
+            </div>
+          );
+        })}
 
       </div>
 

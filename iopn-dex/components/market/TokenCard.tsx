@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import {
+  ArrowUpRight,
+  TrendingUp,
+} from "lucide-react";
 
 interface TokenCardProps {
   token: {
@@ -16,41 +20,68 @@ export default function TokenCard({
   return (
     <div
       className="
-        rounded-3xl
+        rounded-2xl
         border
         border-white/10
-        bg-white/[0.04]
-        p-6
+        bg-white/[0.035]
+        p-4
         backdrop-blur-xl
-        transition
-        duration-300
-        hover:-translate-y-1
-        hover:border-cyan-400/30
+        transition-all
+        duration-200
+        hover:border-cyan-400/25
+        hover:bg-white/[0.05]
       "
     >
-      <div className="flex items-center justify-between">
+      {/* HEADER */}
 
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-3">
 
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-cyan-500/10 text-xl font-black text-cyan-400">
-            {token.symbol.charAt(0)}
+        <div className="flex min-w-0 items-center gap-3">
+
+          <div
+            className="
+              flex
+              h-11
+              w-11
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              bg-cyan-400/10
+              text-base
+              font-black
+              text-cyan-400
+            "
+          >
+            {token.symbol.charAt(0).toUpperCase()}
           </div>
 
-          <div>
+          <div className="min-w-0">
 
             <div className="flex items-center gap-2">
 
-              <h3 className="font-black">
+              <h3 className="truncate text-base font-black">
                 {token.symbol}
               </h3>
 
-              <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-400">
-                ✓ Verified
+              <span
+                className="
+                  shrink-0
+                  rounded-full
+                  bg-emerald-400/10
+                  px-1.5
+                  py-0.5
+                  text-[9px]
+                  font-bold
+                  text-emerald-400
+                "
+              >
+                ✓
               </span>
 
             </div>
 
-            <p className="text-sm text-white/50">
+            <p className="truncate text-xs text-white/35">
               {token.name}
             </p>
 
@@ -58,70 +89,113 @@ export default function TokenCard({
 
         </div>
 
-        <span className="rounded-full bg-green-500/15 px-3 py-1 text-sm font-bold text-green-400">
+        {/* CHANGE */}
+
+        <div
+          className="
+            flex
+            shrink-0
+            items-center
+            gap-1
+            rounded-full
+            bg-emerald-400/10
+            px-2
+            py-1
+            text-xs
+            font-bold
+            text-emerald-400
+          "
+        >
+          <TrendingUp size={12} />
+
           +2.35%
-        </span>
+        </div>
 
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4">
+
+      {/* MARKET DATA */}
+
+      <div
+        className="
+          mt-4
+          grid
+          grid-cols-2
+          gap-x-4
+          gap-y-3
+          border-t
+          border-white/5
+          pt-3
+        "
+      >
 
         <div>
-          <p className="text-xs text-white/40">
+          <p className="text-[10px] text-white/30">
             Price
           </p>
 
-          <p className="font-bold">
+          <p className="mt-0.5 text-sm font-bold">
             $1.00
           </p>
         </div>
 
+
         <div>
-          <p className="text-xs text-white/40">
+          <p className="text-[10px] text-white/30">
             Liquidity
           </p>
 
-          <p className="font-bold">
+          <p className="mt-0.5 text-sm font-bold">
             $250K
           </p>
         </div>
 
+
         <div>
-          <p className="text-xs text-white/40">
+          <p className="text-[10px] text-white/30">
             Volume
           </p>
 
-          <p className="font-bold">
+          <p className="mt-0.5 text-sm font-bold">
             $42K
           </p>
         </div>
 
+
         <div>
-          <p className="text-xs text-white/40">
+          <p className="text-[10px] text-white/30">
             Holders
           </p>
 
-          <p className="font-bold">
+          <p className="mt-0.5 text-sm font-bold">
             532
           </p>
         </div>
 
       </div>
 
-      <div className="mt-6 flex gap-3">
+
+      {/* ACTIONS */}
+
+      <div className="mt-4 flex gap-2">
 
         <Link
           href={`/swap?token=${token.address}`}
           className="
+            flex
             flex-1
+            items-center
+            justify-center
+            gap-1.5
             rounded-xl
             bg-cyan-500
-            py-3
-            text-center
-            font-bold
+            py-2.5
+            text-sm
+            font-black
             text-black
             transition
             hover:bg-cyan-400
+            active:scale-[0.98]
           "
         >
           Swap
@@ -130,19 +204,32 @@ export default function TokenCard({
         <Link
           href={`/market/${token.address}`}
           className="
+            flex
+            items-center
+            justify-center
+            gap-1
             rounded-xl
             border
             border-white/10
-            px-5
-            py-3
+            px-4
+            py-2.5
+            text-sm
             font-bold
+            text-white/70
+            transition
             hover:border-cyan-400/30
+            hover:bg-cyan-400/5
+            hover:text-cyan-400
           "
         >
           Info
+
+          <ArrowUpRight size={14} />
+
         </Link>
 
       </div>
+
     </div>
   );
 }

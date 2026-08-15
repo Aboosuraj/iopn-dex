@@ -10,37 +10,42 @@ interface Props {
 export default function TokenList({
   search,
 }: Props) {
+  const q = search.trim().toLowerCase();
 
   const filtered = TOKENS.filter((token) => {
-
-    const q = search.toLowerCase();
-
     return (
       token.name.toLowerCase().includes(q) ||
       token.symbol.toLowerCase().includes(q) ||
       token.address.toLowerCase().includes(q)
     );
-
   });
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-3 sm:grid-cols-2">
 
       {filtered.length === 0 ? (
-
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center text-white/50">
+        <div
+          className="
+            rounded-2xl
+            border
+            border-white/10
+            bg-white/[0.035]
+            p-8
+            text-center
+            text-sm
+            text-white/40
+            sm:col-span-2
+          "
+        >
           No token found.
         </div>
-
       ) : (
-
         filtered.map((token) => (
           <TokenCard
             key={token.address}
             token={token}
           />
         ))
-
       )}
 
     </div>
