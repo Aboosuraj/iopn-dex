@@ -49,117 +49,140 @@ export default function Roadmap() {
   return (
     <section
       id="roadmap"
-      className="mx-auto max-w-7xl px-6 py-24"
+      className="mx-auto max-w-4xl px-6 py-20"
     >
-      <div className="mx-auto max-w-3xl text-center">
+      {/* HEADER */}
 
-        <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
+      <div className="text-center">
+
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-400">
           Roadmap
         </p>
 
-        <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
+        <h2 className="mt-3 text-3xl font-black md:text-4xl">
           Building the IOPn trading ecosystem
         </h2>
 
-        <p className="mt-5 text-base leading-7 text-white/60 md:text-lg">
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/55">
           Starting with Testnet and continuously expanding toward a
           complete decentralized trading ecosystem.
         </p>
 
       </div>
 
-      <div className="relative mx-auto mt-16 max-w-4xl">
+      {/* ROADMAP */}
 
-        <div className="absolute left-5 top-0 hidden h-full w-px bg-white/10 md:block" />
+      <div className="mt-8 space-y-2.5">
 
-        <div className="space-y-8">
+        {phases.map((item) => {
 
-          {phases.map((item) => {
+          const isCompleted = item.status === "completed";
+          const isProgress = item.status === "progress";
 
-            const isCompleted = item.status === "completed";
-            const isProgress = item.status === "progress";
+          return (
+            <div
+              key={item.phase}
+              className="
+                group
+                relative
+                overflow-hidden
+                rounded-xl
+                border
+                border-white/[0.08]
+                bg-white/[0.035]
+                px-3.5
+                py-3
+                backdrop-blur-xl
+                transition-all
+                duration-200
+                hover:border-cyan-400/25
+                hover:bg-white/[0.05]
+              "
+            >
 
-            return (
-              <div
-                key={item.phase}
-                className="relative flex gap-6"
-              >
+              <div className="relative flex items-start gap-3">
+
+                {/* STATUS ICON */}
+
                 <div
                   className={`
-                    relative z-10
                     flex
-                    h-10
-                    w-10
+                    h-7
+                    w-7
                     shrink-0
                     items-center
                     justify-center
-                    rounded-full
+                    rounded-lg
                     border
-                    text-sm
+                    text-[10px]
                     font-black
                     ${
                       isCompleted
-                        ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-300"
+                        ? "border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-300"
                         : isProgress
-                          ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-300"
-                          : "border-white/10 bg-white/5 text-white/40"
+                          ? "border-cyan-400/20 bg-cyan-400/[0.08] text-cyan-300"
+                          : "border-white/[0.08] bg-white/[0.03] text-white/25"
                     }
                   `}
                 >
-                  {isCompleted ? "✓" : isProgress ? "•" : "○"}
+                  {isCompleted
+                    ? "✓"
+                    : isProgress
+                      ? "•"
+                      : "○"}
                 </div>
 
-                <div
-                  className="
-                    flex-1
-                    rounded-3xl
-                    border
-                    border-white/10
-                    bg-white/[0.04]
-                    p-6
-                    backdrop-blur-xl
-                  "
-                >
-                  <div className="flex flex-wrap items-center gap-3">
+                {/* CONTENT */}
 
-                    <span className="text-xs font-bold uppercase tracking-widest text-white/40">
+                <div className="min-w-0 flex-1">
+
+                  {/* TOP */}
+
+                  <div className="flex items-center gap-2">
+
+                    <span className="text-[8px] font-bold uppercase tracking-[0.15em] text-white/30">
                       {item.phase}
                     </span>
 
                     {isCompleted && (
-                      <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">
+                      <span className="rounded-full bg-emerald-400/[0.07] px-2 py-0.5 text-[7px] font-bold text-emerald-300">
                         Completed
                       </span>
                     )}
 
                     {isProgress && (
-                      <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-300">
+                      <span className="rounded-full bg-cyan-400/[0.07] px-2 py-0.5 text-[7px] font-bold text-cyan-300">
                         In Progress
                       </span>
                     )}
 
                     {!isCompleted && !isProgress && (
-                      <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-white/40">
+                      <span className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[7px] font-bold text-white/30">
                         Upcoming
                       </span>
                     )}
 
                   </div>
 
-                  <h3 className="mt-3 text-2xl font-bold">
+                  {/* TITLE */}
+
+                  <h3 className="mt-1 text-sm font-bold text-white">
                     {item.title}
                   </h3>
 
-                  <p className="mt-3 text-sm leading-6 text-white/55">
+                  {/* DESCRIPTION */}
+
+                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">
                     {item.description}
                   </p>
 
                 </div>
-              </div>
-            );
-          })}
 
-        </div>
+              </div>
+
+            </div>
+          );
+        })}
 
       </div>
     </section>

@@ -43,37 +43,37 @@ export default function Features() {
   return (
     <section
       id="features"
-      className="mx-auto max-w-7xl px-6 py-24"
+      className="mx-auto max-w-7xl px-6 py-10"
     >
-      <div className="mx-auto max-w-3xl text-center">
+      <div className="mx-auto max-w-2xl text-center">
 
-        <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400">
           Powerful Features
         </p>
 
-        <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
+        <h2 className="mt-2 text-2xl font-black tracking-tight">
           Everything you need to trade smarter
         </h2>
 
-        <p className="mt-5 text-base leading-7 text-white/60 md:text-lg">
+        <p className="mt-2 text-xs leading-5 text-white/60">
           IOPn DEX brings token discovery, liquidity routing and wallet
           trading together in one simple Web3 experience.
         </p>
 
       </div>
 
-      <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 
         {features.map((feature) => (
           <div
             key={feature.title}
             className="
               group
-              rounded-3xl
+              rounded-2xl
               border
               border-white/10
               bg-white/[0.04]
-              p-7
+              p-3
               backdrop-blur-xl
               transition
               duration-300
@@ -85,15 +85,15 @@ export default function Features() {
             <div
               className="
                 flex
-                h-14
-                w-14
+                h-8
+                w-8
                 items-center
                 justify-center
-                rounded-2xl
+                rounded-lg
                 border
                 border-cyan-400/20
                 bg-cyan-400/10
-                text-2xl
+                text-sm
                 transition
                 group-hover:scale-105
               "
@@ -101,11 +101,11 @@ export default function Features() {
               {feature.icon}
             </div>
 
-            <h3 className="mt-6 text-xl font-bold">
+            <h3 className="mt-3 text-sm font-bold">
               {feature.title}
             </h3>
 
-            <p className="mt-3 text-sm leading-6 text-white/55">
+            <p className="mt-1.5 text-[10px] leading-4 text-white/55">
               {feature.description}
             </p>
           </div>

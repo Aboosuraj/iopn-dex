@@ -16,37 +16,37 @@ export default function TrendingTokens() {
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
 
       {/* HEADER */}
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
 
           <div
             className="
               flex
-              h-9
-              w-9
+              h-7
+              w-7
               items-center
               justify-center
-              rounded-xl
+              rounded-lg
               border
               border-cyan-400/15
               bg-cyan-400/[0.07]
-              shadow-[0_0_20px_rgba(34,211,238,0.06)]
+              shadow-[0_0_14px_rgba(34,211,238,0.06)]
             "
           >
             <TrendingUp
-              size={17}
+              size={14}
               className="text-cyan-400"
               strokeWidth={2.3}
             />
           </div>
 
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-cyan-400/80">
+            <p className="text-[7px] font-bold uppercase tracking-[0.2em] text-cyan-400/80">
               Market Pulse
             </p>
 
-            <h2 className="text-xl font-black tracking-tight text-white">
+            <h2 className="text-base font-black tracking-tight text-white">
               Trending
             </h2>
           </div>
@@ -60,14 +60,14 @@ export default function TrendingTokens() {
             group
             flex
             items-center
-            gap-1
-            rounded-xl
+            gap-0.5
+            rounded-lg
             border
             border-white/[0.08]
             bg-white/[0.035]
-            px-3
-            py-2
-            text-[10px]
+            px-2
+            py-1.5
+            text-[8px]
             font-bold
             text-white/60
             transition-all
@@ -80,16 +80,15 @@ export default function TrendingTokens() {
           View All
 
           <ChevronRight
-            size={13}
+            size={10}
             className="transition-transform group-hover:translate-x-0.5"
           />
         </Link>
 
       </div>
 
-
       {/* TRENDING CARDS */}
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
 
         {trending.map((token, index) => (
 
@@ -100,19 +99,19 @@ export default function TrendingTokens() {
               group
               relative
               overflow-hidden
-              rounded-2xl
+              rounded-xl
               border
               border-white/[0.07]
               bg-[#0b1020]
-              px-3.5
-              py-3
-              shadow-[0_8px_30px_rgba(0,0,0,0.18)]
+              px-2.5
+              py-2
+              shadow-[0_6px_20px_rgba(0,0,0,0.16)]
               transition-all
               duration-200
               hover:-translate-y-0.5
               hover:border-cyan-400/20
               hover:bg-[#0d1426]
-              hover:shadow-[0_8px_35px_rgba(0,200,255,0.06)]
+              hover:shadow-[0_6px_25px_rgba(0,200,255,0.06)]
               active:scale-[0.985]
             "
           >
@@ -122,13 +121,13 @@ export default function TrendingTokens() {
               className="
                 pointer-events-none
                 absolute
-                -right-10
-                -top-10
-                h-24
-                w-24
+                -right-8
+                -top-8
+                h-16
+                w-16
                 rounded-full
                 bg-cyan-400/[0.06]
-                blur-3xl
+                blur-2xl
                 transition-all
                 duration-300
                 group-hover:bg-cyan-400/[0.1]
@@ -140,22 +139,22 @@ export default function TrendingTokens() {
               {/* TOP */}
               <div className="flex items-center justify-between">
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
 
-                  <span className="text-[8px] font-bold text-white/20">
+                  <span className="text-[6px] font-bold text-white/20">
                     {String(index + 1).padStart(2, "0")}
                   </span>
 
-                  <span className="h-1 w-1 rounded-full bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,0.7)]" />
+                  <span className="h-1 w-1 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.7)]" />
 
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-400/80">
+                  <span className="text-[6px] font-bold uppercase tracking-wider text-emerald-400/80">
                     Live
                   </span>
 
                 </div>
 
                 <ArrowUpRight
-                  size={14}
+                  size={11}
                   className="
                     text-white/20
                     transition-all
@@ -168,22 +167,21 @@ export default function TrendingTokens() {
 
               </div>
 
-
               {/* TOKEN INFO */}
-              <div className="mt-3 flex items-center gap-3">
+              <div className="mt-2 flex items-center gap-2">
 
                 {/* TOKEN ICON */}
                 <div
                   className="
                     relative
                     flex
-                    h-11
-                    w-11
+                    h-8
+                    w-8
                     shrink-0
                     items-center
                     justify-center
                     overflow-hidden
-                    rounded-xl
+                    rounded-lg
                     border
                     border-cyan-400/10
                     bg-gradient-to-br
@@ -202,29 +200,28 @@ export default function TrendingTokens() {
                     "
                   />
 
-                  <span className="relative text-base font-black text-cyan-300">
+                  <span className="relative text-xs font-black text-cyan-300">
                     {token.symbol?.slice(0, 1)}
                   </span>
 
                 </div>
 
-
                 {/* NAME */}
                 <div className="min-w-0 flex-1">
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
 
-                    <h3 className="truncate text-sm font-black text-white">
+                    <h3 className="truncate text-[11px] font-black text-white">
                       {token.symbol}
                     </h3>
 
-                    <span className="rounded-md bg-cyan-400/[0.07] px-1.5 py-0.5 text-[7px] font-bold text-cyan-400">
+                    <span className="rounded-sm bg-cyan-400/[0.07] px-1 py-0.5 text-[6px] font-bold text-cyan-400">
                       OPN
                     </span>
 
                   </div>
 
-                  <p className="mt-0.5 truncate text-[9px] text-white/30">
+                  <p className="mt-0.5 truncate text-[7px] text-white/30">
                     {token.name}
                   </p>
 
@@ -232,30 +229,28 @@ export default function TrendingTokens() {
 
               </div>
 
-
               {/* BOTTOM INFO */}
-              <div className="mt-3 flex items-center justify-between border-t border-white/[0.055] pt-2.5">
+              <div className="mt-2 flex items-center justify-between border-t border-white/[0.055] pt-2">
 
                 <div>
-                  <p className="text-[7px] font-medium uppercase tracking-wider text-white/20">
+                  <p className="text-[6px] font-medium uppercase tracking-wider text-white/20">
                     Network
                   </p>
 
-                  <p className="mt-0.5 text-[9px] font-bold text-white/45">
+                  <p className="mt-0.5 text-[7px] font-bold text-white/45">
                     IOPn Testnet
                   </p>
                 </div>
 
-
                 <div
                   className="
-                    rounded-lg
+                    rounded-md
                     border
                     border-cyan-400/10
                     bg-cyan-400/[0.05]
-                    px-2.5
-                    py-1.5
-                    text-[9px]
+                    px-2
+                    py-1
+                    text-[7px]
                     font-black
                     text-cyan-400
                     transition-all
@@ -276,24 +271,23 @@ export default function TrendingTokens() {
 
       </div>
 
-
       {/* EMPTY STATE */}
       {trending.length === 0 && (
         <div
           className="
-            rounded-2xl
+            rounded-xl
             border
             border-white/[0.07]
             bg-white/[0.025]
-            p-6
+            p-4
             text-center
           "
         >
-          <p className="text-sm font-bold text-white/50">
+          <p className="text-xs font-bold text-white/50">
             No trending tokens
           </p>
 
-          <p className="mt-1 text-[10px] text-white/25">
+          <p className="mt-1 text-[8px] text-white/25">
             Token data will appear here when available.
           </p>
         </div>

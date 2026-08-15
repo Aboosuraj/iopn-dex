@@ -29,46 +29,46 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section className="mx-auto max-w-7xl px-6 py-20">
+    <section className="mx-auto max-w-7xl px-6 py-10">
 
       <div className="text-center">
 
-        <p className="text-cyan-400 font-semibold uppercase tracking-widest">
+        <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400">
           Simple Process
         </p>
 
-        <h2 className="mt-3 text-4xl font-black">
+        <h2 className="mt-2 text-2xl font-black">
           How It Works
         </h2>
 
-        <p className="mt-4 text-white/60">
+        <p className="mt-2 text-xs text-white/60">
           Start trading on IOPn DEX in just a few simple steps.
         </p>
 
       </div>
 
-      <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-7 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
 
         {steps.map((step, index) => (
           <div
             key={step.title}
-            className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl transition hover:border-cyan-400/30 hover:bg-white/10"
+            className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl transition hover:border-cyan-400/30 hover:bg-white/10"
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/20 text-3xl">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/20 text-lg">
               {step.icon}
             </div>
 
-            <div className="mt-6 flex items-center gap-2">
-              <span className="rounded-full bg-cyan-500 px-3 py-1 text-sm font-bold text-black">
+            <div className="mt-3 flex items-center gap-2">
+              <span className="rounded-full bg-cyan-500 px-2 py-0.5 text-[10px] font-bold text-black">
                 {index + 1}
               </span>
 
-              <h3 className="text-xl font-bold">
+              <h3 className="text-sm font-bold">
                 {step.title}
               </h3>
             </div>
 
-            <p className="mt-4 text-sm leading-7 text-white/60">
+            <p className="mt-2 text-xs leading-5 text-white/60">
               {step.description}
             </p>
           </div>
