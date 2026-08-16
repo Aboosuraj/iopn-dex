@@ -48,7 +48,7 @@ export default function SettingsPage() {
               darkMode ? "text-white/50" : "text-slate-500"
             }`}
           >
-            OG Swap
+            IOPn Dex
           </p>
 
           <h1 className="mt-1 text-3xl font-bold">
