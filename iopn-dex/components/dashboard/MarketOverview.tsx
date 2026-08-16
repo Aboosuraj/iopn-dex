@@ -72,7 +72,7 @@ export default function MarketOverview() {
 
           <div>
             <h2 className="text-xl font-black tracking-tight text-white">
-              Market Overview
+              Chain Stats
             </h2>
 
             <p className="mt-0.5 text-[11px] text-white/35">
