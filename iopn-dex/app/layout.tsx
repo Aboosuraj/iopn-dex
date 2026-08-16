@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import Providers from "@/components/Providers";
+import BottomNav from "@/components/layout/BottomNav";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
@@ -42,9 +43,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-black text-white antialiased">
+      <body className="bg-[#050816] text-white antialiased">
+
         <Providers>
           {children}
+
+          {/* Mobile bottom navigation */}
+          <BottomNav />
         </Providers>
 
         <Toaster position="top-center" />

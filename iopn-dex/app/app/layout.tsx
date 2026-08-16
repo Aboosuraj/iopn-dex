@@ -1,5 +1,4 @@
 import Header from "@/components/layout/Header";
-import BottomNav from "@/components/layout/BottomNav";
 
 export default function AppLayout({
   children,
@@ -24,7 +23,6 @@ export default function AppLayout({
         {children}
       </main>
 
-      <BottomNav />
 
     </div>
   );
