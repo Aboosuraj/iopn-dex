@@ -210,7 +210,6 @@ export default function TokenSelector({
         bg-black/60
         px-0
         backdrop-blur-md
-        dark:bg-black/75
         sm:items-center
         sm:px-4
       "
@@ -234,10 +233,6 @@ export default function TokenSelector({
           bg-white
           text-slate-950
           shadow-2xl
-          dark:border-white/10
-          dark:bg-[#080d1d]
-          dark:text-white
-          dark:shadow-[0_0_70px_rgba(6,182,212,0.12)]
           sm:rounded-[2rem]
         "
       >
@@ -249,7 +244,6 @@ export default function TokenSelector({
             border-b
             border-slate-200
             p-5
-            dark:border-white/10
           "
         >
           <div className="flex items-center justify-between">
@@ -264,7 +258,6 @@ export default function TokenSelector({
                   mt-1
                   text-xs
                   text-slate-500
-                  dark:text-white/40
                 "
               >
                 Choose a token to swap
@@ -290,10 +283,6 @@ export default function TokenSelector({
                 hover:border-cyan-400/30
                 hover:bg-cyan-400/10
                 hover:text-cyan-500
-                dark:border-white/10
-                dark:bg-white/[0.04]
-                dark:text-white/50
-                dark:hover:text-cyan-400
               "
             >
               <X size={19} />
@@ -314,7 +303,6 @@ export default function TokenSelector({
                 top-1/2
                 -translate-y-1/2
                 text-slate-400
-                dark:text-white/30
               "
             />
 
@@ -351,11 +339,6 @@ export default function TokenSelector({
                 transition
                 focus:border-cyan-400/50
                 focus:bg-white
-                dark:border-white/10
-                dark:bg-white/[0.04]
-                dark:text-white
-                dark:placeholder:text-white/30
-                dark:focus:bg-white/[0.06]
               "
             />
 
@@ -385,7 +368,6 @@ export default function TokenSelector({
                 hover:bg-cyan-400/20
                 disabled:cursor-not-allowed
                 disabled:opacity-30
-                dark:text-cyan-400
               "
               aria-label="Search contract on IOPn"
             >
@@ -404,7 +386,16 @@ export default function TokenSelector({
           {/* CHAIN STATUS */}
 
           {searchingChain && (
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-cyan-500 dark:text-cyan-400">
+            <div
+              className="
+                mt-3
+                flex
+                items-center
+                gap-2
+                text-[11px]
+                text-cyan-500
+              "
+            >
               <Loader2
                 size={13}
                 className="animate-spin"
@@ -429,9 +420,6 @@ export default function TokenSelector({
                 py-2.5
                 text-[11px]
                 text-red-600
-                dark:border-red-400/10
-                dark:bg-red-400/[0.05]
-                dark:text-red-300
               "
             >
               <AlertCircle
@@ -454,7 +442,17 @@ export default function TokenSelector({
           {chainToken && (
             <div className="mb-3">
 
-              <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-500/70 dark:text-cyan-400/60">
+              <p
+                className="
+                  mb-2
+                  px-2
+                  text-[10px]
+                  font-bold
+                  uppercase
+                  tracking-[0.15em]
+                  text-cyan-500/70
+                "
+              >
                 Found on IOPn
               </p>
 
@@ -488,7 +486,6 @@ export default function TokenSelector({
                     text-cyan-500
                     ring-1
                     ring-cyan-400/20
-                    dark:text-cyan-400
                   "
                 >
                   {chainToken.symbol.charAt(0)}
@@ -511,7 +508,6 @@ export default function TokenSelector({
                         text-[10px]
                         font-bold
                         text-cyan-500
-                        dark:text-cyan-400
                       "
                     >
                       Found
@@ -525,7 +521,6 @@ export default function TokenSelector({
                       truncate
                       text-xs
                       text-slate-500
-                      dark:text-white/35
                     "
                   >
                     {chainToken.name}
@@ -537,7 +532,6 @@ export default function TokenSelector({
                       truncate
                       text-[10px]
                       text-slate-400
-                      dark:text-white/25
                     "
                   >
                     {shortenAddress(chainToken.address)}
@@ -596,7 +590,6 @@ export default function TokenSelector({
                   rounded-full
                   bg-cyan-500/10
                   text-cyan-500
-                  dark:text-cyan-400
                 "
               >
                 <Search size={22} />
@@ -611,7 +604,6 @@ export default function TokenSelector({
                   mt-1
                   text-sm
                   text-slate-500
-                  dark:text-white/40
                 "
               >
                 Search by symbol or paste an IOPn
@@ -639,7 +631,6 @@ export default function TokenSelector({
                     transition
                     hover:border-cyan-400/20
                     hover:bg-slate-50
-                    dark:hover:bg-white/[0.04]
                   "
                 >
 
@@ -675,8 +666,6 @@ export default function TokenSelector({
                         text-cyan-500
                         ring-1
                         ring-slate-200
-                        dark:text-cyan-400
-                        dark:ring-white/10
                       "
                     >
                       {token.symbol.charAt(0)}
@@ -699,7 +688,6 @@ export default function TokenSelector({
                             text-[10px]
                             font-bold
                             text-emerald-600
-                            dark:text-emerald-400
                           "
                         >
                           Listed
@@ -713,7 +701,6 @@ export default function TokenSelector({
                           truncate
                           text-xs
                           text-slate-500
-                          dark:text-white/35
                         "
                       >
                         {token.native
@@ -748,9 +735,6 @@ export default function TokenSelector({
                         transition
                         hover:bg-cyan-400/10
                         hover:text-cyan-500
-                        dark:bg-white/[0.04]
-                        dark:text-white/35
-                        dark:hover:text-cyan-400
                       "
                     >
                       {copied === token.address ? (
@@ -763,7 +747,10 @@ export default function TokenSelector({
 
                   <ChevronRight
                     size={18}
-                    className="shrink-0 text-slate-300 dark:text-white/20"
+                    className="
+                      shrink-0
+                      text-slate-300
+                    "
                   />
 
                 </div>
@@ -784,7 +771,6 @@ export default function TokenSelector({
             border-slate-200
             px-5
             py-4
-            dark:border-white/10
           "
         >
           <p
@@ -792,7 +778,6 @@ export default function TokenSelector({
               text-center
               text-[11px]
               text-slate-400
-              dark:text-white/30
             "
           >
             Always verify token contracts before swapping.

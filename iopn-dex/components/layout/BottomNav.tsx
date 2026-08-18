@@ -42,35 +42,40 @@ const nav = [
 export default function BottomNav() {
   const pathname = usePathname();
 
-  // Hide on landing page only
-  if (pathname === "/") return null;
+  // Hide on landing page
+  if (pathname === "/") {
+    return null;
+  }
 
   return (
     <nav
       className="
         fixed
-        bottom-4
-        left-1/2
+        bottom-0
+        left-0
+        right-0
         z-50
-        w-[94%]
-        max-w-md
-        -translate-x-1/2
-        rounded-3xl
-        border
-        border-slate-200
-        bg-white/90
-        shadow-lg
+        border-t
+        border-white/[0.08]
+        bg-[#050816]/95
         backdrop-blur-xl
-        dark:border-white/10
-        dark:bg-[#111827]/90
       "
     >
-      <div className="flex justify-around py-3">
+      <div
+        className="
+          mx-auto
+          flex
+          max-w-xl
+          items-center
+          justify-around
+          px-3
+          py-2.5
+        "
+      >
         {nav.map((item) => {
           const Icon = item.icon;
 
-          const active =
-            pathname.startsWith(item.href);
+          const active = pathname.startsWith(item.href);
 
           return (
             <Link
@@ -82,7 +87,7 @@ export default function BottomNav() {
                 className={`rounded-xl p-2 transition ${
                   active
                     ? "bg-cyan-500 text-black"
-                    : "text-slate-500 dark:text-white/50"
+                    : "text-white/50"
                 }`}
               >
                 <Icon size={20} />
@@ -91,8 +96,8 @@ export default function BottomNav() {
               <span
                 className={`text-[11px] ${
                   active
-                    ? "text-cyan-500 dark:text-cyan-400"
-                    : "text-slate-400 dark:text-white/40"
+                    ? "text-cyan-400"
+                    : "text-white/40"
                 }`}
               >
                 {item.label}
