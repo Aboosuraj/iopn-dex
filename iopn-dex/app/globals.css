@@ -1,30 +1,128 @@
 @import "tailwindcss";
 
+/* =========================================================
+   IOPn DEX GLOBAL THEME
+========================================================= */
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-card: #ffffff;
+
+  --border: rgba(15, 23, 42, 0.10);
+
+  --muted: rgba(15, 23, 42, 0.55);
+  --muted-strong: rgba(15, 23, 42, 0.70);
 }
+
+.dark {
+  --background: #02050b;
+  --foreground: #ffffff;
+
+  --surface: #070c14;
+  --surface-soft: #0a101a;
+  --surface-card: #0b1420;
+
+  --border: rgba(255, 255, 255, 0.08);
+
+  --muted: rgba(255, 255, 255, 0.45);
+  --muted-strong: rgba(255, 255, 255, 0.70);
+}
+
+/* =========================================================
+   TAILWIND THEME VARIABLES
+========================================================= */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* =========================================================
+   GLOBAL BODY
+========================================================= */
+
+html {
+  min-height: 100%;
+  background: var(--background);
+}
+
 body {
+  min-height: 100vh;
+  margin: 0;
+
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  transition:
+    background-color 250ms ease,
+    color 250ms ease;
 }
+
+/* =========================================================
+   REMOVE DEVICE FORCED DARK MODE
+========================================================= */
+
+/*
+   IMPORTANT:
+
+   Do NOT use:
+
+   @media (prefers-color-scheme: dark)
+
+   here.
+
+   IOPn DEX uses the application's own
+   light/dark theme instead.
+*/
+
+/* =========================================================
+   LINKS / BUTTONS
+========================================================= */
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =========================================================
+   TEXT SELECTION
+========================================================= */
+
+::selection {
+  background: rgba(6, 182, 212, 0.20);
+  color: inherit;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+html,
 body {
-    background: #0b0f19;
-      color: white;
-        min-height: 100vh;
-        }
+  overflow-x: hidden;
 }
