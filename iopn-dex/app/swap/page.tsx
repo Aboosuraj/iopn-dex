@@ -17,11 +17,13 @@ import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import { useAccount } from "wagmi";
 
 import {
-Settings2,
-ArrowDownUp,
-ShieldCheck,
-Zap,
+  Settings2,
+  ArrowDownUp,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
+
+import { useTheme } from "@/components/ThemeProvider";
 
 function formatAmount(
   value: string | number,
@@ -40,550 +42,854 @@ function formatAmount(
 }
 
 export default function SwapPage() {
-const { isConnected } = useAccount();
+  const { isConnected } = useAccount();
 
-const {
-tokens,
-addToken,
-} = useTokens();
+  const { darkMode } = useTheme();
 
-const {
-addTransaction,
-} = useTransactionHistory();
+  const {
+    tokens,
+    addToken,
+  } = useTokens();
 
-const [tokenIn, setTokenIn] = useState<Token>(tokens[0]);
-const [tokenOut, setTokenOut] = useState<Token>(tokens[3]);
+  const {
+    addTransaction,
+  } = useTransactionHistory();
 
-const [amountIn, setAmountIn] = useState("");
-const [amountOut, setAmountOut] = useState("");
+  const [tokenIn, setTokenIn] =
+    useState<Token>(tokens[0]);
 
-const {
-needsApproval,
-approve,
-isPending: approving,
-} = useApproval(tokenIn, amountIn);
+  const [tokenOut, setTokenOut] =
+    useState<Token>(tokens[3]);
 
-const [route, setRoute] = useState<string[]>([]);
-const [rate, setRate] = useState("");
+  const [amountIn, setAmountIn] =
+    useState("");
 
-const [selector, setSelector] = useState<
-  "in" | "out" | null
->(null);
+  const [amountOut, setAmountOut] =
+    useState("");
 
-const [importOpen, setImportOpen] = useState(false);
+  const {
+    needsApproval,
+    approve,
+    isPending: approving,
+  } = useApproval(
+    tokenIn,
+    amountIn
+  );
 
-const [slippage, setSlippage] = useState(0.5);
+  const [route, setRoute] =
+    useState<string[]>([]);
 
-const [slippageOpen, setSlippageOpen] = useState(false);
+  const [rate, setRate] =
+    useState("");
 
-const {
-getQuote,
-swap,
-isPending,
-swapSuccess,
-} = useSwap();
+  const [selector, setSelector] =
+    useState<
+      "in" | "out" | null
+    >(null);
 
-const {
-balance,
-refetch: refetchBalance,
-} = useTokenBalance(tokenIn);
+  const [importOpen, setImportOpen] =
+    useState(false);
 
-useEffect(() => {
-if (swapSuccess) {
-refetchBalance();
-}
-}, [swapSuccess, refetchBalance]);
+  const [slippage, setSlippage] =
+    useState(0.5);
 
-useEffect(() => {
-const timer = setTimeout(async () => {
-if (!amountIn) {
-setAmountOut("");
-setRate("");
-setRoute([]);
-return;
-}
+  const [slippageOpen, setSlippageOpen] =
+    useState(false);
 
-  try {
-    const quote = await getQuote(
-      amountIn,
-      tokenIn,
-      tokenOut
+  const {
+    getQuote,
+    swap,
+    isPending,
+    swapSuccess,
+  } = useSwap();
+
+  const {
+    balance,
+    refetch: refetchBalance,
+  } = useTokenBalance(tokenIn);
+
+  useEffect(() => {
+    if (swapSuccess) {
+      refetchBalance();
+    }
+  }, [
+    swapSuccess,
+    refetchBalance,
+  ]);
+
+  useEffect(() => {
+    const timer = setTimeout(
+      async () => {
+        if (!amountIn) {
+          setAmountOut("");
+          setRate("");
+          setRoute([]);
+          return;
+        }
+
+        try {
+          const quote =
+            await getQuote(
+              amountIn,
+              tokenIn,
+              tokenOut
+            );
+
+          const formattedQuote =
+            formatAmount(
+              quote,
+              2
+            );
+
+          setAmountOut(
+            formattedQuote
+          );
+
+          setRate(
+            `1 ${tokenIn.symbol} = ${formatAmount(
+              quote,
+              6
+            )} ${tokenOut.symbol}`
+          );
+
+          setRoute([
+            tokenIn.symbol,
+            "WOPN",
+            tokenOut.symbol,
+          ]);
+        } catch {
+          setAmountOut("");
+          setRate("");
+          setRoute([]);
+        }
+      },
+      500
     );
 
-    const formattedQuote = formatAmount(quote, 2);
+    return () =>
+      clearTimeout(timer);
+  }, [
+    amountIn,
+    tokenIn,
+    tokenOut,
+    getQuote,
+  ]);
 
-setAmountOut(formattedQuote);
+  function flip() {
+    const old = tokenIn;
 
-setRate(
-  `1 ${tokenIn.symbol} = ${formatAmount(quote, 6)} ${tokenOut.symbol}`
-);
+    setTokenIn(tokenOut);
+    setTokenOut(old);
 
-    setRoute([
-      tokenIn.symbol,
-      "WOPN",
-      tokenOut.symbol,
-    ]);
-  } catch {
     setAmountOut("");
     setRate("");
     setRoute([]);
   }
-}, 500);
 
-return () => clearTimeout(timer);
+  function select(token: Token) {
+    if (selector === "in") {
+      setTokenIn(token);
+    }
 
-}, [
-amountIn,
-tokenIn,
-tokenOut,
-getQuote,
-]);
+    if (selector === "out") {
+      setTokenOut(token);
+    }
 
-function flip() {
-const old = tokenIn;
+    setSelector(null);
+  }
 
-setTokenIn(tokenOut);
-setTokenOut(old);
+  return (
+    <main
+      className={`
+        relative
+        min-h-screen
+        overflow-x-hidden
+        px-4
+        pb-28
+        pt-1
+        transition-colors
+        duration-300
 
-setAmountOut("");
-setRate("");
-setRoute([]);
+        ${
+          darkMode
+            ? "bg-[#050816] text-white"
+            : "bg-slate-50 text-slate-900"
+        }
+      `}
+    >
 
-}
+      {/* BACKGROUND GLOW */}
 
-function select(token: Token) {
-if (selector === "in") {
-setTokenIn(token);
-}
+      <div
+        className={`
+          pointer-events-none
+          fixed
+          left-1/2
+          top-14
+          -z-0
+          h-56
+          w-56
+          -translate-x-1/2
+          rounded-full
+          blur-[90px]
 
-if (selector === "out") {
-  setTokenOut(token);
-}
+          ${
+            darkMode
+              ? "bg-cyan-500/10"
+              : "bg-cyan-400/10"
+          }
+        `}
+      />
 
-setSelector(null);
+      <div
+        className={`
+          pointer-events-none
+          fixed
+          bottom-20
+          right-0
+          -z-0
+          h-48
+          w-48
+          rounded-full
+          blur-[90px]
 
-}
+          ${
+            darkMode
+              ? "bg-purple-500/10"
+              : "bg-purple-400/10"
+          }
+        `}
+      />
 
-return (
-<main
-className="
-relative
-min-h-screen
-overflow-x-hidden
-bg-[#050816]
-px-4
-pb-28
-pt-1
-text-white
-"
->
+      <div
+        className="
+          relative
+          z-10
+          mx-auto
+          w-full
+          max-w-md
+        "
+      >
 
-  {/* BACKGROUND GLOW */}
+        {/* PAGE HEADER */}
 
-  <div
-    className="
-      pointer-events-none
-      fixed
-      left-1/2
-      top-14
-      -z-0
-      h-56
-      w-56
-      -translate-x-1/2
-      rounded-full
-      bg-cyan-500/10
-      blur-[90px]
-    "
-  />
+        <div
+          className="
+            mb-3
+            flex
+            items-center
+            justify-between
+          "
+        >
 
-  <div
-    className="
-      pointer-events-none
-      fixed
-      bottom-20
-      right-0
-      -z-0
-      h-48
-      w-48
-      rounded-full
-      bg-purple-500/10
-      blur-[90px]
-    "
-  />
+          <div className="min-w-0">
 
-  <div className="relative z-10 mx-auto w-full max-w-md">
+            <div
+              className="
+                flex
+                items-center
+                gap-2
+              "
+            >
 
-    {/* PAGE HEADER */}
+              <div
+                className="
+                  flex
+                  h-8
+                  w-8
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-cyan-400/10
+                  text-cyan-400
+                "
+              >
+                <ArrowDownUp
+                  size={17}
+                />
+              </div>
 
-    <div className="mb-3 flex items-center justify-between">
+              <h1
+                className="
+                  text-xl
+                  font-black
+                  tracking-tight
+                "
+              >
+                Swap
+              </h1>
 
-      <div className="min-w-0">
+            </div>
 
-        <div className="flex items-center gap-2">
+            <p
+              className={`
+                mt-0.5
+                text-xs
+                ${
+                  darkMode
+                    ? "text-white/40"
+                    : "text-slate-500"
+                }
+              `}
+            >
+              Trade tokens instantly on IOPn Chain
+            </p>
 
-          <div
-            className="
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSlippageOpen(true)
+            }
+            className={`
+              ml-3
               flex
-              h-8
-              w-8
+              h-9
+              w-9
               shrink-0
               items-center
               justify-center
               rounded-xl
-              bg-cyan-400/10
-              text-cyan-400
+              border
+              transition
+
+              ${
+                darkMode
+                  ? "border-white/10 bg-white/[0.04] text-white/50 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
+                  : "border-slate-200 bg-white text-slate-500 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-500"
+              }
+            `}
+          >
+            <Settings2 size={17} />
+          </button>
+
+        </div>
+
+        {/* NETWORK STATUS */}
+
+        <div
+          className={`
+            mb-3
+            flex
+            items-center
+            justify-between
+            rounded-xl
+            border
+            px-3
+            py-2
+
+            ${
+              darkMode
+                ? "border-emerald-400/10 bg-emerald-400/[0.04]"
+                : "border-emerald-200 bg-emerald-50"
+            }
+          `}
+        >
+
+          <div
+            className="
+              flex
+              items-center
+              gap-2
             "
           >
-            <ArrowDownUp size={17} />
+
+            <span
+              className="
+                h-1.5
+                w-1.5
+                animate-pulse
+                rounded-full
+                bg-emerald-400
+              "
+            />
+
+            <span
+              className={`
+                text-[11px]
+                font-semibold
+                ${
+                  darkMode
+                    ? "text-white/60"
+                    : "text-slate-600"
+                }
+              `}
+            >
+              OPN Testnet
+            </span>
+
           </div>
 
-          <h1 className="text-xl font-black tracking-tight">
-            Swap
-          </h1>
+          <span
+            className="
+              text-[11px]
+              font-medium
+              text-emerald-400
+            "
+          >
+            Network Online
+          </span>
 
         </div>
 
-        <p className="mt-0.5 text-xs text-white/40">
-          Trade tokens instantly on IOPn Chain
-        </p>
+        {/* SWAP CARD */}
 
-      </div>
+        <SwapCard
+          amountIn={amountIn}
+          setAmountIn={setAmountIn}
+          amountOut={amountOut}
+          tokenIn={tokenIn}
+          tokenOut={tokenOut}
+          onSelectIn={() =>
+            setSelector("in")
+          }
+          onSelectOut={() =>
+            setSelector("out")
+          }
+          onFlip={flip}
+          balance={formatAmount(
+            balance,
+            2
+          )}
+          onSwap={async () => {
 
-      <button
-        type="button"
-        onClick={() => setSlippageOpen(true)}
-        className="
-          ml-3
-          flex
-          h-9
-          w-9
-          shrink-0
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-white/10
-          bg-white/[0.04]
-          text-white/50
-          transition
-          hover:border-cyan-400/30
-          hover:bg-cyan-400/10
-          hover:text-cyan-400
-        "
-      >
-        <Settings2 size={17} />
-      </button>
+            if (!isConnected) {
+              return;
+            }
 
-    </div>
+            if (needsApproval) {
+              approve();
+              return;
+            }
 
-    {/* NETWORK STATUS */}
+            const result =
+              await swap(
+                amountIn,
+                tokenIn,
+                tokenOut,
+                slippage
+              );
 
-    <div
-      className="
-        mb-3
-        flex
-        items-center
-        justify-between
-        rounded-xl
-        border
-        border-emerald-400/10
-        bg-emerald-400/[0.04]
-        px-3
-        py-2
-      "
-    >
+            if (result) {
+              addTransaction({
+                id: result.hash,
+                tokenIn:
+                  result.tokenIn
+                    .symbol,
+                tokenOut:
+                  result.tokenOut
+                    .symbol,
+                amountIn:
+                  result.amountIn,
+                amountOut:
+                  result.amountOut,
+                hash: result.hash,
+                timestamp:
+                  Date.now(),
+                status:
+                  "success",
+              });
+            }
 
-      <div className="flex items-center gap-2">
-
-        <span
-          className="
-            h-1.5
-            w-1.5
-            animate-pulse
-            rounded-full
-            bg-emerald-400
-          "
+          }}
+          buttonText={
+            !isConnected
+              ? "Connect Wallet"
+              : !amountIn
+                ? "Enter Amount"
+                : needsApproval
+                  ? `Approve ${tokenIn.symbol}`
+                  : "Swap"
+          }
+          loading={
+            isPending ||
+            approving
+          }
         />
 
-        <span className="text-[11px] font-semibold text-white/60">
-          OPN Testnet
-        </span>
+        {/* SWAP DETAILS */}
+
+        <div
+          className={`
+            mt-2.5
+            rounded-2xl
+            border
+            p-3.5
+            backdrop-blur-xl
+            transition-colors
+
+            ${
+              darkMode
+                ? "border-white/10 bg-white/[0.04]"
+                : "border-slate-200 bg-white shadow-sm"
+            }
+          `}
+        >
+
+          <div
+            className="
+              mb-2.5
+              flex
+              items-center
+              justify-between
+            "
+          >
+
+            <h2
+              className="
+                text-sm
+                font-black
+              "
+            >
+              Swap Details
+            </h2>
+
+            <span
+              className={`
+                text-[11px]
+                ${
+                  darkMode
+                    ? "text-white/30"
+                    : "text-slate-400"
+                }
+              `}
+            >
+              {slippage}% slippage
+            </span>
+
+          </div>
+
+          <div
+            className="
+              space-y-2.5
+            "
+          >
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-4
+              "
+            >
+
+              <span
+                className={`
+                  text-xs
+                  ${
+                    darkMode
+                      ? "text-white/40"
+                      : "text-slate-500"
+                  }
+                `}
+              >
+                Rate
+              </span>
+
+              <span
+                className="
+                  max-w-[65%]
+                  truncate
+                  text-right
+                  text-xs
+                  font-semibold
+                "
+              >
+                {rate || "--"}
+              </span>
+
+            </div>
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-4
+              "
+            >
+
+              <span
+                className={`
+                  text-xs
+                  ${
+                    darkMode
+                      ? "text-white/40"
+                      : "text-slate-500"
+                  }
+                `}
+              >
+                Minimum received
+              </span>
+
+              <span
+                className="
+                  max-w-[65%]
+                  truncate
+                  text-right
+                  text-xs
+                  font-semibold
+                "
+              >
+                {amountOut
+                  ? `${(
+                      Number(
+                        amountOut
+                      ) *
+                      (1 -
+                        slippage /
+                          100)
+                    ).toFixed(
+                      6
+                    )} ${
+                      tokenOut.symbol
+                    }`
+                  : "--"}
+              </span>
+
+            </div>
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-4
+              "
+            >
+
+              <span
+                className={`
+                  text-xs
+                  ${
+                    darkMode
+                      ? "text-white/40"
+                      : "text-slate-500"
+                  }
+                `}
+              >
+                Route
+              </span>
+
+              <span
+                className="
+                  max-w-[65%]
+                  truncate
+                  text-right
+                  text-xs
+                  font-semibold
+                  text-cyan-400
+                "
+              >
+                {route.length
+                  ? route.join(
+                      " → "
+                    )
+                  : "--"}
+              </span>
+
+            </div>
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+              "
+            >
+
+              <span
+                className={`
+                  text-xs
+                  ${
+                    darkMode
+                      ? "text-white/40"
+                      : "text-slate-500"
+                  }
+                `}
+              >
+                Network
+              </span>
+
+              <span
+                className="
+                  text-xs
+                  font-semibold
+                "
+              >
+                OPN Testnet
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* QUICK TOOLS */}
+
+        <div
+          className="
+            mt-2.5
+            grid
+            grid-cols-2
+            gap-2.5
+          "
+        >
+
+          <button
+            type="button"
+            onClick={() =>
+              setImportOpen(true)
+            }
+            className={`
+              flex
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              border
+              py-2.5
+              text-xs
+              font-bold
+              transition
+
+              ${
+                darkMode
+                  ? "border-white/10 bg-white/[0.04] text-white/70 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-500"
+              }
+            `}
+          >
+            <Zap size={15} />
+            Import Token
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSlippageOpen(true)
+            }
+            className={`
+              flex
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              border
+              py-2.5
+              text-xs
+              font-bold
+              transition
+
+              ${
+                darkMode
+                  ? "border-white/10 bg-white/[0.04] text-white/70 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-500"
+              }
+            `}
+          >
+            <Settings2 size={15} />
+            Slippage
+          </button>
+
+        </div>
+
+        {/* SECURITY NOTE */}
+
+        <div
+          className={`
+            mt-2.5
+            flex
+            gap-2.5
+            rounded-xl
+            border
+            p-3
+
+            ${
+              darkMode
+                ? "border-white/10 bg-white/[0.025]"
+                : "border-slate-200 bg-white"
+            }
+          `}
+        >
+
+          <ShieldCheck
+            size={17}
+            className="
+              mt-0.5
+              shrink-0
+              text-cyan-400
+            "
+          />
+
+          <p
+            className={`
+              text-[11px]
+              leading-4
+              ${
+                darkMode
+                  ? "text-white/40"
+                  : "text-slate-500"
+              }
+            `}
+          >
+            Always verify token contracts
+            before trading. Transactions
+            are executed directly through
+            your connected wallet.
+          </p>
+
+        </div>
+
+        {/* HISTORY */}
+
+        <div className="mt-2.5">
+          <SwapHistory />
+        </div>
 
       </div>
 
-      <span className="text-[11px] font-medium text-emerald-400">
-        Network Online
-      </span>
+      {/* TOKEN SELECTOR */}
 
-    </div>
-
-    {/* SWAP CARD */}
-
-    <SwapCard
-      amountIn={amountIn}
-      setAmountIn={setAmountIn}
-      amountOut={amountOut}
-      tokenIn={tokenIn}
-      tokenOut={tokenOut}
-      onSelectIn={() => setSelector("in")}
-      onSelectOut={() => setSelector("out")}
-      onFlip={flip}
-      balance={formatAmount(balance, 2)}
-      onSwap={async () => {
-
-        if (!isConnected) {
-          return;
+      <TokenSelector
+        open={
+          selector !== null
         }
-
-        if (needsApproval) {
-          approve();
-          return;
+        tokens={tokens}
+        onClose={() =>
+          setSelector(null)
         }
-
-        const result = await swap(
-          amountIn,
-          tokenIn,
-          tokenOut,
-          slippage
-        );
-
-        if (result) {
-          addTransaction({
-            id: result.hash,
-            tokenIn: result.tokenIn.symbol,
-            tokenOut: result.tokenOut.symbol,
-            amountIn: result.amountIn,
-            amountOut: result.amountOut,
-            hash: result.hash,
-            timestamp: Date.now(),
-            status: "success",
-          });
-        }
-
-      }}
-      buttonText={
-        !isConnected
-          ? "Connect Wallet"
-          : !amountIn
-            ? "Enter Amount"
-            : needsApproval
-              ? `Approve ${tokenIn.symbol}`
-              : "Swap"
-      }
-      loading={isPending || approving}
-    />
-
-    {/* SWAP DETAILS */}
-
-    <div
-      className="
-        mt-2.5
-        rounded-2xl
-        border
-        border-white/10
-        bg-white/[0.04]
-        p-3.5
-        backdrop-blur-xl
-      "
-    >
-
-      <div className="mb-2.5 flex items-center justify-between">
-
-        <h2 className="text-sm font-black">
-          Swap Details
-        </h2>
-
-        <span className="text-[11px] text-white/30">
-          {slippage}% slippage
-        </span>
-
-      </div>
-
-      <div className="space-y-2.5">
-
-        <div className="flex items-center justify-between gap-4">
-
-          <span className="text-xs text-white/40">
-            Rate
-          </span>
-
-          <span className="max-w-[65%] truncate text-right text-xs font-semibold">
-            {rate || "--"}
-          </span>
-
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-
-          <span className="text-xs text-white/40">
-            Minimum received
-          </span>
-
-          <span className="max-w-[65%] truncate text-right text-xs font-semibold">
-            {amountOut
-              ? `${(
-                  Number(amountOut) *
-                  (1 - slippage / 100)
-                ).toFixed(6)} ${tokenOut.symbol}`
-              : "--"}
-          </span>
-
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-
-          <span className="text-xs text-white/40">
-            Route
-          </span>
-
-          <span className="max-w-[65%] truncate text-right text-xs font-semibold text-cyan-400">
-            {route.length
-              ? route.join(" → ")
-              : "--"}
-          </span>
-
-        </div>
-
-        <div className="flex items-center justify-between">
-
-          <span className="text-xs text-white/40">
-            Network
-          </span>
-
-          <span className="text-xs font-semibold">
-            OPN Testnet
-          </span>
-
-        </div>
-
-      </div>
-
-    </div>
-
-    {/* QUICK TOOLS */}
-
-    <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-
-      <button
-        type="button"
-        onClick={() => setImportOpen(true)}
-        className="
-          flex
-          items-center
-          justify-center
-          gap-2
-          rounded-xl
-          border
-          border-white/10
-          bg-white/[0.04]
-          py-2.5
-          text-xs
-          font-bold
-          text-white/70
-          transition
-          hover:border-cyan-400/30
-          hover:bg-cyan-400/10
-          hover:text-cyan-400
-        "
-      >
-        <Zap size={15} />
-        Import Token
-      </button>
-
-      <button
-        type="button"
-        onClick={() => setSlippageOpen(true)}
-        className="
-          flex
-          items-center
-          justify-center
-          gap-2
-          rounded-xl
-          border
-          border-white/10
-          bg-white/[0.04]
-          py-2.5
-          text-xs
-          font-bold
-          text-white/70
-          transition
-          hover:border-cyan-400/30
-          hover:bg-cyan-400/10
-          hover:text-cyan-400
-        "
-      >
-        <Settings2 size={15} />
-        Slippage
-      </button>
-
-    </div>
-
-    {/* SECURITY NOTE */}
-
-    <div
-      className="
-        mt-2.5
-        flex
-        gap-2.5
-        rounded-xl
-        border
-        border-white/10
-        bg-white/[0.025]
-        p-3
-      "
-    >
-
-      <ShieldCheck
-        size={17}
-        className="mt-0.5 shrink-0 text-cyan-400"
+        onSelect={select}
       />
 
-      <p className="text-[11px] leading-4 text-white/40">
-        Always verify token contracts before trading.
-        Transactions are executed directly through
-        your connected wallet.
-      </p>
+      {/* TOKEN IMPORT */}
 
-    </div>
+      <TokenImport
+        open={importOpen}
+        onClose={() =>
+          setImportOpen(false)
+        }
+        onImport={(token) => {
+          addToken(token);
+          setTokenOut(token);
+        }}
+      />
 
-    {/* HISTORY */}
+      {/* SLIPPAGE */}
 
-    <div className="mt-2.5">
-      <SwapHistory />
-    </div>
+      <SlippageModal
+        open={slippageOpen}
+        onClose={() =>
+          setSlippageOpen(false)
+        }
+        slippage={slippage}
+        setSlippage={setSlippage}
+      />
 
-  </div>
-
-  {/* TOKEN SELECTOR */}
-
-  <TokenSelector
-    open={selector !== null}
-    tokens={tokens}
-    onClose={() => setSelector(null)}
-    onSelect={select}
-  />
-
-  {/* TOKEN IMPORT */}
-
-  <TokenImport
-    open={importOpen}
-    onClose={() => setImportOpen(false)}
-    onImport={(token) => {
-      addToken(token);
-      setTokenOut(token);
-    }}
-  />
-
-  {/* SLIPPAGE */}
-
-  <SlippageModal
-    open={slippageOpen}
-    onClose={() => setSlippageOpen(false)}
-    slippage={slippage}
-    setSlippage={setSlippage}
-  />
-
-</main>
-
-);
+    </main>
+  );
 }

@@ -17,6 +17,8 @@ import {
   useWalletTokens,
 } from "@/hooks/useWalletTokens";
 
+import { useTheme } from "@/components/ThemeProvider";
+
 export default function PortfolioPage() {
   const {
     address,
@@ -29,6 +31,10 @@ export default function PortfolioPage() {
       tokensLoading,
     refresh,
   } = useWalletTokens();
+
+  const {
+    darkMode,
+  } = useTheme();
 
   const isConnected =
     !!address;
@@ -92,12 +98,17 @@ export default function PortfolioPage() {
 
   return (
     <main
-      className="
+      className={`
         min-h-screen
-        bg-[#050816]
         pb-28
-        text-white
-      "
+        transition-colors
+        duration-300
+        ${
+          darkMode
+            ? "bg-[#050816] text-white"
+            : "bg-slate-50 text-slate-900"
+        }
+      `}
     >
 
       {/* BACKGROUND */}
@@ -113,7 +124,7 @@ export default function PortfolioPage() {
       >
 
         <div
-          className="
+          className={`
             absolute
             left-1/2
             top-0
@@ -121,22 +132,30 @@ export default function PortfolioPage() {
             w-64
             -translate-x-1/2
             rounded-full
-            bg-cyan-500/10
             blur-[100px]
-          "
+            ${
+              darkMode
+                ? "bg-cyan-500/10"
+                : "bg-cyan-400/15"
+            }
+          `}
         />
 
         <div
-          className="
+          className={`
             absolute
             bottom-20
             right-[-100px]
             h-60
             w-60
             rounded-full
-            bg-purple-500/10
             blur-[100px]
-          "
+            ${
+              darkMode
+                ? "bg-purple-500/10"
+                : "bg-purple-400/10"
+            }
+          `}
         />
 
       </div>
@@ -173,16 +192,19 @@ export default function PortfolioPage() {
             >
 
               <div
-                className="
+                className={`
                   flex
                   h-8
                   w-8
                   items-center
                   justify-center
                   rounded-xl
-                  bg-cyan-400/10
-                  text-cyan-400
-                "
+                  ${
+                    darkMode
+                      ? "bg-cyan-400/10 text-cyan-400"
+                      : "bg-cyan-500/10 text-cyan-600"
+                  }
+                `}
               >
                 <Wallet
                   size={16}
@@ -201,11 +223,15 @@ export default function PortfolioPage() {
             </div>
 
             <p
-              className="
+              className={`
                 mt-1
                 text-xs
-                text-white/40
-              "
+                ${
+                  darkMode
+                    ? "text-white/40"
+                    : "text-slate-500"
+                }
+              `}
             >
               Your live IOPn wallet assets
             </p>
@@ -221,7 +247,7 @@ export default function PortfolioPage() {
               disabled={
                 tokensLoading
               }
-              className="
+              className={`
                 flex
                 h-9
                 w-9
@@ -229,14 +255,14 @@ export default function PortfolioPage() {
                 justify-center
                 rounded-xl
                 border
-                border-white/10
-                bg-white/[0.04]
-                text-white/45
                 transition
-                hover:border-cyan-400/30
-                hover:text-cyan-400
                 disabled:opacity-50
-              "
+                ${
+                  darkMode
+                    ? "border-white/10 bg-white/[0.04] text-white/45 hover:border-cyan-400/30 hover:text-cyan-400"
+                    : "border-slate-200 bg-white text-slate-400 shadow-sm hover:border-cyan-400/40 hover:text-cyan-600"
+                }
+              `}
             >
               <RefreshCw
                 size={15}
@@ -254,24 +280,25 @@ export default function PortfolioPage() {
         {/* BALANCE CARD */}
 
         <section
-          className="
+          className={`
             relative
             overflow-hidden
             rounded-[1.5rem]
             border
-            border-cyan-400/10
-            bg-gradient-to-br
-            from-cyan-400/[0.10]
-            via-white/[0.035]
-            to-purple-500/[0.08]
             px-4
             py-4
             backdrop-blur-xl
-          "
+            transition-colors
+            ${
+              darkMode
+                ? "border-cyan-400/10 bg-gradient-to-br from-cyan-400/[0.10] via-white/[0.035] to-purple-500/[0.08]"
+                : "border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-purple-50 shadow-sm"
+            }
+          `}
         >
 
           <div
-            className="
+            className={`
               pointer-events-none
               absolute
               right-[-70px]
@@ -279,9 +306,13 @@ export default function PortfolioPage() {
               h-40
               w-40
               rounded-full
-              bg-cyan-400/10
               blur-[65px]
-            "
+              ${
+                darkMode
+                  ? "bg-cyan-400/10"
+                  : "bg-cyan-400/15"
+              }
+            `}
           />
 
           <div
@@ -299,13 +330,17 @@ export default function PortfolioPage() {
             >
 
               <p
-                className="
+                className={`
                   text-[10px]
                   font-bold
                   uppercase
                   tracking-[0.18em]
-                  text-white/40
-                "
+                  ${
+                    darkMode
+                      ? "text-white/40"
+                      : "text-slate-500"
+                  }
+                `}
               >
                 Total OPN Balance
               </p>
@@ -323,7 +358,7 @@ export default function PortfolioPage() {
                   py-1
                   text-[9px]
                   font-bold
-                  text-emerald-400
+                  text-emerald-500
                 "
               >
 
@@ -367,7 +402,7 @@ export default function PortfolioPage() {
                   mb-0.5
                   text-base
                   font-black
-                  text-cyan-400
+                  text-cyan-500
                 "
               >
                 OPN
@@ -376,11 +411,15 @@ export default function PortfolioPage() {
             </div>
 
             <p
-              className="
+              className={`
                 mt-1.5
                 text-[10px]
-                text-white/35
-              "
+                ${
+                  darkMode
+                    ? "text-white/35"
+                    : "text-slate-500"
+                }
+              `}
             >
               Native balance on IOPn Chain
             </p>
@@ -388,7 +427,7 @@ export default function PortfolioPage() {
             {/* WALLET */}
 
             <div
-              className="
+              className={`
                 mt-3
                 flex
                 items-center
@@ -396,11 +435,14 @@ export default function PortfolioPage() {
                 gap-2
                 rounded-xl
                 border
-                border-white/10
-                bg-black/20
                 px-3
                 py-2
-              "
+                ${
+                  darkMode
+                    ? "border-white/10 bg-black/20"
+                    : "border-slate-200 bg-white/70"
+                }
+              `}
             >
 
               <div
@@ -410,12 +452,16 @@ export default function PortfolioPage() {
               >
 
                 <p
-                  className="
+                  className={`
                     text-[8px]
                     uppercase
                     tracking-wider
-                    text-white/25
-                  "
+                    ${
+                      darkMode
+                        ? "text-white/25"
+                        : "text-slate-400"
+                    }
+                  `}
                 >
                   Connected Wallet
                 </p>
@@ -427,7 +473,7 @@ export default function PortfolioPage() {
                     font-mono
                     text-xs
                     font-bold
-                    text-cyan-300
+                    text-cyan-500
                   "
                 >
                   {shortenAddress(
@@ -443,7 +489,7 @@ export default function PortfolioPage() {
                   onClick={
                     copyAddress
                   }
-                  className="
+                  className={`
                     flex
                     h-8
                     w-8
@@ -451,11 +497,13 @@ export default function PortfolioPage() {
                     items-center
                     justify-center
                     rounded-lg
-                    bg-white/[0.06]
-                    text-white/45
-                    hover:bg-cyan-400/10
-                    hover:text-cyan-400
-                  "
+                    transition
+                    ${
+                      darkMode
+                        ? "bg-white/[0.06] text-white/45 hover:bg-cyan-400/10 hover:text-cyan-400"
+                        : "bg-slate-100 text-slate-400 hover:bg-cyan-50 hover:text-cyan-600"
+                    }
+                  `}
                 >
                   <Copy
                     size={14}
@@ -481,23 +529,30 @@ export default function PortfolioPage() {
         >
 
           <div
-            className="
+            className={`
               rounded-xl
               border
-              border-white/10
-              bg-white/[0.035]
               px-3
               py-3
-            "
+              ${
+                darkMode
+                  ? "border-white/10 bg-white/[0.035]"
+                  : "border-slate-200 bg-white shadow-sm"
+              }
+            `}
           >
 
             <div
-              className="
+              className={`
                 flex
                 items-center
                 gap-1.5
-                text-white/35
-              "
+                ${
+                  darkMode
+                    ? "text-white/35"
+                    : "text-slate-400"
+                }
+              `}
             >
 
               <Coins
@@ -527,23 +582,30 @@ export default function PortfolioPage() {
           </div>
 
           <div
-            className="
+            className={`
               rounded-xl
               border
-              border-white/10
-              bg-white/[0.035]
               px-3
               py-3
-            "
+              ${
+                darkMode
+                  ? "border-white/10 bg-white/[0.035]"
+                  : "border-slate-200 bg-white shadow-sm"
+              }
+            `}
           >
 
             <div
-              className="
+              className={`
                 flex
                 items-center
                 gap-1.5
-                text-white/35
-              "
+                ${
+                  darkMode
+                    ? "text-white/35"
+                    : "text-slate-400"
+                }
+              `}
             >
 
               <ShieldCheck
@@ -577,15 +639,18 @@ export default function PortfolioPage() {
         {/* ASSETS */}
 
         <section
-          className="
+          className={`
             mt-3
             rounded-[1.5rem]
             border
-            border-white/10
-            bg-white/[0.035]
             p-3
             backdrop-blur-xl
-          "
+            ${
+              darkMode
+                ? "border-white/10 bg-white/[0.035]"
+                : "border-slate-200 bg-white shadow-sm"
+            }
+          `}
         >
 
           <div
@@ -609,11 +674,15 @@ export default function PortfolioPage() {
               </h2>
 
               <p
-                className="
+                className={`
                   mt-0.5
                   text-[10px]
-                  text-white/30
-                "
+                  ${
+                    darkMode
+                      ? "text-white/30"
+                      : "text-slate-400"
+                  }
+                `}
               >
                 Live balances from the blockchain
               </p>
@@ -628,7 +697,7 @@ export default function PortfolioPage() {
                 py-1
                 text-[9px]
                 font-bold
-                text-cyan-400
+                text-cyan-500
               "
             >
               {assetCount}
@@ -639,24 +708,31 @@ export default function PortfolioPage() {
           {!isConnected ? (
 
             <div
-              className="
+              className={`
                 rounded-xl
                 border
                 border-dashed
-                border-white/10
-                bg-black/20
                 px-4
                 py-7
                 text-center
-              "
+                ${
+                  darkMode
+                    ? "border-white/10 bg-black/20"
+                    : "border-slate-200 bg-slate-50"
+                }
+              `}
             >
 
               <Wallet
                 size={26}
-                className="
+                className={`
                   mx-auto
-                  text-white/20
-                "
+                  ${
+                    darkMode
+                      ? "text-white/20"
+                      : "text-slate-300"
+                  }
+                `}
               />
 
               <h3
@@ -670,11 +746,15 @@ export default function PortfolioPage() {
               </h3>
 
               <p
-                className="
+                className={`
                   mt-1
                   text-xs
-                  text-white/30
-                "
+                  ${
+                    darkMode
+                      ? "text-white/30"
+                      : "text-slate-400"
+                  }
+                `}
               >
                 Connect your wallet to view your assets.
               </p>
@@ -692,17 +772,20 @@ export default function PortfolioPage() {
               {/* OPN */}
 
               <div
-                className="
+                className={`
                   flex
                   items-center
                   justify-between
                   rounded-xl
                   border
-                  border-cyan-400/15
-                  bg-cyan-400/[0.055]
                   px-3
                   py-2.5
-                "
+                  ${
+                    darkMode
+                      ? "border-cyan-400/15 bg-cyan-400/[0.055]"
+                      : "border-cyan-200 bg-cyan-50"
+                  }
+                `}
               >
 
                 <div
@@ -724,7 +807,7 @@ export default function PortfolioPage() {
                       bg-cyan-400/10
                       text-sm
                       font-black
-                      text-cyan-400
+                      text-cyan-500
                     "
                   >
                     O
@@ -742,10 +825,14 @@ export default function PortfolioPage() {
                     </p>
 
                     <p
-                      className="
+                      className={`
                         text-[9px]
-                        text-white/30
-                      "
+                        ${
+                          darkMode
+                            ? "text-white/30"
+                            : "text-slate-400"
+                        }
+                      `}
                     >
                       Native Token
                     </p>
@@ -764,17 +851,21 @@ export default function PortfolioPage() {
                     className="
                       text-sm
                       font-black
-                      text-cyan-300
+                      text-cyan-500
                     "
                   >
                     {opnBalance}
                   </p>
 
                   <p
-                    className="
+                    className={`
                       text-[9px]
-                      text-white/25
-                    "
+                      ${
+                        darkMode
+                          ? "text-white/25"
+                          : "text-slate-400"
+                      }
+                    `}
                   >
                     OPN
                   </p>
@@ -788,17 +879,19 @@ export default function PortfolioPage() {
               {tokensLoading ? (
 
                 <div
-                  className="
+                  className={`
                     rounded-xl
                     border
-                    border-white/10
-                    bg-black/20
                     px-4
                     py-5
                     text-center
                     text-xs
-                    text-white/35
-                  "
+                    ${
+                      darkMode
+                        ? "border-white/10 bg-black/20 text-white/35"
+                        : "border-slate-200 bg-slate-50 text-slate-400"
+                    }
+                  `}
                 >
 
                   <RefreshCw
@@ -818,43 +911,58 @@ export default function PortfolioPage() {
                 0 ? (
 
                 <div
-                  className="
+                  className={`
                     rounded-xl
                     border
                     border-dashed
-                    border-white/10
-                    bg-black/20
                     px-4
                     py-6
                     text-center
-                  "
+                    ${
+                      darkMode
+                        ? "border-white/10 bg-black/20"
+                        : "border-slate-200 bg-slate-50"
+                    }
+                  `}
                 >
 
                   <Coins
                     size={22}
-                    className="
+                    className={`
                       mx-auto
-                      text-white/20
-                    "
+                      ${
+                        darkMode
+                          ? "text-white/20"
+                          : "text-slate-300"
+                      }
+                    `}
                   />
 
                   <p
-                    className="
+                    className={`
                       mt-2
                       text-xs
                       font-semibold
-                      text-white/40
-                    "
+                      ${
+                        darkMode
+                          ? "text-white/40"
+                          : "text-slate-500"
+                      }
+                    `}
                   >
                     No ERC-20 tokens held
                   </p>
 
                   <p
-                    className="
+                    className={`
                       mt-1
                       text-[10px]
-                      text-white/25
-                    "
+                      ${
+                        darkMode
+                          ? "text-white/25"
+                          : "text-slate-400"
+                      }
+                    `}
                   >
                     Buy or receive a token and it will appear here automatically.
                   </p>
@@ -877,19 +985,21 @@ export default function PortfolioPage() {
                         key={
                           token.address
                         }
-                        className="
+                        className={`
                           flex
                           items-center
                           justify-between
                           rounded-xl
                           border
-                          border-white/10
-                          bg-black/20
                           px-3
                           py-2.5
                           transition
-                          hover:border-cyan-400/20
-                        "
+                          ${
+                            darkMode
+                              ? "border-white/10 bg-black/20 hover:border-cyan-400/20"
+                              : "border-slate-200 bg-slate-50 hover:border-cyan-300"
+                          }
+                        `}
                       >
 
                         <div
@@ -911,7 +1021,7 @@ export default function PortfolioPage() {
                               bg-purple-400/10
                               text-xs
                               font-black
-                              text-purple-300
+                              text-purple-500
                             "
                           >
                             {token.symbol
@@ -952,7 +1062,7 @@ export default function PortfolioPage() {
                                     py-0.5
                                     text-[7px]
                                     font-bold
-                                    text-purple-300
+                                    text-purple-500
                                   "
                                 >
                                   IMPORTED
@@ -962,10 +1072,14 @@ export default function PortfolioPage() {
                             </div>
 
                             <p
-                              className="
+                              className={`
                                 text-[9px]
-                                text-white/25
-                              "
+                                ${
+                                  darkMode
+                                    ? "text-white/25"
+                                    : "text-slate-400"
+                                }
+                              `}
                             >
                               ERC-20 Token
                             </p>
@@ -990,10 +1104,14 @@ export default function PortfolioPage() {
                           </p>
 
                           <p
-                            className="
+                            className={`
                               text-[9px]
-                              text-white/25
-                            "
+                              ${
+                                darkMode
+                                  ? "text-white/25"
+                                  : "text-slate-400"
+                              }
+                            `}
                           >
                             {
                               token.symbol
@@ -1022,7 +1140,7 @@ export default function PortfolioPage() {
             href={`https://testnet.iopn.tech/address/${address}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="
+            className={`
               mt-3
               flex
               items-center
@@ -1030,16 +1148,16 @@ export default function PortfolioPage() {
               gap-2
               rounded-xl
               border
-              border-white/10
-              bg-white/[0.035]
               py-3
               text-xs
               font-bold
-              text-white/50
               transition
-              hover:border-cyan-400/20
-              hover:text-cyan-400
-            "
+              ${
+                darkMode
+                  ? "border-white/10 bg-white/[0.035] text-white/50 hover:border-cyan-400/20 hover:text-cyan-400"
+                  : "border-slate-200 bg-white text-slate-500 shadow-sm hover:border-cyan-300 hover:text-cyan-600"
+              }
+            `}
           >
             View Wallet on Explorer
 

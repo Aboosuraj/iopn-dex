@@ -44,8 +44,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-black text-white antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className="bg-white text-slate-900 antialiased dark:bg-black dark:text-white">
         <Providers>
 
           {/* PAGE CONTENT */}

@@ -48,25 +48,29 @@ export default function BottomNav() {
   return (
     <nav
       className="
-      fixed
-      bottom-4
-      left-1/2
-      z-50
-      w-[94%]
-      max-w-md
-      -translate-x-1/2
-      rounded-3xl
-      border
-      border-white/10
-      bg-[#111827]/90
-      backdrop-blur-xl
+        fixed
+        bottom-4
+        left-1/2
+        z-50
+        w-[94%]
+        max-w-md
+        -translate-x-1/2
+        rounded-3xl
+        border
+        border-slate-200
+        bg-white/90
+        shadow-lg
+        backdrop-blur-xl
+        dark:border-white/10
+        dark:bg-[#111827]/90
       "
     >
       <div className="flex justify-around py-3">
         {nav.map((item) => {
           const Icon = item.icon;
 
-          const active = pathname.startsWith(item.href);
+          const active =
+            pathname.startsWith(item.href);
 
           return (
             <Link
@@ -78,7 +82,7 @@ export default function BottomNav() {
                 className={`rounded-xl p-2 transition ${
                   active
                     ? "bg-cyan-500 text-black"
-                    : "text-white/50"
+                    : "text-slate-500 dark:text-white/50"
                 }`}
               >
                 <Icon size={20} />
@@ -87,8 +91,8 @@ export default function BottomNav() {
               <span
                 className={`text-[11px] ${
                   active
-                    ? "text-cyan-400"
-                    : "text-white/40"
+                    ? "text-cyan-500 dark:text-cyan-400"
+                    : "text-slate-400 dark:text-white/40"
                 }`}
               >
                 {item.label}
