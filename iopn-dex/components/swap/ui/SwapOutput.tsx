@@ -19,11 +19,14 @@ export default function SwapOutput({
         rounded-2xl
         border
         border-slate-200
-        bg-slate-50
+        bg-white
         px-4
         py-4
+        shadow-sm
+        transition-colors
         dark:border-white/10
         dark:bg-[#111827]
+        dark:shadow-none
       "
     >
       {/* HEADER */}
@@ -44,11 +47,9 @@ export default function SwapOutput({
       {/* AMOUNT + TOKEN */}
 
       <div className="flex min-w-0 items-center gap-3">
-
         {/* OUTPUT AMOUNT */}
 
         <div className="min-w-0 flex-1 overflow-hidden">
-
           <div
             className="
               overflow-hidden
@@ -76,7 +77,6 @@ export default function SwapOutput({
           >
             Estimated Output
           </div>
-
         </div>
 
         {/* TOKEN */}
@@ -87,7 +87,6 @@ export default function SwapOutput({
             onClick={onSelect}
           />
         </div>
-
       </div>
     </div>
   );

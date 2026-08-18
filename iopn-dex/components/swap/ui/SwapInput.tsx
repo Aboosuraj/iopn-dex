@@ -23,17 +23,19 @@ export default function SwapInput({
         rounded-2xl
         border
         border-slate-200
-        bg-slate-50
+        bg-white
         px-4
         py-4
+        shadow-sm
+        transition-colors
         dark:border-white/10
         dark:bg-[#111827]
+        dark:shadow-none
       "
     >
       {/* HEADER */}
 
       <div className="mb-3 flex items-center justify-between">
-
         <span
           className="
             text-sm
@@ -56,16 +58,15 @@ export default function SwapInput({
         >
           Balance: {balance || "0"}
         </span>
-
       </div>
 
       {/* AMOUNT + TOKEN */}
 
       <div className="flex items-center gap-3">
-
         <input
           type="number"
           inputMode="decimal"
+          min="0"
           placeholder="0.0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
@@ -77,7 +78,7 @@ export default function SwapInput({
             font-black
             leading-none
             tracking-tight
-            text-slate-950
+            text-slate-900
             outline-none
             placeholder:text-slate-300
             dark:text-white
@@ -89,13 +90,11 @@ export default function SwapInput({
           symbol={symbol}
           onClick={onSelect}
         />
-
       </div>
 
       {/* MAX */}
 
       <div className="mt-3 flex justify-end">
-
         <button
           type="button"
           onClick={() => setAmount(balance)}
@@ -114,9 +113,7 @@ export default function SwapInput({
         >
           MAX
         </button>
-
       </div>
-
     </div>
   );
 }

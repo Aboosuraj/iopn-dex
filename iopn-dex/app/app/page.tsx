@@ -7,15 +7,35 @@ import TrendingPreview from "@/components/dashboard/TrendingPreview";
 
 export default function AppDashboard() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#02050B] text-white">
+    <main
+      className="
+        relative
+        min-h-screen
+        overflow-hidden
+        bg-white
+        text-slate-900
+
+        dark:bg-[#02050B]
+        dark:text-white
+      "
+    >
 
       {/* =====================================================
           BACKGROUND
       ===================================================== */}
 
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div
+        className="
+          pointer-events-none
+          fixed
+          inset-0
+          -z-10
+          overflow-hidden
+        "
+      >
 
         {/* Cyan */}
+
         <div
           className="
             absolute
@@ -26,10 +46,13 @@ export default function AppDashboard() {
             rounded-full
             bg-cyan-400/[0.055]
             blur-[120px]
+
+            dark:bg-cyan-400/[0.055]
           "
         />
 
         {/* Violet */}
+
         <div
           className="
             absolute
@@ -38,12 +61,15 @@ export default function AppDashboard() {
             h-[340px]
             w-[340px]
             rounded-full
-            bg-violet-500/[0.055]
+            bg-violet-500/[0.045]
             blur-[130px]
+
+            dark:bg-violet-500/[0.055]
           "
         />
 
         {/* Blue */}
+
         <div
           className="
             absolute
@@ -52,19 +78,25 @@ export default function AppDashboard() {
             h-[320px]
             w-[320px]
             rounded-full
-            bg-blue-500/[0.045]
+            bg-blue-500/[0.035]
             blur-[130px]
+
+            dark:bg-blue-500/[0.045]
           "
         />
 
         {/* Grid */}
+
         <div
           className="
             absolute
             inset-0
             opacity-[0.012]
-            [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]
+
+            [background-image:linear-gradient(rgba(15,23,42,.25)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,.25)_1px,transparent_1px)]
             [background-size:44px_44px]
+
+            dark:[background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]
           "
         />
 
@@ -101,8 +133,10 @@ export default function AppDashboard() {
               absolute
               -inset-2
               rounded-[30px]
-              bg-cyan-400/[0.035]
+              bg-cyan-400/[0.025]
               blur-2xl
+
+              dark:bg-cyan-400/[0.035]
             "
           />
 
@@ -135,11 +169,19 @@ export default function AppDashboard() {
               relative
               overflow-hidden
               rounded-[22px]
+
               border
-              border-white/[0.07]
-              bg-[#070C14]/85
-              shadow-[0_15px_45px_rgba(0,0,0,0.22)]
+              border-slate-200
+
+              bg-white
+
+              shadow-[0_15px_45px_rgba(15,23,42,0.08)]
+
               backdrop-blur-xl
+
+              dark:border-white/[0.07]
+              dark:bg-[#070C14]/85
+              dark:shadow-[0_15px_45px_rgba(0,0,0,0.22)]
             "
           >
 
@@ -154,8 +196,10 @@ export default function AppDashboard() {
                 h-44
                 w-44
                 rounded-full
-                bg-cyan-400/[0.045]
+                bg-cyan-400/[0.035]
                 blur-3xl
+
+                dark:bg-cyan-400/[0.045]
               "
             />
 
@@ -179,11 +223,19 @@ export default function AppDashboard() {
               relative
               overflow-hidden
               rounded-[22px]
+
               border
-              border-white/[0.07]
-              bg-[#070C14]/85
-              shadow-[0_15px_45px_rgba(0,0,0,0.20)]
+              border-slate-200
+
+              bg-white
+
+              shadow-[0_15px_45px_rgba(15,23,42,0.07)]
+
               backdrop-blur-xl
+
+              dark:border-white/[0.07]
+              dark:bg-[#070C14]/85
+              dark:shadow-[0_15px_45px_rgba(0,0,0,0.20)]
             "
           >
 
@@ -198,8 +250,10 @@ export default function AppDashboard() {
                 h-44
                 w-44
                 rounded-full
-                bg-violet-500/[0.045]
+                bg-violet-500/[0.035]
                 blur-3xl
+
+                dark:bg-violet-500/[0.045]
               "
             />
 
