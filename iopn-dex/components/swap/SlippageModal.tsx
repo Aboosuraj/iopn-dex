@@ -62,9 +62,10 @@ export default function SlippageModal({
         flex
         items-end
         justify-center
-        bg-black/70
+        bg-black/50
         px-0
         backdrop-blur-md
+        dark:bg-black/70
         sm:items-center
         sm:px-4
       "
@@ -80,11 +81,15 @@ export default function SlippageModal({
           max-w-md
           rounded-t-[2rem]
           border
-          border-white/10
-          bg-[#080d1d]
+          border-slate-200
+          bg-white
           p-6
-          text-white
-          shadow-[0_0_70px_rgba(6,182,212,0.12)]
+          text-slate-950
+          shadow-2xl
+          dark:border-white/10
+          dark:bg-[#080d1d]
+          dark:text-white
+          dark:shadow-[0_0_70px_rgba(6,182,212,0.12)]
           sm:rounded-[2rem]
         "
       >
@@ -104,7 +109,8 @@ export default function SlippageModal({
                 justify-center
                 rounded-2xl
                 bg-cyan-500/10
-                text-cyan-400
+                text-cyan-500
+                dark:text-cyan-400
               "
             >
               <Settings2 size={21} />
@@ -116,7 +122,14 @@ export default function SlippageModal({
                 Slippage Tolerance
               </h2>
 
-              <p className="mt-1 text-xs text-white/40">
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  text-slate-500
+                  dark:text-white/40
+                "
+              >
                 Set the maximum price movement
               </p>
 
@@ -136,13 +149,17 @@ export default function SlippageModal({
               justify-center
               rounded-full
               border
-              border-white/10
-              bg-white/[0.04]
-              text-white/50
+              border-slate-200
+              bg-slate-100
+              text-slate-500
               transition
               hover:border-cyan-400/30
               hover:bg-cyan-400/10
-              hover:text-cyan-400
+              hover:text-cyan-500
+              dark:border-white/10
+              dark:bg-white/[0.04]
+              dark:text-white/50
+              dark:hover:text-cyan-400
             "
           >
             <X size={18} />
@@ -161,18 +178,26 @@ export default function SlippageModal({
             justify-between
             rounded-2xl
             border
-            border-cyan-400/10
-            bg-cyan-400/[0.05]
+            border-cyan-400/20
+            bg-cyan-400/[0.07]
             px-4
             py-3
+            dark:border-cyan-400/10
+            dark:bg-cyan-400/[0.05]
           "
         >
 
-          <span className="text-sm text-white/50">
+          <span
+            className="
+              text-sm
+              text-slate-500
+              dark:text-white/50
+            "
+          >
             Current slippage
           </span>
 
-          <span className="font-black text-cyan-400">
+          <span className="font-black text-cyan-500 dark:text-cyan-400">
             {slippage}%
           </span>
 
@@ -183,7 +208,15 @@ export default function SlippageModal({
 
         <div>
 
-          <p className="mb-3 text-sm font-semibold text-white/60">
+          <p
+            className="
+              mb-3
+              text-sm
+              font-semibold
+              text-slate-600
+              dark:text-white/60
+            "
+          >
             Quick settings
           </p>
 
@@ -208,7 +241,7 @@ export default function SlippageModal({
                     ${
                       active
                         ? "border-cyan-400/60 bg-cyan-400 text-black shadow-[0_0_20px_rgba(6,182,212,0.18)]"
-                        : "border-white/10 bg-white/[0.04] text-white hover:border-cyan-400/30 hover:bg-cyan-400/10"
+                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-cyan-400/30 hover:bg-cyan-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:bg-cyan-400/10"
                     }
                   `}
                 >
@@ -246,7 +279,8 @@ export default function SlippageModal({
               block
               text-sm
               font-semibold
-              text-white/60
+              text-slate-600
+              dark:text-white/60
             "
           >
             Custom slippage
@@ -268,19 +302,24 @@ export default function SlippageModal({
                 w-full
                 rounded-2xl
                 border
-                border-white/10
-                bg-white/[0.04]
+                border-slate-200
+                bg-slate-50
                 px-4
                 py-4
                 pr-12
                 text-lg
                 font-bold
-                text-white
+                text-slate-950
                 outline-none
-                placeholder:text-white/25
+                placeholder:text-slate-400
                 transition
                 focus:border-cyan-400/50
-                focus:bg-white/[0.06]
+                focus:bg-white
+                dark:border-white/10
+                dark:bg-white/[0.04]
+                dark:text-white
+                dark:placeholder:text-white/25
+                dark:focus:bg-white/[0.06]
               "
             />
 
@@ -291,7 +330,8 @@ export default function SlippageModal({
                 top-1/2
                 -translate-y-1/2
                 font-bold
-                text-white/30
+                text-slate-400
+                dark:text-white/30
               "
             >
               %
@@ -311,9 +351,11 @@ export default function SlippageModal({
             gap-3
             rounded-2xl
             border
-            border-amber-400/10
-            bg-amber-400/[0.04]
+            border-amber-400/20
+            bg-amber-400/[0.06]
             p-4
+            dark:border-amber-400/10
+            dark:bg-amber-400/[0.04]
           "
         >
 
@@ -322,11 +364,19 @@ export default function SlippageModal({
             className="
               mt-0.5
               shrink-0
-              text-amber-400
+              text-amber-500
+              dark:text-amber-400
             "
           />
 
-          <p className="text-xs leading-5 text-white/45">
+          <p
+            className="
+              text-xs
+              leading-5
+              text-slate-600
+              dark:text-white/45
+            "
+          >
             Higher slippage increases the chance of your
             transaction completing, but may result in a
             worse execution price.

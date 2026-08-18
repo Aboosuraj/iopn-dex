@@ -55,9 +55,6 @@ export default function TokenSelector({
   const [searchingChain, setSearchingChain] = useState(false);
   const [chainError, setChainError] = useState("");
 
-  /*
-   * Search listed tokens locally.
-   */
   const filteredTokens = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -65,10 +62,6 @@ export default function TokenSelector({
       return tokens;
     }
 
-    /*
-     * If this is a valid contract address,
-     * chain lookup handles it separately.
-     */
     if (isAddress(query)) {
       return tokens.filter(
         (token) =>
@@ -85,9 +78,6 @@ export default function TokenSelector({
     });
   }, [tokens, search]);
 
-  /*
-   * Read ERC20 metadata directly from IOPn chain.
-   */
   async function searchChain(address: string) {
     if (!publicClient) {
       setChainError("Blockchain connection unavailable.");
@@ -98,9 +88,6 @@ export default function TokenSelector({
       return;
     }
 
-    /*
-     * Don't query again if already listed.
-     */
     const alreadyListed = tokens.some(
       (token) =>
         token.address.toLowerCase() ===
@@ -120,10 +107,6 @@ export default function TokenSelector({
     try {
       const contractAddress = address as `0x${string}`;
 
-      /*
-       * Read symbol, name and decimals from the
-       * actual contract on IOPn.
-       */
       const [symbol, name, decimals] =
         await Promise.all([
           publicClient.readContract({
@@ -166,9 +149,6 @@ export default function TokenSelector({
     }
   }
 
-  /*
-   * Automatically search when a valid CA is pasted.
-   */
   useEffect(() => {
     const query = search.trim();
 
@@ -227,9 +207,10 @@ export default function TokenSelector({
         flex
         items-end
         justify-center
-        bg-black/70
+        bg-black/60
         px-0
         backdrop-blur-md
+        dark:bg-black/75
         sm:items-center
         sm:px-4
       "
@@ -249,18 +230,28 @@ export default function TokenSelector({
           overflow-hidden
           rounded-t-[2rem]
           border
-          border-white/10
-          bg-[#080d1d]
-          text-white
-          shadow-[0_0_70px_rgba(6,182,212,0.12)]
+          border-slate-200
+          bg-white
+          text-slate-950
+          shadow-2xl
+          dark:border-white/10
+          dark:bg-[#080d1d]
+          dark:text-white
+          dark:shadow-[0_0_70px_rgba(6,182,212,0.12)]
           sm:rounded-[2rem]
         "
       >
 
         {/* HEADER */}
 
-        <div className="border-b border-white/10 p-5">
-
+        <div
+          className="
+            border-b
+            border-slate-200
+            p-5
+            dark:border-white/10
+          "
+        >
           <div className="flex items-center justify-between">
 
             <div>
@@ -268,7 +259,14 @@ export default function TokenSelector({
                 Select Token
               </h2>
 
-              <p className="mt-1 text-xs text-white/40">
+              <p
+                className="
+                  mt-1
+                  text-xs
+                  text-slate-500
+                  dark:text-white/40
+                "
+              >
                 Choose a token to swap
               </p>
             </div>
@@ -285,13 +283,17 @@ export default function TokenSelector({
                 justify-center
                 rounded-full
                 border
-                border-white/10
-                bg-white/[0.04]
-                text-white/50
+                border-slate-200
+                bg-slate-50
+                text-slate-500
                 transition
                 hover:border-cyan-400/30
                 hover:bg-cyan-400/10
-                hover:text-cyan-400
+                hover:text-cyan-500
+                dark:border-white/10
+                dark:bg-white/[0.04]
+                dark:text-white/50
+                dark:hover:text-cyan-400
               "
             >
               <X size={19} />
@@ -311,7 +313,8 @@ export default function TokenSelector({
                 left-4
                 top-1/2
                 -translate-y-1/2
-                text-white/30
+                text-slate-400
+                dark:text-white/30
               "
             />
 
@@ -336,22 +339,25 @@ export default function TokenSelector({
                 w-full
                 rounded-2xl
                 border
-                border-white/10
-                bg-white/[0.04]
+                border-slate-200
+                bg-slate-50
                 py-4
                 pl-12
                 pr-14
                 text-sm
-                text-white
+                text-slate-900
                 outline-none
-                placeholder:text-white/30
+                placeholder:text-slate-400
                 transition
                 focus:border-cyan-400/50
-                focus:bg-white/[0.06]
+                focus:bg-white
+                dark:border-white/10
+                dark:bg-white/[0.04]
+                dark:text-white
+                dark:placeholder:text-white/30
+                dark:focus:bg-white/[0.06]
               "
             />
-
-            {/* SEARCH BUTTON */}
 
             <button
               type="button"
@@ -374,11 +380,12 @@ export default function TokenSelector({
                 justify-center
                 rounded-xl
                 bg-cyan-400/10
-                text-cyan-400
+                text-cyan-500
                 transition
                 hover:bg-cyan-400/20
                 disabled:cursor-not-allowed
                 disabled:opacity-30
+                dark:text-cyan-400
               "
               aria-label="Search contract on IOPn"
             >
@@ -397,7 +404,7 @@ export default function TokenSelector({
           {/* CHAIN STATUS */}
 
           {searchingChain && (
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-cyan-400">
+            <div className="mt-3 flex items-center gap-2 text-[11px] text-cyan-500 dark:text-cyan-400">
               <Loader2
                 size={13}
                 className="animate-spin"
@@ -408,7 +415,25 @@ export default function TokenSelector({
           )}
 
           {chainError && (
-            <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-400/10 bg-red-400/[0.05] px-3 py-2.5 text-[11px] text-red-300">
+            <div
+              className="
+                mt-3
+                flex
+                items-start
+                gap-2
+                rounded-xl
+                border
+                border-red-200
+                bg-red-50
+                px-3
+                py-2.5
+                text-[11px]
+                text-red-600
+                dark:border-red-400/10
+                dark:bg-red-400/[0.05]
+                dark:text-red-300
+              "
+            >
               <AlertCircle
                 size={14}
                 className="mt-0.5 shrink-0"
@@ -424,12 +449,12 @@ export default function TokenSelector({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
 
-          {/* IMPORTED TOKEN */}
+          {/* FOUND TOKEN */}
 
           {chainToken && (
             <div className="mb-3">
 
-              <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-400/60">
+              <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-500/70 dark:text-cyan-400/60">
                 Found on IOPn
               </p>
 
@@ -446,8 +471,6 @@ export default function TokenSelector({
                 "
               >
 
-                {/* ICON */}
-
                 <div
                   className="
                     flex
@@ -462,15 +485,14 @@ export default function TokenSelector({
                     to-purple-500/20
                     text-lg
                     font-black
-                    text-cyan-400
+                    text-cyan-500
                     ring-1
                     ring-cyan-400/20
+                    dark:text-cyan-400
                   "
                 >
                   {chainToken.symbol.charAt(0)}
                 </div>
-
-                {/* INFO */}
 
                 <div className="min-w-0 flex-1">
 
@@ -488,7 +510,8 @@ export default function TokenSelector({
                         py-0.5
                         text-[10px]
                         font-bold
-                        text-cyan-400
+                        text-cyan-500
+                        dark:text-cyan-400
                       "
                     >
                       Found
@@ -496,17 +519,31 @@ export default function TokenSelector({
 
                   </div>
 
-                  <p className="mt-1 truncate text-xs text-white/35">
+                  <p
+                    className="
+                      mt-1
+                      truncate
+                      text-xs
+                      text-slate-500
+                      dark:text-white/35
+                    "
+                  >
                     {chainToken.name}
                   </p>
 
-                  <p className="mt-0.5 truncate text-[10px] text-white/25">
+                  <p
+                    className="
+                      mt-0.5
+                      truncate
+                      text-[10px]
+                      text-slate-400
+                      dark:text-white/25
+                    "
+                  >
                     {shortenAddress(chainToken.address)}
                   </p>
 
                 </div>
-
-                {/* IMPORT */}
 
                 <button
                   type="button"
@@ -532,7 +569,6 @@ export default function TokenSelector({
                   "
                 >
                   <Download size={13} />
-
                   Import
                 </button>
 
@@ -541,7 +577,7 @@ export default function TokenSelector({
             </div>
           )}
 
-          {/* LISTED TOKENS */}
+          {/* NO RESULTS */}
 
           {filteredTokens.length === 0 &&
           !chainToken &&
@@ -559,7 +595,8 @@ export default function TokenSelector({
                   justify-center
                   rounded-full
                   bg-cyan-500/10
-                  text-cyan-400
+                  text-cyan-500
+                  dark:text-cyan-400
                 "
               >
                 <Search size={22} />
@@ -569,7 +606,14 @@ export default function TokenSelector({
                 No token found
               </h3>
 
-              <p className="mt-1 text-sm text-white/40">
+              <p
+                className="
+                  mt-1
+                  text-sm
+                  text-slate-500
+                  dark:text-white/40
+                "
+              >
                 Search by symbol or paste an IOPn
                 contract address.
               </p>
@@ -594,11 +638,10 @@ export default function TokenSelector({
                     p-3
                     transition
                     hover:border-cyan-400/20
-                    hover:bg-white/[0.04]
+                    hover:bg-slate-50
+                    dark:hover:bg-white/[0.04]
                   "
                 >
-
-                  {/* TOKEN */}
 
                   <button
                     type="button"
@@ -615,8 +658,6 @@ export default function TokenSelector({
                     "
                   >
 
-                    {/* TOKEN ICON */}
-
                     <div
                       className="
                         flex
@@ -631,15 +672,15 @@ export default function TokenSelector({
                         to-purple-500/20
                         text-lg
                         font-black
-                        text-cyan-400
+                        text-cyan-500
                         ring-1
-                        ring-white/10
+                        ring-slate-200
+                        dark:text-cyan-400
+                        dark:ring-white/10
                       "
                     >
                       {token.symbol.charAt(0)}
                     </div>
-
-                    {/* TOKEN INFO */}
 
                     <div className="min-w-0">
 
@@ -657,7 +698,8 @@ export default function TokenSelector({
                             py-0.5
                             text-[10px]
                             font-bold
-                            text-emerald-400
+                            text-emerald-600
+                            dark:text-emerald-400
                           "
                         >
                           Listed
@@ -665,7 +707,15 @@ export default function TokenSelector({
 
                       </div>
 
-                      <p className="mt-1 truncate text-xs text-white/35">
+                      <p
+                        className="
+                          mt-1
+                          truncate
+                          text-xs
+                          text-slate-500
+                          dark:text-white/35
+                        "
+                      >
                         {token.native
                           ? "Native OPN token"
                           : token.name ||
@@ -678,10 +728,7 @@ export default function TokenSelector({
 
                   </button>
 
-                  {/* COPY */}
-
                   {!token.native && (
-
                     <button
                       type="button"
                       onClick={() =>
@@ -696,11 +743,14 @@ export default function TokenSelector({
                         items-center
                         justify-center
                         rounded-xl
-                        bg-white/[0.04]
-                        text-white/35
+                        bg-slate-100
+                        text-slate-400
                         transition
                         hover:bg-cyan-400/10
-                        hover:text-cyan-400
+                        hover:text-cyan-500
+                        dark:bg-white/[0.04]
+                        dark:text-white/35
+                        dark:hover:text-cyan-400
                       "
                     >
                       {copied === token.address ? (
@@ -709,12 +759,11 @@ export default function TokenSelector({
                         <Copy size={16} />
                       )}
                     </button>
-
                   )}
 
                   <ChevronRight
                     size={18}
-                    className="shrink-0 text-white/20"
+                    className="shrink-0 text-slate-300 dark:text-white/20"
                   />
 
                 </div>
@@ -729,12 +778,25 @@ export default function TokenSelector({
 
         {/* FOOTER */}
 
-        <div className="border-t border-white/10 px-5 py-4">
-
-          <p className="text-center text-[11px] text-white/30">
+        <div
+          className="
+            border-t
+            border-slate-200
+            px-5
+            py-4
+            dark:border-white/10
+          "
+        >
+          <p
+            className="
+              text-center
+              text-[11px]
+              text-slate-400
+              dark:text-white/30
+            "
+          >
             Always verify token contracts before swapping.
           </p>
-
         </div>
 
       </div>

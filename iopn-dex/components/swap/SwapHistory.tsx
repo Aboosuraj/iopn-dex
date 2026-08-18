@@ -1,22 +1,42 @@
 "use client";
 
-import { ExternalLink, History, CheckCircle2 } from "lucide-react";
+import {
+  ExternalLink,
+  History,
+  CheckCircle2,
+} from "lucide-react";
+
 import { getSwapHistory } from "@/lib/history";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function SwapHistory() {
   const history = getSwapHistory();
 
+  const { darkMode } = useTheme();
+
   return (
     <div
-      className="
+      className={`
         mt-6
         rounded-3xl
         border
-        border-white/10
-        bg-white/[0.04]
         p-5
         backdrop-blur-xl
-      "
+        transition-colors
+        duration-300
+        ${
+          darkMode
+            ? `
+              border-white/10
+              bg-white/[0.04]
+            `
+            : `
+              border-slate-200
+              bg-white
+              shadow-[0_10px_40px_rgba(15,23,42,0.06)]
+            `
+        }
+      `}
     >
 
       {/* HEADER */}
@@ -24,27 +44,48 @@ export default function SwapHistory() {
       <div className="mb-5 flex items-center gap-3">
 
         <div
-          className="
+          className={`
             flex
             h-10
             w-10
             items-center
             justify-center
             rounded-xl
-            bg-cyan-400/10
-            text-cyan-400
-          "
+            ${
+              darkMode
+                ? "bg-cyan-400/10 text-cyan-400"
+                : "bg-cyan-50 text-cyan-600"
+            }
+          `}
         >
           <History size={19} />
         </div>
 
         <div>
 
-          <h2 className="font-black">
+          <h2
+            className={`
+              font-black
+              ${
+                darkMode
+                  ? "text-white"
+                  : "text-slate-900"
+              }
+            `}
+          >
             Swap History
           </h2>
 
-          <p className="text-xs text-white/35">
+          <p
+            className={`
+              text-xs
+              ${
+                darkMode
+                  ? "text-white/35"
+                  : "text-slate-500"
+              }
+            `}
+          >
             Your recent transactions
           </p>
 
@@ -58,28 +99,62 @@ export default function SwapHistory() {
       {history.length === 0 ? (
 
         <div
-          className="
+          className={`
             rounded-2xl
             border
             border-dashed
-            border-white/10
-            bg-black/20
             px-5
             py-8
             text-center
-          "
+            ${
+              darkMode
+                ? `
+                  border-white/10
+                  bg-black/20
+                `
+                : `
+                  border-slate-200
+                  bg-slate-50
+                `
+            }
+          `}
         >
 
           <History
             size={25}
-            className="mx-auto text-white/20"
+            className={
+              darkMode
+                ? "mx-auto text-white/20"
+                : "mx-auto text-slate-300"
+            }
           />
 
-          <p className="mt-3 text-sm font-semibold text-white/50">
+          <p
+            className={`
+              mt-3
+              text-sm
+              font-semibold
+              ${
+                darkMode
+                  ? "text-white/50"
+                  : "text-slate-600"
+              }
+            `}
+          >
             No swaps yet
           </p>
 
-          <p className="mt-1 text-xs text-white/30">
+          <p
+            className={`
+              mt-1
+              text-xs
+              ${
+                darkMode
+                  ? "text-white/30"
+                  : "text-slate-400"
+              }
+            `}
+          >
             Your completed swaps will appear here.
           </p>
 
@@ -93,15 +168,25 @@ export default function SwapHistory() {
 
             <div
               key={tx.hash}
-              className="
+              className={`
                 rounded-2xl
                 border
-                border-white/10
-                bg-black/20
                 p-4
                 transition
-                hover:border-cyan-400/20
-              "
+                ${
+                  darkMode
+                    ? `
+                      border-white/10
+                      bg-black/20
+                      hover:border-cyan-400/20
+                    `
+                    : `
+                      border-slate-200
+                      bg-slate-50
+                      hover:border-cyan-300
+                    `
+                }
+              `}
             >
 
               <div className="flex items-center justify-between gap-3">
@@ -109,7 +194,7 @@ export default function SwapHistory() {
                 <div className="flex items-center gap-3">
 
                   <div
-                    className="
+                    className={`
                       flex
                       h-10
                       w-10
@@ -117,25 +202,64 @@ export default function SwapHistory() {
                       items-center
                       justify-center
                       rounded-full
-                      bg-cyan-400/10
                       font-black
-                      text-cyan-400
-                    "
+                      ${
+                        darkMode
+                          ? `
+                            bg-cyan-400/10
+                            text-cyan-400
+                          `
+                          : `
+                            bg-cyan-50
+                            text-cyan-600
+                          `
+                      }
+                    `}
                   >
                     ⇄
                   </div>
 
                   <div>
 
-                    <div className="font-bold">
+                    <div
+                      className={`
+                        font-bold
+                        ${
+                          darkMode
+                            ? "text-white"
+                            : "text-slate-900"
+                        }
+                      `}
+                    >
                       {tx.tokenIn}
-                      <span className="mx-2 text-white/30">
+
+                      <span
+                        className={`
+                          mx-2
+                          ${
+                            darkMode
+                              ? "text-white/30"
+                              : "text-slate-300"
+                          }
+                        `}
+                      >
                         →
                       </span>
+
                       {tx.tokenOut}
                     </div>
 
-                    <p className="mt-1 text-xs text-white/40">
+                    <p
+                      className={`
+                        mt-1
+                        text-xs
+                        ${
+                          darkMode
+                            ? "text-white/40"
+                            : "text-slate-500"
+                        }
+                      `}
+                    >
                       {tx.amountIn} {tx.tokenIn}
                       {" → "}
                       {tx.amountOut} {tx.tokenOut}
@@ -145,6 +269,8 @@ export default function SwapHistory() {
 
                 </div>
 
+
+                {/* STATUS */}
 
                 <div
                   className="
@@ -158,7 +284,7 @@ export default function SwapHistory() {
                     py-1
                     text-[10px]
                     font-bold
-                    text-emerald-400
+                    text-emerald-500
                   "
                 >
                   <CheckCircle2 size={12} />
@@ -171,18 +297,32 @@ export default function SwapHistory() {
               {/* HASH */}
 
               <div
-                className="
+                className={`
                   mt-4
                   flex
                   items-center
                   justify-between
                   border-t
-                  border-white/5
                   pt-3
-                "
+                  ${
+                    darkMode
+                      ? "border-white/5"
+                      : "border-slate-200"
+                  }
+                `}
               >
 
-                <span className="font-mono text-[10px] text-white/25">
+                <span
+                  className={`
+                    font-mono
+                    text-[10px]
+                    ${
+                      darkMode
+                        ? "text-white/25"
+                        : "text-slate-400"
+                    }
+                  `}
+                >
                   {tx.hash.slice(0, 10)}...
                   {tx.hash.slice(-6)}
                 </span>
@@ -197,9 +337,9 @@ export default function SwapHistory() {
                     gap-1
                     text-xs
                     font-bold
-                    text-cyan-400
+                    text-cyan-500
                     transition
-                    hover:text-cyan-300
+                    hover:text-cyan-400
                   "
                 >
                   Explorer

@@ -1,3 +1,5 @@
+"use client";
+
 import WalletCard from "@/components/dashboard/WalletCard";
 import QuickActions from "@/components/dashboard/QuickActions";
 import MarketOverview from "@/components/dashboard/MarketOverview";
@@ -5,64 +7,64 @@ import TrendingPreview from "@/components/dashboard/TrendingPreview";
 
 export default function AppDashboard() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#030712] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#02050B] text-white">
 
       {/* =====================================================
-          PREMIUM WEB3 BACKGROUND
+          BACKGROUND
       ===================================================== */}
 
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
 
-        {/* Cyan glow */}
+        {/* Cyan */}
         <div
           className="
             absolute
-            left-[10%]
-            top-[-180px]
-            h-[360px]
-            w-[360px]
+            left-[-120px]
+            top-[-160px]
+            h-[320px]
+            w-[320px]
             rounded-full
-            bg-cyan-500/[0.09]
-            blur-[130px]
+            bg-cyan-400/[0.055]
+            blur-[120px]
           "
         />
 
-        {/* Violet glow */}
+        {/* Violet */}
         <div
           className="
             absolute
             right-[-160px]
-            top-[25%]
-            h-[380px]
-            w-[380px]
+            top-[30%]
+            h-[340px]
+            w-[340px]
             rounded-full
-            bg-violet-600/[0.08]
-            blur-[140px]
+            bg-violet-500/[0.055]
+            blur-[130px]
           "
         />
 
-        {/* Blue bottom glow */}
+        {/* Blue */}
         <div
           className="
             absolute
             bottom-[-180px]
-            left-[-120px]
-            h-[360px]
-            w-[360px]
+            left-[15%]
+            h-[320px]
+            w-[320px]
             rounded-full
-            bg-blue-600/[0.07]
-            blur-[140px]
+            bg-blue-500/[0.045]
+            blur-[130px]
           "
         />
 
-        {/* Subtle grid */}
+        {/* Grid */}
         <div
           className="
             absolute
             inset-0
-            opacity-[0.018]
+            opacity-[0.012]
             [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]
-            [background-size:40px_40px]
+            [background-size:44px_44px]
           "
         />
 
@@ -70,46 +72,36 @@ export default function AppDashboard() {
 
 
       {/* =====================================================
-          DASHBOARD CONTAINER
+          CONTENT
       ===================================================== */}
 
       <div
         className="
+          relative
           mx-auto
           w-full
-          max-w-7xl
-          px-4
+          max-w-2xl
+          px-3
           pb-28
-          pt-4
-          sm:px-6
-          lg:px-8
+          pt-3
+          sm:px-5
+          sm:pt-5
         "
       >
 
-
         {/* =================================================
-            WALLET / PORTFOLIO
+            WALLET
         ================================================= */}
 
-        <section
-          className="
-            relative
-            mx-auto
-            max-w-2xl
-          "
-        >
+        <section className="relative">
 
-          {/* Soft glow behind wallet */}
           <div
             className="
               pointer-events-none
               absolute
-              -inset-3
-              rounded-[32px]
-              bg-gradient-to-r
-              from-cyan-400/[0.07]
-              via-blue-500/[0.05]
-              to-violet-500/[0.07]
+              -inset-2
+              rounded-[30px]
+              bg-cyan-400/[0.035]
               blur-2xl
             "
           />
@@ -125,13 +117,7 @@ export default function AppDashboard() {
             QUICK ACTIONS
         ================================================= */}
 
-        <section
-          className="
-            mx-auto
-            mt-5
-            max-w-2xl
-          "
-        >
+        <section className="mt-3">
 
           <QuickActions />
 
@@ -142,38 +128,33 @@ export default function AppDashboard() {
             MARKET OVERVIEW
         ================================================= */}
 
-        <section
-          className="
-            mx-auto
-            mt-6
-            max-w-2xl
-          "
-        >
+        <section className="mt-4">
 
           <div
             className="
               relative
               overflow-hidden
-              rounded-[26px]
+              rounded-[22px]
               border
               border-white/[0.07]
-              bg-white/[0.025]
-              shadow-[0_20px_60px_rgba(0,0,0,0.25)]
+              bg-[#070C14]/85
+              shadow-[0_15px_45px_rgba(0,0,0,0.22)]
               backdrop-blur-xl
             "
           >
 
-            {/* subtle accent */}
+            {/* Cyan accent */}
+
             <div
               className="
                 pointer-events-none
                 absolute
-                right-[-80px]
-                top-[-80px]
-                h-40
-                w-40
+                right-[-90px]
+                top-[-90px]
+                h-44
+                w-44
                 rounded-full
-                bg-cyan-400/[0.05]
+                bg-cyan-400/[0.045]
                 blur-3xl
               "
             />
@@ -191,37 +172,33 @@ export default function AppDashboard() {
             TRENDING
         ================================================= */}
 
-        <section
-          className="
-            mx-auto
-            mt-5
-            max-w-2xl
-          "
-        >
+        <section className="mt-3">
 
           <div
             className="
               relative
               overflow-hidden
-              rounded-[26px]
+              rounded-[22px]
               border
               border-white/[0.07]
-              bg-white/[0.025]
-              shadow-[0_20px_60px_rgba(0,0,0,0.22)]
+              bg-[#070C14]/85
+              shadow-[0_15px_45px_rgba(0,0,0,0.20)]
               backdrop-blur-xl
             "
           >
+
+            {/* Violet accent */}
 
             <div
               className="
                 pointer-events-none
                 absolute
-                bottom-[-80px]
-                left-[-50px]
-                h-40
-                w-40
+                bottom-[-90px]
+                left-[-70px]
+                h-44
+                w-44
                 rounded-full
-                bg-violet-500/[0.05]
+                bg-violet-500/[0.045]
                 blur-3xl
               "
             />
@@ -233,7 +210,6 @@ export default function AppDashboard() {
           </div>
 
         </section>
-
 
       </div>
 

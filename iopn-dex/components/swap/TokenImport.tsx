@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Coins, X, ShieldCheck } from "lucide-react";
 
+import { useTheme } from "@/components/ThemeProvider";
+
 type Token = {
   symbol: string;
   address: string;
@@ -21,6 +23,8 @@ export default function TokenImport({
   onClose,
   onImport,
 }: Props) {
+  const { darkMode } = useTheme();
+
   const [address, setAddress] = useState("");
 
   if (!open) {
@@ -64,55 +68,88 @@ export default function TokenImport({
       }}
     >
       <div
-        className="
+        className={`
           w-full
           max-w-md
           rounded-t-[2rem]
           border
-          border-white/10
-          bg-[#080d1d]
           p-6
-          text-white
           shadow-[0_0_70px_rgba(6,182,212,0.12)]
+          transition-colors
+          duration-300
           sm:rounded-[2rem]
-        "
+          ${
+            darkMode
+              ? `
+                border-white/10
+                bg-[#080d1d]
+                text-white
+              `
+              : `
+                border-slate-200
+                bg-white
+                text-slate-900
+                shadow-[0_20px_70px_rgba(15,23,42,0.15)]
+              `
+          }
+        `}
       >
+
+        {/* HEADER */}
 
         <div className="flex items-center justify-between">
 
           <div className="flex items-center gap-3">
 
             <div
-              className="
+              className={`
                 flex
                 h-11
                 w-11
                 items-center
                 justify-center
                 rounded-2xl
-                bg-cyan-400/10
-                text-cyan-400
-              "
+                ${
+                  darkMode
+                    ? "bg-cyan-400/10 text-cyan-400"
+                    : "bg-cyan-50 text-cyan-600"
+                }
+              `}
             >
               <Coins size={21} />
             </div>
 
             <div>
+
               <h2 className="text-xl font-black">
                 Import Token
               </h2>
 
-              <p className="mt-1 text-xs text-white/40">
+              <p
+                className={`
+                  mt-1
+                  text-xs
+                  ${
+                    darkMode
+                      ? "text-white/40"
+                      : "text-slate-500"
+                  }
+                `}
+              >
                 Add a custom token contract
               </p>
+
             </div>
 
           </div>
 
+
+          {/* CLOSE */}
+
           <button
             type="button"
             onClick={onClose}
-            className="
+            className={`
               flex
               h-10
               w-10
@@ -120,13 +157,25 @@ export default function TokenImport({
               justify-center
               rounded-full
               border
-              border-white/10
-              bg-white/[0.04]
-              text-white/50
               transition
-              hover:border-cyan-400/30
-              hover:text-cyan-400
-            "
+              ${
+                darkMode
+                  ? `
+                    border-white/10
+                    bg-white/[0.04]
+                    text-white/50
+                    hover:border-cyan-400/30
+                    hover:text-cyan-400
+                  `
+                  : `
+                    border-slate-200
+                    bg-slate-50
+                    text-slate-400
+                    hover:border-cyan-300
+                    hover:text-cyan-600
+                  `
+              }
+            `}
           >
             <X size={18} />
           </button>
@@ -134,17 +183,23 @@ export default function TokenImport({
         </div>
 
 
+        {/* ADDRESS */}
+
         <div className="mt-6">
 
           <label
             htmlFor="token-address"
-            className="
+            className={`
               mb-2
               block
               text-sm
               font-semibold
-              text-white/60
-            "
+              ${
+                darkMode
+                  ? "text-white/60"
+                  : "text-slate-600"
+              }
+            `}
           >
             Contract Address
           </label>
@@ -156,27 +211,41 @@ export default function TokenImport({
               setAddress(event.target.value)
             }
             placeholder="0x..."
-            className="
+            className={`
               w-full
               rounded-2xl
               border
-              border-white/10
-              bg-white/[0.04]
               px-4
               py-4
               font-mono
               text-sm
-              text-white
               outline-none
-              placeholder:text-white/25
               transition
               focus:border-cyan-400/50
-              focus:bg-white/[0.06]
-            "
+              ${
+                darkMode
+                  ? `
+                    border-white/10
+                    bg-white/[0.04]
+                    text-white
+                    placeholder:text-white/25
+                    focus:bg-white/[0.06]
+                  `
+                  : `
+                    border-slate-200
+                    bg-slate-50
+                    text-slate-900
+                    placeholder:text-slate-400
+                    focus:bg-white
+                  `
+              }
+            `}
           />
 
         </div>
 
+
+        {/* SECURITY WARNING */}
 
         <div
           className="
@@ -190,17 +259,31 @@ export default function TokenImport({
             p-4
           "
         >
+
           <ShieldCheck
             size={19}
             className="mt-0.5 shrink-0 text-amber-400"
           />
 
-          <p className="text-xs leading-5 text-white/45">
+          <p
+            className={`
+              text-xs
+              leading-5
+              ${
+                darkMode
+                  ? "text-white/45"
+                  : "text-slate-600"
+              }
+            `}
+          >
             Only import tokens from contracts you trust.
             Always verify the contract address before swapping.
           </p>
+
         </div>
 
+
+        {/* IMPORT */}
 
         <button
           type="button"
@@ -224,23 +307,37 @@ export default function TokenImport({
         </button>
 
 
+        {/* CANCEL */}
+
         <button
           type="button"
           onClick={onClose}
-          className="
+          className={`
             mt-3
             w-full
             rounded-2xl
             border
-            border-white/10
-            bg-white/[0.03]
             py-4
             font-bold
-            text-white/70
             transition
-            hover:bg-white/[0.06]
-            hover:text-white
-          "
+            ${
+              darkMode
+                ? `
+                  border-white/10
+                  bg-white/[0.03]
+                  text-white/70
+                  hover:bg-white/[0.06]
+                  hover:text-white
+                `
+                : `
+                  border-slate-200
+                  bg-slate-50
+                  text-slate-600
+                  hover:bg-slate-100
+                  hover:text-slate-900
+                `
+            }
+          `}
         >
           Cancel
         </button>
