@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import Providers from "@/components/Providers";
+import BottomNav from "@/components/layout/BottomNav";
 
 import { Toaster } from "sonner";
 
@@ -29,15 +30,12 @@ export const metadata: Metadata = {
       },
     ],
 
-    apple:
-      "/apple-touch-icon.png",
+    apple: "/apple-touch-icon.png",
   },
 
-  manifest:
-    "/site.webmanifest",
+  manifest: "/site.webmanifest",
 
-  themeColor:
-    "#050816",
+  themeColor: "#050816",
 };
 
 export default function RootLayout({
@@ -49,7 +47,15 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-black text-white antialiased">
         <Providers>
-          {children}
+
+          {/* PAGE CONTENT */}
+          <main className="pb-24">
+            {children}
+          </main>
+
+          {/* MOBILE BOTTOM NAVIGATION */}
+          <BottomNav />
+
         </Providers>
 
         <Toaster position="top-center" />
