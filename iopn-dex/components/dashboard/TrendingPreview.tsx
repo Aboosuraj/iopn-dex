@@ -69,7 +69,7 @@ export default function TrendingPreview() {
         {/* VIEW ALL */}
 
         <Link
-          href="/markets"
+          href="/market"
           className="
             group
             flex

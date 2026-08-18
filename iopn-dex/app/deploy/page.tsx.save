@@ -1,0 +1,510 @@
+
+"use client";
+
+import { useState } from "react";
+import {
+  Rocket,
+  ShieldCheck,
+  Coins,
+  CircleHelp,
+  Wallet,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+import { useAccount } from "wagmi";
+
+export default function DeployPage() {
+  const { address, isConnected } = useAccount();
+
+  const [name, setName] = useState("");
+  const [symbol, setSymbol] = useState("");
+  const [supply, setSupply] = useState("");
+  const [decimals, setDecimals] = useState("18");
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  function handleDeploy() {
+    setError("");
+    setSuccess("");
+
+    if (!isConnected) {
+      setError("Connect your wallet before deploying a token.");
+      return;
+    }
+
+    if (!name.trim()) {
+      setError("Enter a token name.");
+      return;
+    }
+
+    if (!symbol.trim()) {
+      setError("Enter a token symbol.");
+      return;
+    }
+
+    if (!supply || Number(supply) <= 0) {
+      setError("Enter a valid total supply.");
+      return;
+    }
+
+    if (
+      !decimals ||
+      Number(decimals) < 0 ||
+      Number(decimals) > 18
+    ) {
+      setError("Decimals must be between 0 and 18.");
+      return;
+    }
+
+    setSuccess(
+      "Token configuration is valid. The on-chain deployment engine will be connected next."
+    );
+  }
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#030712] pb-28 text-white">
+      {/* BACKGROUND */}
+
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div
+          className="
+            absolute
+            left-[10%]
+            top-[-160px]
+            h-[340px]
+            w-[340px]
+            rounded-full
+            bg-cyan-500/[0.08]
+            blur-[130px]
+          "
+        />
+
+        <div
+          className="
+            absolute
+            right-[-140px]
+            top-[35%]
+            h-[340px]
+            w-[340px]
+            rounded-full
+            bg-violet-600/[0.07]
+            blur-[130px]
+          "
+        />
+      </div>
+
+      <div className="mx-auto w-full max-w-md px-4 pt-5">
+        {/* HEADER */}
+
+        <div className="mb-5">
+          <div className="flex items-center gap-3">
+            <div
+              className="
+                flex
+                h-11
+                w-11
+                items-center
+                justify-center
+                rounded-2xl
+                border
+                border-cyan-400/15
+                bg-cyan-400/[0.07]
+              "
+            >
+              <Rocket
+                size={21}
+                className="text-cyan-400"
+              />
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-black tracking-tight">
+                Deploy Token
+              </h1>
+
+              <p className="mt-0.5 text-xs text-white/35">
+                Create an ERC-20 token on IOPn
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* NETWORK */}
+
+        <div
+          className="
+            mb-4
+            flex
+            items-center
+            justify-between
+            rounded-2xl
+            border
+            border-emerald-400/10
+            bg-emerald-400/[0.035]
+            px-4
+            py-3
+          "
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+
+            <span className="text-xs font-bold text-white/65">
+              IOPn Testnet
+            </span>
+          </div>
+
+          <span className="text-[10px] font-bold text-emerald-400">
+            Network Online
+          </span>
+        </div>
+
+        {/* DEPLOY CARD */}
+
+        <section
+          className="
+            overflow-hidden
+            rounded-3xl
+            border
+            border-white/10
+            bg-white/[0.035]
+            p-4
+            shadow-[0_20px_70px_rgba(0,0,0,0.25)]
+            backdrop-blur-xl
+          "
+        >
+          <div className="mb-5">
+            <div className="flex items-center gap-2">
+              <Coins
+                size={17}
+                className="text-cyan-400"
+              />
+
+              <h2 className="text-sm font-black">
+                Token Information
+              </h2>
+            </div>
+
+            <p className="mt-1 text-[10px] leading-4 text-white/30">
+              Enter the basic information for your new token.
+            </p>
+          </div>
+
+          {/* TOKEN NAME */}
+
+          <div className="mb-4">
+            <label className="mb-1.5 block text-[11px] font-bold text-white/50">
+              Token Name
+            </label>
+
+            <input
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
+              placeholder="Example Token"
+              className="
+                h-12
+                w-full
+                rounded-2xl
+                border
+                border-white/10
+                bg-black/20
+                px-4
+                text-sm
+                font-semibold
+                text-white
+                outline-none
+                transition
+                placeholder:text-white/20
+                focus:border-cyan-400/40
+                focus:bg-cyan-400/[0.025]
+              "
+            />
+          </div>
+
+          {/* SYMBOL */}
+
+          <div className="mb-4">
+            <label className="mb-1.5 block text-[11px] font-bold text-white/50">
+              Token Symbol
+            </label>
+
+            <input
+              value={symbol}
+              onChange={(event) =>
+                setSymbol(
+                  event.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, "")
+                )
+              }
+              maxLength={12}
+              placeholder="EXT"
+              className="
+                h-12
+                w-full
+                rounded-2xl
+                border
+                border-white/10
+                bg-black/20
+                px-4
+                text-sm
+                font-black
+                uppercase
+                tracking-wide
+                text-white
+                outline-none
+                transition
+                placeholder:text-white/20
+                focus:border-cyan-400/40
+                focus:bg-cyan-400/[0.025]
+              "
+            />
+          </div>
+
+          {/* SUPPLY + DECIMALS */}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold text-white/50">
+                Total Supply
+              </label>
+
+              <input
+                value={supply}
+                onChange={(event) =>
+                  setSupply(
+                    event.target.value
+                  )
+                }
+                inputMode="decimal"
+                placeholder="1000000"
+                className="
+                  h-12
+                  w-full
+                  rounded-2xl
+                  border
+                  border-white/10
+                  bg-black/20
+                  px-3
+                  text-sm
+                  font-bold
+                  text-white
+                  outline-none
+                  transition
+                  placeholder:text-white/20
+                  focus:border-cyan-400/40
+                "
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold text-white/50">
+                Decimals
+              </label>
+
+              <input
+                value={decimals}
+                onChange={(event) =>
+                  setDecimals(
+                    event.target.value
+                  )
+                }
+                inputMode="numeric"
+                placeholder="18"
+                className="
+                  h-12
+                  w-full
+                  rounded-2xl
+                  border
+                  border-white/10
+                  bg-black/20
+                  px-3
+                  text-sm
+                  font-bold
+                  text-white
+                  outline-none
+                  transition
+                  placeholder:text-white/20
+                  focus:border-cyan-400/40
+                "
+              />
+            </div>
+          </div>
+
+          {/* WALLET */}
+
+          <div
+            className="
+              mt-4
+              rounded-2xl
+              border
+              border-white/10
+              bg-white/[0.025]
+              p-3
+            "
+          >
+            <div className="flex items-center gap-2">
+              <Wallet
+                size={15}
+                className="text-cyan-400"
+              />
+
+              <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">
+                Deployment Wallet
+              </span>
+            </div>
+
+            <p className="mt-2 truncate font-mono text-xs text-white/60">
+              {isConnected
+                ? address
+                : "Wallet not connected"}
+            </p>
+          </div>
+
+          {/* ERROR */}
+
+          {error && (
+            <div
+              className="
+                mt-4
+                flex
+                gap-2
+                rounded-2xl
+                border
+                border-red-400/10
+                bg-red-400/[0.05]
+                p-3
+                text-xs
+                text-red-300
+              "
+            >
+              <AlertCircle
+                size={15}
+                className="mt-0.5 shrink-0"
+              />
+
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* SUCCESS */}
+
+          {success && (
+            <div
+              className="
+                mt-4
+                flex
+                gap-2
+                rounded-2xl
+                border
+                border-emerald-400/10
+                bg-emerald-400/[0.05]
+                p-3
+                text-xs
+                leading-5
+                text-emerald-300
+              "
+            >
+              <CheckCircle2
+                size={15}
+                className="mt-0.5 shrink-0"
+              />
+
+              <span>{success}</span>
+            </div>
+          )}
+
+          {/* DEPLOY BUTTON */}
+
+          <button
+            type="button"
+            onClick={handleDeploy}
+            className="
+              mt-5
+              flex
+              h-13
+              w-full
+              items-center
+              justify-center
+              gap-2
+              rounded-2xl
+              bg-cyan-400
+              px-5
+              text-sm
+              font-black
+              text-black
+              shadow-[0_0_30px_rgba(34,211,238,0.12)]
+              transition
+              hover:bg-cyan-300
+              active:scale-[0.98]
+            "
+          >
+            <Rocket size={17} />
+            Deploy Token
+          </button>
+        </section>
+
+        {/* SECURITY */}
+
+        <div
+          className="
+            mt-4
+            flex
+            gap-3
+            rounded-2xl
+            border
+            border-white/10
+            bg-white/[0.025]
+            p-3.5
+          "
+        >
+          <ShieldCheck
+            size={18}
+            className="mt-0.5 shrink-0 text-cyan-400"
+          />
+
+          <div>
+            <p className="text-xs font-bold text-white/65">
+              Non-custodial deployment
+            </p>
+
+            <p className="mt-1 text-[10px] leading-4 text-white/30">
+              Your wallet signs the deployment transaction.
+              IOPn DEX never receives or controls your private key.
+            </p>
+          </div>
+        </div>
+
+        {/* INFO */}
+
+        <div
+          className="
+            mt-3
+            flex
+            gap-3
+            rounded-2xl
+            border
+            border-cyan-400/10
+            bg-cyan-400/[0.025]
+            p-3.5
+          "
+        >
+          <CircleHelp
+            size={17}
+            className="mt-0.5 shrink-0 text-cyan-400"
+          />
+
+          <p className="text-[10px] leading-4 text-white/30">
+            Deploying a token creates a new smart contract
+            on the IOPn blockchain. Make sure your token
+            information is correct before confirming the
+            transaction in your wallet.
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
