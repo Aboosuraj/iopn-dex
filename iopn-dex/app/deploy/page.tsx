@@ -1,660 +1,1032 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
-  useAccount,
-  useConnect,
-  useDeployContract,
-  useWaitForTransactionReceipt,
-} from "wagmi";
-import { parseUnits } from "viem";
-import {
-  ArrowLeft,
   CheckCircle2,
   Copy,
   ExternalLink,
+  Loader2,
   Rocket,
   ShieldCheck,
   Wallet,
+  XCircle,
 } from "lucide-react";
+import {
+  useAccount,
+  useChainId,
+  useWaitForTransactionReceipt,
+  useWalletClient,
+} from "wagmi";
+import {
+  isAddress,
+  parseUnits,
+  type Address,
+  type Abi,
+  type Hex,
+} from "viem";
 
-import artifact from "@/artifacts/IOPnToken.json";
+/*
+  IMPORTANT
+  ----------
+  Your Solidity constructor is:
 
-export default function DeployTokenPage() {
+  constructor(
+      string memory tokenName,
+      string memory tokenSymbol,
+      uint256 initialSupply,
+      uint8 tokenDecimals,
+      address initialOwner
+  )
+
+  Therefore deployment MUST send exactly 5 arguments.
+*/
+
+type ContractArtifact = {
+  abi: Abi;
+  bytecode: Hex | string;
+};
+
+type DeployStatus =
+  | "idle"
+  | "loading"
+  | "confirming"
+  | "success"
+  | "error";
+
+const DEFAULT_DECIMALS = 18;
+
+export default function DeployPage() {
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-
-  const {
-    deployContract,
-    data: txHash,
-    isPending,
-    error,
-  } = useDeployContract();
-
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
+  const chainId = useChainId();
+  const { data: walletClient } = useWalletClient();
 
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [supply, setSupply] = useState("");
-  const [decimals, setDecimals] = useState("18");
+  const [decimals, setDecimals] = useState(String(DEFAULT_DECIMALS));
 
-  const [deployError, setDeployError] = useState("");
+  const [artifact, setArtifact] = useState<ContractArtifact | null>(null);
+  const [artifactLoading, setArtifactLoading] = useState(true);
+  const [artifactError, setArtifactError] = useState("");
+
+  const [status, setStatus] = useState<DeployStatus>("idle");
+  const [error, setError] = useState("");
+  const [txHash, setTxHash] = useState<Hex | undefined>();
+  const [contractAddress, setContractAddress] = useState<Address | undefined>();
   const [copied, setCopied] = useState(false);
 
-  const isValid = useMemo(() => {
-    if (!name.trim()) return false;
-    if (!symbol.trim()) return false;
-    if (!supply || Number(supply) <= 0) return false;
+  /*
+   * Load the compiled Solidity artifact.
+   *
+   * This expects the compile script to generate:
+   *
+   * artifacts/IOPnToken.json
+   *
+   * If your artifact is served from another location, change the URL below.
+   */
+  useEffect(() => {
+    let cancelled = false;
 
-    const decimalValue = Number(decimals);
+    async function loadArtifact() {
+      try {
+        setArtifactLoading(true);
+        setArtifactError("");
 
-    if (
-      !Number.isInteger(decimalValue) ||
-      decimalValue < 0 ||
-      decimalValue > 18
-    ) {
-      return false;
+        const response = await fetch("/artifacts/IOPnToken.json", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Could not load IOPnToken artifact (${response.status}).`
+          );
+        }
+
+        const json = (await response.json()) as ContractArtifact;
+
+        if (!json.abi) {
+          throw new Error("IOPnToken artifact does not contain an ABI.");
+        }
+
+        if (!json.bytecode) {
+          throw new Error("IOPnToken artifact does not contain bytecode.");
+        }
+
+        if (!cancelled) {
+          setArtifact(json);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setArtifactError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load the token contract artifact."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setArtifactLoading(false);
+        }
+      }
     }
 
-    return true;
-  }, [name, symbol, supply, decimals]);
+    loadArtifact();
 
-  function handleDeploy() {
-    setDeployError("");
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    if (!isConnected) {
-      if (connectors.length > 0) {
-        connect({
-          connector: connectors[0],
-        });
-      }
+  /*
+   * Wait for the deployment transaction.
+   */
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    data: receipt,
+  } = useWaitForTransactionReceipt({
+    hash: txHash,
+    query: {
+      enabled: !!txHash,
+    },
+  });
 
+  /*
+   * Once the deployment transaction is mined, the receipt contains
+   * the newly-created contract address.
+   */
+  useEffect(() => {
+    if (!isConfirmed || !receipt?.contractAddress) return;
+
+    setContractAddress(receipt.contractAddress);
+    setStatus("success");
+  }, [isConfirmed, receipt]);
+
+  const explorerBaseUrl = useMemo(() => {
+    /*
+     * OPN Testnet explorer.
+     *
+     * If your current lib/chains.ts uses a different explorer URL,
+     * replace this with the same URL used there.
+     */
+    return "https://explorer.opn.network";
+  }, []);
+
+  const transactionUrl = txHash
+    ? `${explorerBaseUrl}/tx/${txHash}`
+    : "";
+
+  const contractUrl = contractAddress
+    ? `${explorerBaseUrl}/address/${contractAddress}`
+    : "";
+
+  const isDeploying =
+    status === "loading" || status === "confirming" || isConfirming;
+
+  function resetStatus() {
+    setStatus("idle");
+    setError("");
+    setTxHash(undefined);
+    setContractAddress(undefined);
+  }
+
+  function validateForm() {
+    if (!isConnected || !address) {
+      return "Please connect your wallet first.";
+    }
+
+    if (!walletClient) {
+      return "Wallet client is not ready. Please reconnect your wallet.";
+    }
+
+    if (!artifact) {
+      return "Token contract artifact is not loaded yet.";
+    }
+
+    const trimmedName = name.trim();
+    const trimmedSymbol = symbol.trim().toUpperCase();
+
+    if (!trimmedName) {
+      return "Enter a token name.";
+    }
+
+    if (trimmedName.length > 100) {
+      return "Token name is too long.";
+    }
+
+    if (!trimmedSymbol) {
+      return "Enter a token symbol.";
+    }
+
+    if (!/^[A-Z0-9]{1,12}$/.test(trimmedSymbol)) {
+      return "Token symbol must contain 1–12 letters or numbers.";
+    }
+
+    if (!supply.trim()) {
+      return "Enter the initial supply.";
+    }
+
+    const supplyNumber = Number(supply);
+
+    if (!Number.isFinite(supplyNumber) || supplyNumber <= 0) {
+      return "Initial supply must be greater than zero.";
+    }
+
+    if (!Number.isInteger(supplyNumber)) {
+      return "Initial supply must be a whole number.";
+    }
+
+    const decimalsNumber = Number(decimals);
+
+    if (
+      !Number.isInteger(decimalsNumber) ||
+      decimalsNumber < 0 ||
+      decimalsNumber > 18
+    ) {
+      return "Decimals must be between 0 and 18.";
+    }
+
+    if (!isAddress(address)) {
+      return "Connected wallet address is invalid.";
+    }
+
+    return null;
+  }
+
+  async function handleDeploy(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setError("");
+    setContractAddress(undefined);
+    setTxHash(undefined);
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setStatus("error");
+      setError(validationError);
       return;
     }
 
-    if (!isValid) {
-      setDeployError(
-        "Please enter a valid token name, symbol, supply and decimals."
-      );
+    if (!walletClient || !artifact || !address) {
+      setStatus("error");
+      setError("Wallet or contract information is unavailable.");
       return;
     }
 
     try {
+      setStatus("loading");
+
+      const trimmedName = name.trim();
+      const trimmedSymbol = symbol.trim().toUpperCase();
+
+      const decimalsNumber = Number(decimals);
+
+      /*
+       * Convert the human-readable supply into the actual ERC-20
+       * base-unit amount.
+       *
+       * Example:
+       *
+       * 1,000,000 tokens
+       * 18 decimals
+       *
+       * becomes:
+       *
+       * 1000000000000000000000000
+       */
       const initialSupply = parseUnits(
-        supply,
-        Number(decimals)
+        supply.trim(),
+        decimalsNumber
       );
 
-      deployContract({
+      /*
+       * THIS IS THE IMPORTANT FIX.
+       *
+       * Your Solidity constructor expects:
+       *
+       * 1. tokenName
+       * 2. tokenSymbol
+       * 3. initialSupply
+       * 4. tokenDecimals
+       * 5. initialOwner
+       */
+      const constructorArgs = [
+        trimmedName,
+        trimmedSymbol,
+        initialSupply,
+        decimalsNumber,
+        address,
+      ] as const;
+
+      /*
+       * Deploy the contract.
+       *
+       * We use walletClient.deployContract because this is a
+       * contract deployment using bytecode.
+       */
+      const hash = await walletClient.deployContract({
         abi: artifact.abi,
-        bytecode: artifact.bytecode as `0x${string}`,
-        args: [
-          name.trim(),
-          symbol.trim().toUpperCase(),
-          initialSupply,
-          Number(decimals),
-        ],
+        bytecode: artifact.bytecode as Hex,
+        args: constructorArgs,
+        account: address,
+        chain: walletClient.chain,
       });
+
+      setTxHash(hash);
+      setStatus("confirming");
     } catch (err) {
-      setDeployError(
-        err instanceof Error
-          ? err.message
-          : "Unable to prepare deployment transaction."
-      );
+      console.error("Token deployment failed:", err);
+
+      setStatus("error");
+
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Token deployment failed.");
+      }
     }
   }
 
-  async function copyHash() {
-    if (!txHash) return;
+  async function copyAddress() {
+    if (!contractAddress) return;
 
     try {
-      await navigator.clipboard.writeText(txHash);
+      await navigator.clipboard.writeText(contractAddress);
       setCopied(true);
 
       setTimeout(() => {
         setCopied(false);
-      }, 1500);
+      }, 1800);
     } catch {
       setCopied(false);
     }
   }
 
-  const isBusy = isPending || isConfirming;
-
   return (
     <main className="min-h-screen bg-[#030712] px-4 pb-28 pt-6 text-white">
-      <div className="mx-auto w-full max-w-md">
-
-        {/* HEADER */}
-        <div className="mb-5 flex items-center gap-3">
-          <Link
-            href="/"
-            className="
-              flex h-10 w-10 items-center justify-center
-              rounded-xl
-              border border-white/10
-              bg-white/[0.04]
-              transition
-              hover:bg-white/[0.08]
-            "
-          >
-            <ArrowLeft size={19} />
-          </Link>
-
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-400">
-              IOPn Testnet
-            </p>
-
-            <h1 className="text-2xl font-black">
-              Deploy Token
-            </h1>
-          </div>
-        </div>
-
-        {/* HERO */}
-        <section
-          className="
-            relative overflow-hidden
-            rounded-[28px]
-            border border-cyan-400/10
-            bg-white/[0.035]
-            p-5
-            shadow-[0_20px_70px_rgba(0,0,0,0.35)]
-            backdrop-blur-xl
-          "
-        >
-          <div
-            className="
-              pointer-events-none
-              absolute
-              -right-20
-              -top-20
-              h-48
-              w-48
-              rounded-full
-              bg-cyan-400/[0.08]
-              blur-3xl
-            "
-          />
-
-          <div className="relative">
+      <div className="mx-auto w-full max-w-2xl">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="mb-4 flex items-center gap-3">
             <div
               className="
-                mb-4
-                flex
-                h-12
-                w-12
-                items-center
-                justify-center
+                flex h-12 w-12 items-center justify-center
                 rounded-2xl
-                border
-                border-cyan-400/20
+                border border-cyan-400/20
                 bg-cyan-400/10
               "
             >
               <Rocket
                 size={24}
                 className="text-cyan-400"
+                strokeWidth={2.2}
               />
             </div>
 
-            <h2 className="text-xl font-black">
-              Create your own token
-            </h2>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight">
+                Deploy Token
+              </h1>
 
-            <p className="mt-2 text-sm leading-6 text-white/55">
-              Deploy a standard ERC-20 token directly on
-              IOPn Testnet using your connected wallet.
-            </p>
+              <p className="text-sm text-white/45">
+                Create an ERC-20 token on IOPn Testnet
+              </p>
+            </div>
+          </div>
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-emerald-400">
-              <ShieldCheck size={15} />
-              <span>
-                Non-custodial deployment
+          {/* Network */}
+          <div
+            className="
+              flex items-center justify-between
+              rounded-2xl
+              border border-white/10
+              bg-white/[0.035]
+              px-4 py-3
+              backdrop-blur-xl
+            "
+          >
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
+                Network
+              </p>
+
+              <p className="mt-1 text-sm font-bold">
+                IOPn Testnet
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]" />
+
+              <span className="text-xs font-bold text-emerald-400">
+                Chain {chainId}
               </span>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* FORM */}
-        <section
+        {/* Wallet */}
+        <div
           className="
-            mt-4
-            rounded-[28px]
+            mb-5
+            rounded-[26px]
             border border-white/[0.08]
             bg-white/[0.035]
             p-5
+            shadow-[0_20px_70px_rgba(0,0,0,.3)]
             backdrop-blur-xl
           "
         >
-          <div className="space-y-4">
-
-            {/* TOKEN NAME */}
-            <div>
-              <label
-                htmlFor="token-name"
-                className="
-                  mb-2
-                  block
-                  text-xs
-                  font-bold
-                  uppercase
-                  tracking-[0.15em]
-                  text-white/45
-                "
-              >
-                Token Name
-              </label>
-
-              <input
-                id="token-name"
-                type="text"
-                value={name}
-                onChange={(event) =>
-                  setName(event.target.value)
-                }
-                placeholder="My Token"
-                maxLength={50}
-                className="
-                  w-full
-                  rounded-2xl
-                  border border-white/10
-                  bg-black/20
-                  px-4
-                  py-3.5
-                  text-sm
-                  text-white
-                  outline-none
-                  placeholder:text-white/25
-                  focus:border-cyan-400/40
-                "
-              />
-            </div>
-
-            {/* SYMBOL */}
-            <div>
-              <label
-                htmlFor="token-symbol"
-                className="
-                  mb-2
-                  block
-                  text-xs
-                  font-bold
-                  uppercase
-                  tracking-[0.15em]
-                  text-white/45
-                "
-              >
-                Token Symbol
-              </label>
-
-              <input
-                id="token-symbol"
-                type="text"
-                value={symbol}
-                onChange={(event) =>
-                  setSymbol(
-                    event.target.value.toUpperCase()
-                  )
-                }
-                placeholder="MTK"
-                maxLength={12}
-                className="
-                  w-full
-                  rounded-2xl
-                  border border-white/10
-                  bg-black/20
-                  px-4
-                  py-3.5
-                  text-sm
-                  text-white
-                  outline-none
-                  placeholder:text-white/25
-                  focus:border-cyan-400/40
-                "
-              />
-            </div>
-
-            {/* SUPPLY */}
-            <div>
-              <label
-                htmlFor="token-supply"
-                className="
-                  mb-2
-                  block
-                  text-xs
-                  font-bold
-                  uppercase
-                  tracking-[0.15em]
-                  text-white/45
-                "
-              >
-                Initial Supply
-              </label>
-
-              <input
-                id="token-supply"
-                type="text"
-                inputMode="decimal"
-                value={supply}
-                onChange={(event) =>
-                  setSupply(event.target.value)
-                }
-                placeholder="1000000"
-                className="
-                  w-full
-                  rounded-2xl
-                  border border-white/10
-                  bg-black/20
-                  px-4
-                  py-3.5
-                  text-sm
-                  text-white
-                  outline-none
-                  placeholder:text-white/25
-                  focus:border-cyan-400/40
-                "
-              />
-
-              <p className="mt-2 text-[11px] text-white/35">
-                Example: 1,000,000 tokens
-              </p>
-            </div>
-
-            {/* DECIMALS */}
-            <div>
-              <label
-                htmlFor="token-decimals"
-                className="
-                  mb-2
-                  block
-                  text-xs
-                  font-bold
-                  uppercase
-                  tracking-[0.15em]
-                  text-white/45
-                "
-              >
-                Decimals
-              </label>
-
-              <input
-                id="token-decimals"
-                type="number"
-                min="0"
-                max="18"
-                value={decimals}
-                onChange={(event) =>
-                  setDecimals(event.target.value)
-                }
-                className="
-                  w-full
-                  rounded-2xl
-                  border border-white/10
-                  bg-black/20
-                  px-4
-                  py-3.5
-                  text-sm
-                  text-white
-                  outline-none
-                  focus:border-cyan-400/40
-                "
-              />
-
-              <p className="mt-2 text-[11px] text-white/35">
-                Standard ERC-20 setting: 18
-              </p>
-            </div>
-          </div>
-
-          {/* WALLET */}
-          <div
-            className="
-              mt-5
-              rounded-2xl
-              border border-white/[0.08]
-              bg-black/20
-              p-4
-            "
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="
-                  flex h-10 w-10
-                  items-center justify-center
-                  rounded-xl
-                  bg-cyan-400/10
-                "
-              >
-                <Wallet
-                  size={18}
-                  className="text-cyan-400"
-                />
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
-                  Deployment wallet
-                </p>
-
-                <p className="mt-1 truncate text-sm font-semibold">
-                  {address
-                    ? `${address.slice(0, 8)}...${address.slice(-6)}`
-                    : "Not connected"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ERROR */}
-          {(deployError || error) && (
+          <div className="flex items-center gap-3">
             <div
               className="
-                mt-4
+                flex h-11 w-11 items-center justify-center
                 rounded-2xl
-                border border-red-400/20
-                bg-red-400/[0.06]
-                p-4
-                text-sm
-                leading-6
-                text-red-300
+                bg-cyan-400/10
+                text-cyan-400
               "
             >
-              {deployError ||
-                error?.message ||
-                "Deployment failed."}
-            </div>
-          )}
-
-          {/* DEPLOY BUTTON */}
-          <button
-            type="button"
-            onClick={handleDeploy}
-            disabled={isBusy}
-            className="
-              mt-5
-              flex
-              w-full
-              items-center
-              justify-center
-              gap-2
-              rounded-2xl
-              bg-cyan-400
-              px-5
-              py-4
-              text-sm
-              font-black
-              text-black
-              transition
-              hover:bg-cyan-300
-              active:scale-[0.98]
-              disabled:cursor-not-allowed
-              disabled:opacity-50
-            "
-          >
-            {isBusy ? (
-              <>
-                <span
-                  className="
-                    h-4
-                    w-4
-                    animate-spin
-                    rounded-full
-                    border-2
-                    border-black/30
-                    border-t-black
-                  "
-                />
-
-                {isConfirming
-                  ? "Confirming deployment..."
-                  : "Deploying..."}
-              </>
-            ) : !isConnected ? (
-              <>
-                <Wallet size={17} />
-                Connect Wallet
-              </>
-            ) : (
-              <>
-                <Rocket size={17} />
-                Deploy Token
-              </>
-            )}
-          </button>
-        </section>
-
-        {/* SUCCESS */}
-        {isConfirmed && txHash && (
-          <section
-            className="
-              mt-4
-              rounded-[28px]
-              border border-emerald-400/20
-              bg-emerald-400/[0.06]
-              p-5
-            "
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="
-                  flex h-11 w-11
-                  items-center justify-center
-                  rounded-2xl
-                  bg-emerald-400/10
-                "
-              >
-                <CheckCircle2
-                  size={23}
-                  className="text-emerald-400"
-                />
-              </div>
-
-              <div>
-                <h3 className="font-black text-emerald-300">
-                  Deployment Confirmed
-                </h3>
-
-                <p className="mt-1 text-xs text-white/45">
-                  Your deployment transaction has been
-                  confirmed on IOPn Testnet.
-                </p>
-              </div>
+              <Wallet size={22} />
             </div>
 
-            {/* TX HASH */}
-            <div
-              className="
-                mt-4
-                rounded-2xl
-                border border-white/10
-                bg-black/20
-                p-4
-              "
-            >
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
-                Transaction Hash
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
+                Deployment Wallet
               </p>
 
-              <div className="mt-2 flex items-center gap-2">
-                <p className="min-w-0 flex-1 truncate text-xs text-white/75">
-                  {txHash}
+              {isConnected && address ? (
+                <p className="mt-1 truncate font-bold">
+                  {address.slice(0, 8)}...
+                  {address.slice(-6)}
                 </p>
-
-                <button
-                  type="button"
-                  onClick={copyHash}
-                  className="
-                    shrink-0
-                    rounded-lg
-                    p-2
-                    transition
-                    hover:bg-white/10
-                  "
-                >
-                  <Copy size={15} />
-                </button>
-              </div>
-
-              {copied && (
-                <p className="mt-2 text-[10px] text-emerald-400">
-                  Transaction hash copied.
+              ) : (
+                <p className="mt-1 text-sm font-semibold text-red-400">
+                  Wallet not connected
                 </p>
               )}
             </div>
 
-            {/* IMPORTANT */}
+            {isConnected && (
+              <CheckCircle2
+                size={20}
+                className="shrink-0 text-emerald-400"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleDeploy}>
+          <div
+            className="
+              relative overflow-hidden
+              rounded-[28px]
+              border border-white/[0.08]
+              bg-white/[0.035]
+              p-5
+              shadow-[0_25px_80px_rgba(0,0,0,.35)]
+              backdrop-blur-xl
+            "
+          >
+            {/* Accent */}
             <div
               className="
-                mt-4
-                rounded-2xl
-                border border-cyan-400/10
-                bg-cyan-400/[0.04]
-                p-4
+                pointer-events-none
+                absolute
+                -right-24
+                -top-24
+                h-48
+                w-48
+                rounded-full
+                bg-cyan-400/[0.06]
+                blur-3xl
               "
-            >
-              <p className="text-xs leading-5 text-white/55">
-                The transaction has been confirmed. The
-                deployed token contract address will be
-                extracted from the deployment receipt in
-                the next step.
+            />
+
+            <div className="relative space-y-5">
+              {/* Token Name */}
+              <div>
+                <label
+                  htmlFor="token-name"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
+                >
+                  Token Name
+                </label>
+
+                <input
+                  id="token-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    resetStatus();
+                  }}
+                  placeholder="My Token"
+                  disabled={isDeploying}
+                  className="
+                    h-14
+                    w-full
+                    rounded-2xl
+                    border border-white/10
+                    bg-[#070b16]
+                    px-4
+                    text-base
+                    font-semibold
+                    text-white
+                    outline-none
+                    transition
+                    placeholder:text-white/20
+                    focus:border-cyan-400/40
+                    focus:ring-2
+                    focus:ring-cyan-400/10
+                  "
+                />
+              </div>
+
+              {/* Symbol */}
+              <div>
+                <label
+                  htmlFor="token-symbol"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
+                >
+                  Token Symbol
+                </label>
+
+                <input
+                  id="token-symbol"
+                  type="text"
+                  value={symbol}
+                  onChange={(e) => {
+                    setSymbol(
+                      e.target.value
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9]/g, "")
+                        .slice(0, 12)
+                    );
+
+                    resetStatus();
+                  }}
+                  placeholder="TST"
+                  disabled={isDeploying}
+                  className="
+                    h-14
+                    w-full
+                    rounded-2xl
+                    border border-white/10
+                    bg-[#070b16]
+                    px-4
+                    text-base
+                    font-semibold
+                    uppercase
+                    text-white
+                    outline-none
+                    transition
+                    placeholder:text-white/20
+                    focus:border-cyan-400/40
+                    focus:ring-2
+                    focus:ring-cyan-400/10
+                  "
+                />
+              </div>
+
+              {/* Supply */}
+              <div>
+                <label
+                  htmlFor="initial-supply"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
+                >
+                  Initial Supply
+                </label>
+
+                <input
+                  id="initial-supply"
+                  type="text"
+                  inputMode="numeric"
+                  value={supply}
+                  onChange={(e) => {
+                    setSupply(
+                      e.target.value.replace(/[^0-9]/g, "")
+                    );
+
+                    resetStatus();
+                  }}
+                  placeholder="1000000"
+                  disabled={isDeploying}
+                  className="
+                    h-14
+                    w-full
+                    rounded-2xl
+                    border border-white/10
+                    bg-[#070b16]
+                    px-4
+                    text-base
+                    font-semibold
+                    text-white
+                    outline-none
+                    transition
+                    placeholder:text-white/20
+                    focus:border-cyan-400/40
+                    focus:ring-2
+                    focus:ring-cyan-400/10
+                  "
+                />
+
+                <p className="mt-2 text-xs text-white/30">
+                  Example: 1,000,000 tokens
+                </p>
+              </div>
+
+              {/* Decimals */}
+              <div>
+                <label
+                  htmlFor="token-decimals"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
+                >
+                  Decimals
+                </label>
+
+                <input
+                  id="token-decimals"
+                  type="number"
+                  min="0"
+                  max="18"
+                  value={decimals}
+                  onChange={(e) => {
+                    setDecimals(e.target.value);
+                    resetStatus();
+                  }}
+                  disabled={isDeploying}
+                  className="
+                    h-14
+                    w-full
+                    rounded-2xl
+                    border border-white/10
+                    bg-[#070b16]
+                    px-4
+                    text-base
+                    font-semibold
+                    text-white
+                    outline-none
+                    transition
+                    focus:border-cyan-400/40
+                    focus:ring-2
+                    focus:ring-cyan-400/10
+                  "
+                />
+
+                <p className="mt-2 text-xs text-white/30">
+                  Standard ERC-20 setting: 18
+                </p>
+              </div>
+
+              {/* Contract information */}
+              <div
+                className="
+                  rounded-2xl
+                  border border-cyan-400/10
+                  bg-cyan-400/[0.035]
+                  p-4
+                "
+              >
+                <div className="flex items-start gap-3">
+                  <ShieldCheck
+                    size={20}
+                    className="mt-0.5 shrink-0 text-cyan-400"
+                  />
+
+                  <div>
+                    <p className="text-sm font-bold">
+                      Secure token deployment
+                    </p>
+
+                    <p className="mt-1 text-xs leading-5 text-white/40">
+                      Your connected wallet becomes the initial owner
+                      of the deployed token contract.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Artifact loading */}
+              {artifactLoading && (
+                <div
+                  className="
+                    flex items-center gap-3
+                    rounded-2xl
+                    border border-white/10
+                    bg-white/[0.025]
+                    p-4
+                    text-sm text-white/50
+                  "
+                >
+                  <Loader2
+                    size={18}
+                    className="animate-spin text-cyan-400"
+                  />
+
+                  Loading token contract...
+                </div>
+              )}
+
+              {/* Artifact error */}
+              {artifactError && (
+                <div
+                  className="
+                    rounded-2xl
+                    border border-red-400/20
+                    bg-red-400/[0.06]
+                    p-4
+                    text-sm
+                    text-red-300
+                  "
+                >
+                  <div className="flex gap-3">
+                    <XCircle
+                      size={19}
+                      className="mt-0.5 shrink-0"
+                    />
+
+                    <div>
+                      <p className="font-bold">
+                        Contract artifact unavailable
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-red-300/70">
+                        {artifactError}
+                      </p>
+
+                      <p className="mt-2 text-xs leading-5 text-red-300/60">
+                        Make sure your compiled
+                        IOPnToken.json file is available at
+                        /public/artifacts/IOPnToken.json.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error */}
+              {status === "error" && error && (
+                <div
+                  className="
+                    rounded-2xl
+                    border border-red-400/20
+                    bg-red-400/[0.06]
+                    p-4
+                    text-sm
+                    text-red-300
+                  "
+                >
+                  <div className="flex gap-3">
+                    <XCircle
+                      size={19}
+                      className="mt-0.5 shrink-0"
+                    />
+
+                    <div className="min-w-0">
+                      <p className="font-bold">
+                        Deployment failed
+                      </p>
+
+                      <p className="mt-1 break-words text-xs leading-5 text-red-300/70">
+                        {error}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Confirming */}
+              {status === "confirming" && txHash && (
+                <div
+                  className="
+                    rounded-2xl
+                    border border-cyan-400/20
+                    bg-cyan-400/[0.06]
+                    p-4
+                  "
+                >
+                  <div className="flex items-start gap-3">
+                    <Loader2
+                      size={20}
+                      className="mt-0.5 animate-spin text-cyan-400"
+                    />
+
+                    <div className="min-w-0">
+                      <p className="font-bold">
+                        Waiting for confirmation
+                      </p>
+
+                      <p className="mt-1 break-all text-xs text-white/40">
+                        {txHash}
+                      </p>
+
+                      {transactionUrl && (
+                        <a
+                          href={transactionUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="
+                            mt-3
+                            inline-flex
+                            items-center
+                            gap-2
+                            text-xs
+                            font-bold
+                            text-cyan-400
+                          "
+                        >
+                          View transaction
+                          <ExternalLink size={14} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Success */}
+              {status === "success" && contractAddress && (
+                <div
+                  className="
+                    rounded-2xl
+                    border border-emerald-400/20
+                    bg-emerald-400/[0.06]
+                    p-4
+                  "
+                >
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2
+                      size={21}
+                      className="mt-0.5 shrink-0 text-emerald-400"
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-emerald-300">
+                        Token deployed successfully
+                      </p>
+
+                      <p className="mt-1 text-xs text-white/40">
+                        Your ERC-20 contract is now deployed on
+                        IOPn Testnet.
+                      </p>
+
+                      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-white/30">
+                          Contract Address
+                        </p>
+
+                        <div className="flex items-center gap-2">
+                          <p className="min-w-0 flex-1 break-all text-xs font-bold text-white/80">
+                            {contractAddress}
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={copyAddress}
+                            className="
+                              flex h-9 w-9
+                              shrink-0
+                              items-center
+                              justify-center
+                              rounded-xl
+                              border border-white/10
+                              bg-white/[0.05]
+                              text-white/60
+                              transition
+                              hover:text-cyan-400
+                            "
+                          >
+                            <Copy size={15} />
+                          </button>
+                        </div>
+
+                        {copied && (
+                          <p className="mt-2 text-[11px] font-bold text-emerald-400">
+                            Address copied
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {contractUrl && (
+                          <a
+                            href={contractUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="
+                              inline-flex
+                              items-center
+                              gap-2
+                              rounded-xl
+                              border border-white/10
+                              bg-white/[0.05]
+                              px-3
+                              py-2
+                              text-xs
+                              font-bold
+                              text-white/70
+                              transition
+                              hover:border-cyan-400/30
+                              hover:text-cyan-400
+                            "
+                          >
+                            View Contract
+                            <ExternalLink size={13} />
+                          </a>
+                        )}
+
+                        {transactionUrl && (
+                          <a
+                            href={transactionUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="
+                              inline-flex
+                              items-center
+                              gap-2
+                              rounded-xl
+                              border border-white/10
+                              bg-white/[0.05]
+                              px-3
+                              py-2
+                              text-xs
+                              font-bold
+                              text-white/70
+                              transition
+                              hover:border-cyan-400/30
+                              hover:text-cyan-400
+                            "
+                          >
+                            Transaction
+                            <ExternalLink size={13} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Deploy button */}
+              <button
+                type="submit"
+                disabled={
+                  isDeploying ||
+                  artifactLoading ||
+                  !artifact ||
+                  !isConnected
+                }
+                className="
+                  flex
+                  h-14
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-2xl
+                  bg-gradient-to-r
+                  from-cyan-400
+                  to-blue-500
+                  text-sm
+                  font-black
+                  text-[#020617]
+                  shadow-[0_10px_35px_rgba(34,211,238,.18)]
+                  transition
+                  hover:brightness-110
+                  active:scale-[0.98]
+                  disabled:cursor-not-allowed
+                  disabled:opacity-40
+                "
+              >
+                {isDeploying ? (
+                  <>
+                    <Loader2
+                      size={19}
+                      className="animate-spin"
+                    />
+
+                    {status === "loading"
+                      ? "Preparing Deployment..."
+                      : "Confirming Deployment..."}
+                  </>
+                ) : (
+                  <>
+                    <Rocket size={19} />
+                    Deploy Token
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-[11px] leading-5 text-white/25">
+                Deployment requires a wallet transaction and
+                network gas. Always verify the token details before
+                confirming.
               </p>
             </div>
-
-            {/* TRANSACTION LINK */}
-            <button
-              type="button"
-              disabled
-              className="
-                mt-4
-                flex
-                w-full
-                items-center
-                justify-center
-                gap-2
-                rounded-2xl
-                border border-white/10
-                bg-white/[0.05]
-                px-4
-                py-3
-                text-sm
-                font-bold
-                text-white/40
-                cursor-not-allowed
-              "
-            >
-              View Transaction
-              <ExternalLink size={15} />
-            </button>
-          </section>
-        )}
+          </div>
+        </form>
       </div>
     </main>
   );
