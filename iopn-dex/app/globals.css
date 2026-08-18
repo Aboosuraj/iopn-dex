@@ -1,25 +1,11 @@
 @import "tailwindcss";
 
 /* =========================================================
-   IOPn DEX GLOBAL THEME
+   IOPn DEX — DARK ONLY
 ========================================================= */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-
-  --surface: #ffffff;
-  --surface-soft: #f8fafc;
-  --surface-card: #ffffff;
-
-  --border: rgba(15, 23, 42, 0.10);
-
-  --muted: rgba(15, 23, 42, 0.55);
-  --muted-strong: rgba(15, 23, 42, 0.70);
-}
-
-.dark {
-  --background: #02050b;
+  --background: #050816;
   --foreground: #ffffff;
 
   --surface: #070c14;
@@ -45,47 +31,35 @@
 }
 
 /* =========================================================
-   GLOBAL BODY
+   HTML
 ========================================================= */
 
 html {
   min-height: 100%;
-  background: var(--background);
+  background: #050816;
+
+  /* Always tell the browser this application is dark */
+  color-scheme: dark;
 }
+
+/* =========================================================
+   BODY
+========================================================= */
 
 body {
   min-height: 100vh;
   margin: 0;
 
-  background: var(--background);
-  color: var(--foreground);
+  background: #050816;
+  color: #ffffff;
 
   font-family:
     Arial,
     Helvetica,
     sans-serif;
 
-  transition:
-    background-color 250ms ease,
-    color 250ms ease;
+  color-scheme: dark;
 }
-
-/* =========================================================
-   REMOVE DEVICE FORCED DARK MODE
-========================================================= */
-
-/*
-   IMPORTANT:
-
-   Do NOT use:
-
-   @media (prefers-color-scheme: dark)
-
-   here.
-
-   IOPn DEX uses the application's own
-   light/dark theme instead.
-*/
 
 /* =========================================================
    LINKS / BUTTONS
@@ -101,8 +75,8 @@ a {
 ========================================================= */
 
 ::selection {
-  background: rgba(6, 182, 212, 0.20);
-  color: inherit;
+  background: rgba(6, 182, 212, 0.25);
+  color: #ffffff;
 }
 
 /* =========================================================
@@ -111,11 +85,25 @@ a {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-.dark * {
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.35);
 }
 
 /* =========================================================

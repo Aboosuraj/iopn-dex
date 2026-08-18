@@ -7,8 +7,6 @@ import BottomNav from "@/components/layout/BottomNav";
 
 import { Toaster } from "sonner";
 
-import { ThemeProvider } from "@/components/ThemeProvider";
-
 export const metadata: Metadata = {
   title: "IOPn DEX",
 
@@ -49,36 +47,30 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      className="dark"
     >
       <body
         className="
-          bg-white
-          text-slate-900
+          min-h-screen
+          bg-[#050816]
+          text-white
           antialiased
-          transition-colors
-          duration-300
-
-          dark:bg-[#02050B]
-          dark:text-white
         "
       >
-        <ThemeProvider>
-          <Providers>
+        <Providers>
 
-            {/* PAGE CONTENT */}
+          <main className="min-h-screen pb-24">
+            {children}
+          </main>
 
-            <main className="pb-24">
-              {children}
-            </main>
+          <BottomNav />
 
-            {/* MOBILE BOTTOM NAVIGATION */}
+        </Providers>
 
-            <BottomNav />
-
-          </Providers>
-        </ThemeProvider>
-
-        <Toaster position="top-center" />
+        <Toaster
+          position="top-center"
+          theme="dark"
+        />
       </body>
     </html>
   );

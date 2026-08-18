@@ -6,8 +6,14 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen bg-[#050816] text-white">
-
+    <div
+      className="
+        relative
+        min-h-screen
+        bg-[#050816]
+        text-white
+      "
+    >
       <Header />
 
       <main
@@ -22,8 +28,6 @@ export default function AppLayout({
       >
         {children}
       </main>
-
-
     </div>
   );
 }
