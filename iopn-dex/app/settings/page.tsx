@@ -1,33 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
+import { useTheme } from "@/components/ThemeProvider";
 
 export default function SettingsPage() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
 
-  const [darkMode, setDarkMode] = useState(true);
+  const {
+    darkMode,
+    toggleDarkMode,
+    setDarkMode,
+  } = useTheme();
+
   const [showAbout, setShowAbout] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("iopn-theme");
-
-    if (savedTheme === "light") {
-      setDarkMode(false);
-    } else {
-      setDarkMode(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("light", !darkMode);
-    localStorage.setItem("iopn-theme", darkMode ? "dark" : "light");
-  }, [darkMode]);
-
   const resetSettings = () => {
-    localStorage.removeItem("iopn-theme");
     setDarkMode(true);
   };
 
@@ -41,12 +31,14 @@ export default function SettingsPage() {
     >
       <div className="mx-auto w-full max-w-md">
 
-        {/* Header */}
+        {/* HEADER */}
         <div className="mb-8">
           <p
-            className={`text-sm ${
-              darkMode ? "text-white/50" : "text-slate-500"
-            }`}
+            className={
+              darkMode
+                ? "text-sm text-white/50"
+                : "text-sm text-slate-500"
+            }
           >
             IOPn Dex
           </p>
@@ -56,19 +48,23 @@ export default function SettingsPage() {
           </h1>
 
           <p
-            className={`mt-2 text-sm ${
-              darkMode ? "text-white/50" : "text-slate-500"
-            }`}
+            className={
+              darkMode
+                ? "mt-2 text-sm text-white/50"
+                : "mt-2 text-sm text-slate-500"
+            }
           >
             Manage your DEX preferences
           </p>
         </div>
 
-        {/* Appearance */}
+        {/* APPEARANCE */}
         <section className="mb-6">
           <h2
             className={`mb-3 text-xs font-semibold uppercase tracking-wider ${
-              darkMode ? "text-white/40" : "text-slate-500"
+              darkMode
+                ? "text-white/40"
+                : "text-slate-500"
             }`}
           >
             Appearance
@@ -102,7 +98,7 @@ export default function SettingsPage() {
 
               <button
                 type="button"
-                onClick={() => setDarkMode((value) => !value)}
+                onClick={toggleDarkMode}
                 aria-label="Toggle dark mode"
                 className={`relative h-7 w-12 rounded-full transition ${
                   darkMode
@@ -122,11 +118,13 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Network */}
+        {/* NETWORK */}
         <section className="mb-6">
           <h2
             className={`mb-3 text-xs font-semibold uppercase tracking-wider ${
-              darkMode ? "text-white/40" : "text-slate-500"
+              darkMode
+                ? "text-white/40"
+                : "text-slate-500"
             }`}
           >
             Network
@@ -156,18 +154,20 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-400">
+              <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-500">
                 TESTNET
               </span>
             </div>
           </div>
         </section>
 
-        {/* Wallet */}
+        {/* WALLET */}
         <section className="mb-6">
           <h2
             className={`mb-3 text-xs font-semibold uppercase tracking-wider ${
-              darkMode ? "text-white/40" : "text-slate-500"
+              darkMode
+                ? "text-white/40"
+                : "text-slate-500"
             }`}
           >
             Wallet
@@ -206,11 +206,11 @@ export default function SettingsPage() {
               </>
             ) : (
               <p
-                className={`text-sm ${
+                className={
                   darkMode
-                    ? "text-white/50"
-                    : "text-slate-500"
-                }`}
+                    ? "text-sm text-white/50"
+                    : "text-sm text-slate-500"
+                }
               >
                 No wallet connected.
               </p>
@@ -218,11 +218,13 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Information */}
+        {/* INFORMATION */}
         <section className="mb-6">
           <h2
             className={`mb-3 text-xs font-semibold uppercase tracking-wider ${
-              darkMode ? "text-white/40" : "text-slate-500"
+              darkMode
+                ? "text-white/40"
+                : "text-slate-500"
             }`}
           >
             Information
@@ -281,7 +283,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Reset */}
+        {/* RESET */}
         <button
           type="button"
           onClick={resetSettings}
@@ -294,7 +296,7 @@ export default function SettingsPage() {
           Reset Settings
         </button>
 
-        {/* About Modal */}
+        {/* ABOUT MODAL */}
         {showAbout && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center">
             <div
@@ -315,10 +317,10 @@ export default function SettingsPage() {
                     : "text-slate-600"
                 }`}
               >
-                IOPn DEX is a decentralized exchange interface
-                built for the IOPn ecosystem. The application
-                connects directly to blockchain contracts through
-                your wallet.
+                IOPn DEX is a decentralized exchange
+                interface built for the IOPn ecosystem.
+                The application connects directly to
+                blockchain contracts through your wallet.
               </p>
 
               <p
@@ -344,7 +346,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Privacy Modal */}
+        {/* PRIVACY MODAL */}
         {showPrivacy && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center">
             <div
@@ -366,18 +368,20 @@ export default function SettingsPage() {
                 }`}
               >
                 <p>
-                  IOPn DEX does not require users to create an
-                  account to connect a wallet.
+                  IOPn DEX does not require users to create
+                  an account to connect a wallet.
                 </p>
 
                 <p>
-                  Blockchain transactions are initiated by the
-                  connected wallet and require user approval.
+                  Blockchain transactions are initiated by
+                  the connected wallet and require user
+                  approval.
                 </p>
 
                 <p>
-                  Wallet addresses and blockchain transactions
-                  are publicly visible on the network.
+                  Wallet addresses and blockchain
+                  transactions are publicly visible on the
+                  network.
                 </p>
               </div>
 

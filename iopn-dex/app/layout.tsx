@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import Providers from "@/components/Providers";
-import BottomNav from "@/components/layout/BottomNav";
+
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "IOPn DEX",
+
   description:
     "Decentralized exchange, swap, pay, stake, add liquidity built for OPN Chain ecosystem",
 
@@ -28,12 +29,15 @@ export const metadata: Metadata = {
       },
     ],
 
-    apple: "/apple-touch-icon.png",
+    apple:
+      "/apple-touch-icon.png",
   },
 
-  manifest: "/site.webmanifest",
+  manifest:
+    "/site.webmanifest",
 
-  themeColor: "#050816",
+  themeColor:
+    "#050816",
 };
 
 export default function RootLayout({
@@ -43,13 +47,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-[#050816] text-white antialiased">
-
+      <body className="bg-black text-white antialiased">
         <Providers>
           {children}
-
-          {/* Mobile bottom navigation */}
-          <BottomNav />
         </Providers>
 
         <Toaster position="top-center" />

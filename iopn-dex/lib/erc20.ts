@@ -11,6 +11,7 @@ export const ERC20_ABI = [
     ],
     outputs: [
       {
+        name: "",
         type: "uint256",
       },
     ],
@@ -32,6 +33,7 @@ export const ERC20_ABI = [
     ],
     outputs: [
       {
+        name: "",
         type: "bool",
       },
     ],
@@ -53,6 +55,7 @@ export const ERC20_ABI = [
     ],
     outputs: [
       {
+        name: "",
         type: "uint256",
       },
     ],
@@ -65,18 +68,7 @@ export const ERC20_ABI = [
     inputs: [],
     outputs: [
       {
-        type: "string",
-      },
-    ],
-  },
-
-  {
-    type: "function",
-    name: "name",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [
-      {
+        name: "",
         type: "string",
       },
     ],
@@ -89,7 +81,21 @@ export const ERC20_ABI = [
     inputs: [],
     outputs: [
       {
+        name: "",
         type: "uint8",
+      },
+    ],
+  },
+
+  {
+    type: "function",
+    name: "name",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "string",
       },
     ],
   },
