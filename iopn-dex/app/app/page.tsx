@@ -1,272 +1,243 @@
-"use client";
-
 import WalletCard from "@/components/dashboard/WalletCard";
 import QuickActions from "@/components/dashboard/QuickActions";
 import MarketOverview from "@/components/dashboard/MarketOverview";
 import TrendingPreview from "@/components/dashboard/TrendingPreview";
 
 export default function AppDashboard() {
-  return (
-    <main
-      className="
-        relative
-        min-h-screen
-        overflow-hidden
-        bg-white
-        text-slate-900
+return (
+<main className="relative min-h-screen overflow-hidden bg-[#030712] text-white">
 
-        dark:bg-[#02050B]
-        dark:text-white
-      "
-    >
+{/* =====================================================  
+      PREMIUM WEB3 BACKGROUND  
+  ===================================================== */}  
 
-      {/* =====================================================
-          BACKGROUND
-      ===================================================== */}
+  <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">  
 
-      <div
-        className="
-          pointer-events-none
-          fixed
-          inset-0
-          -z-10
-          overflow-hidden
-        "
-      >
+    {/* Cyan glow */}  
+    <div  
+      className="  
+        absolute  
+        left-[10%]  
+        top-[-180px]  
+        h-[360px]  
+        w-[360px]  
+        rounded-full  
+        bg-cyan-500/[0.09]  
+        blur-[130px]  
+      "  
+    />  
 
-        {/* Cyan */}
+    {/* Violet glow */}  
+    <div  
+      className="  
+        absolute  
+        right-[-160px]  
+        top-[25%]  
+        h-[380px]  
+        w-[380px]  
+        rounded-full  
+        bg-violet-600/[0.08]  
+        blur-[140px]  
+      "  
+    />  
 
-        <div
-          className="
-            absolute
-            left-[-120px]
-            top-[-160px]
-            h-[320px]
-            w-[320px]
-            rounded-full
-            bg-cyan-400/[0.055]
-            blur-[120px]
+    {/* Blue bottom glow */}  
+    <div  
+      className="  
+        absolute  
+        bottom-[-180px]  
+        left-[-120px]  
+        h-[360px]  
+        w-[360px]  
+        rounded-full  
+        bg-blue-600/[0.07]  
+        blur-[140px]  
+      "  
+    />  
 
-            dark:bg-cyan-400/[0.055]
-          "
-        />
+    {/* Subtle grid */}  
+    <div  
+      className="  
+        absolute  
+        inset-0  
+        opacity-[0.018]  
+        [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]  
+        [background-size:40px_40px]  
+      "  
+    />  
 
-        {/* Violet */}
-
-        <div
-          className="
-            absolute
-            right-[-160px]
-            top-[30%]
-            h-[340px]
-            w-[340px]
-            rounded-full
-            bg-violet-500/[0.045]
-            blur-[130px]
-
-            dark:bg-violet-500/[0.055]
-          "
-        />
-
-        {/* Blue */}
-
-        <div
-          className="
-            absolute
-            bottom-[-180px]
-            left-[15%]
-            h-[320px]
-            w-[320px]
-            rounded-full
-            bg-blue-500/[0.035]
-            blur-[130px]
-
-            dark:bg-blue-500/[0.045]
-          "
-        />
-
-        {/* Grid */}
-
-        <div
-          className="
-            absolute
-            inset-0
-            opacity-[0.012]
-
-            [background-image:linear-gradient(rgba(15,23,42,.25)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,.25)_1px,transparent_1px)]
-            [background-size:44px_44px]
-
-            dark:[background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]
-          "
-        />
-
-      </div>
+  </div>  
 
 
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
+  {/* =====================================================  
+      DASHBOARD CONTAINER  
+  ===================================================== */}  
 
-      <div
-        className="
-          relative
-          mx-auto
-          w-full
-          max-w-2xl
-          px-3
-          pb-28
-          pt-3
-          sm:px-5
-          sm:pt-5
-        "
-      >
-
-        {/* =================================================
-            WALLET
-        ================================================= */}
-
-        <section className="relative">
-
-          <div
-            className="
-              pointer-events-none
-              absolute
-              -inset-2
-              rounded-[30px]
-              bg-cyan-400/[0.025]
-              blur-2xl
-
-              dark:bg-cyan-400/[0.035]
-            "
-          />
-
-          <div className="relative">
-            <WalletCard />
-          </div>
-
-        </section>
+  <div  
+    className="  
+      mx-auto  
+      w-full  
+      max-w-7xl  
+      px-4  
+      pb-28  
+      pt-4  
+      sm:px-6  
+      lg:px-8  
+    "  
+  >  
 
 
-        {/* =================================================
-            QUICK ACTIONS
-        ================================================= */}
+    {/* =================================================  
+        WALLET / PORTFOLIO  
+    ================================================= */}  
 
-        <section className="mt-3">
+    <section  
+      className="  
+        relative  
+        mx-auto  
+        max-w-2xl  
+      "  
+    >  
 
-          <QuickActions />
+      {/* Soft glow behind wallet */}  
+      <div  
+        className="  
+          pointer-events-none  
+          absolute  
+          -inset-3  
+          rounded-[32px]  
+          bg-gradient-to-r  
+          from-cyan-400/[0.07]  
+          via-blue-500/[0.05]  
+          to-violet-500/[0.07]  
+          blur-2xl  
+        "  
+      />  
 
-        </section>
+      <div className="relative">  
+        <WalletCard />  
+      </div>  
 
-
-        {/* =================================================
-            MARKET OVERVIEW
-        ================================================= */}
-
-        <section className="mt-4">
-
-          <div
-            className="
-              relative
-              overflow-hidden
-              rounded-[22px]
-
-              border
-              border-slate-200
-
-              bg-white
-
-              shadow-[0_15px_45px_rgba(15,23,42,0.08)]
-
-              backdrop-blur-xl
-
-              dark:border-white/[0.07]
-              dark:bg-[#070C14]/85
-              dark:shadow-[0_15px_45px_rgba(0,0,0,0.22)]
-            "
-          >
-
-            {/* Cyan accent */}
-
-            <div
-              className="
-                pointer-events-none
-                absolute
-                right-[-90px]
-                top-[-90px]
-                h-44
-                w-44
-                rounded-full
-                bg-cyan-400/[0.035]
-                blur-3xl
-
-                dark:bg-cyan-400/[0.045]
-              "
-            />
-
-            <div className="relative">
-              <MarketOverview />
-            </div>
-
-          </div>
-
-        </section>
+    </section>  
 
 
-        {/* =================================================
-            TRENDING
-        ================================================= */}
+    {/* =================================================  
+        QUICK ACTIONS  
+    ================================================= */}  
 
-        <section className="mt-3">
+    <section  
+      className="  
+        mx-auto  
+        mt-5  
+        max-w-2xl  
+      "  
+    >  
 
-          <div
-            className="
-              relative
-              overflow-hidden
-              rounded-[22px]
+      <QuickActions />  
 
-              border
-              border-slate-200
+    </section>  
 
-              bg-white
 
-              shadow-[0_15px_45px_rgba(15,23,42,0.07)]
+    {/* =================================================  
+        MARKET OVERVIEW  
+    ================================================= */}  
 
-              backdrop-blur-xl
+    <section  
+      className="  
+        mx-auto  
+        mt-6  
+        max-w-2xl  
+      "  
+    >  
 
-              dark:border-white/[0.07]
-              dark:bg-[#070C14]/85
-              dark:shadow-[0_15px_45px_rgba(0,0,0,0.20)]
-            "
-          >
+      <div  
+        className="  
+          relative  
+          overflow-hidden  
+          rounded-[26px]  
+          border  
+          border-white/[0.07]  
+          bg-white/[0.025]  
+          shadow-[0_20px_60px_rgba(0,0,0,0.25)]  
+          backdrop-blur-xl  
+        "  
+      >  
 
-            {/* Violet accent */}
+        {/* subtle accent */}  
+        <div  
+          className="  
+            pointer-events-none  
+            absolute  
+            right-[-80px]  
+            top-[-80px]  
+            h-40  
+            w-40  
+            rounded-full  
+            bg-cyan-400/[0.05]  
+            blur-3xl  
+          "  
+        />  
 
-            <div
-              className="
-                pointer-events-none
-                absolute
-                bottom-[-90px]
-                left-[-70px]
-                h-44
-                w-44
-                rounded-full
-                bg-violet-500/[0.035]
-                blur-3xl
+        <div className="relative">  
+          <MarketOverview />  
+        </div>  
 
-                dark:bg-violet-500/[0.045]
-              "
-            />
+      </div>  
 
-            <div className="relative">
-              <TrendingPreview />
-            </div>
+    </section>  
 
-          </div>
 
-        </section>
+    {/* =================================================  
+        TRENDING  
+    ================================================= */}  
 
-      </div>
+    <section  
+      className="  
+        mx-auto  
+        mt-5  
+        max-w-2xl  
+      "  
+    >  
 
-    </main>
-  );
+      <div  
+        className="  
+          relative  
+          overflow-hidden  
+          rounded-[26px]  
+          border  
+          border-white/[0.07]  
+          bg-white/[0.025]  
+          shadow-[0_20px_60px_rgba(0,0,0,0.22)]  
+          backdrop-blur-xl  
+        "  
+      >  
+
+        <div  
+          className="  
+            pointer-events-none  
+            absolute  
+            bottom-[-80px]  
+            left-[-50px]  
+            h-40  
+            w-40  
+            rounded-full  
+            bg-violet-500/[0.05]  
+            blur-3xl  
+          "  
+        />  
+
+        <div className="relative">  
+          <TrendingPreview />  
+        </div>  
+
+      </div>  
+
+    </section>  
+
+
+  </div>  
+
+</main>
+
+);
 }
