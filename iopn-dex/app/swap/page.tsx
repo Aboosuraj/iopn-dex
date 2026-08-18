@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  useEffect,
+  useState,
+  Suspense,
+} from "react";
+
+import {
+  useSearchParams,
+} from "next/navigation";
 
 import SwapCard from "@/components/swap/SwapCard";
 import TokenSelector from "@/components/swap/TokenSelector";
@@ -8,7 +16,11 @@ import TokenImport from "@/components/swap/TokenImport";
 import SlippageModal from "@/components/swap/SlippageModal";
 import SwapHistory from "@/components/swap/SwapHistory";
 
-import { useTokens, Token } from "@/hooks/useTokens";
+import {
+  useTokens,
+  Token,
+} from "@/hooks/useTokens";
+
 import { useSwap } from "@/hooks/useSwap";
 import { useTokenBalance } from "@/hooks/useBalance";
 import { useApproval } from "@/hooks/useApproval";
@@ -24,6 +36,8 @@ import {
 } from "lucide-react";
 
 import { useTheme } from "@/components/ThemeProvider";
+
+import { TOKENS } from "@/lib/tokens";
 
 function formatAmount(
   value: string | number,
@@ -41,10 +55,15 @@ function formatAmount(
   });
 }
 
-export default function SwapPage() {
-  const { isConnected } = useAccount();
+function SwapPageContent() {
+  const searchParams =
+    useSearchParams();
 
-  const { darkMode } = useTheme();
+  const { isConnected } =
+    useAccount();
+
+  const { darkMode } =
+    useTheme();
 
   const {
     tokens,
@@ -56,10 +75,14 @@ export default function SwapPage() {
   } = useTransactionHistory();
 
   const [tokenIn, setTokenIn] =
-    useState<Token>(tokens[0]);
+    useState<Token>(
+      tokens[0]
+    );
 
   const [tokenOut, setTokenOut] =
-    useState<Token>(tokens[3]);
+    useState<Token>(
+      tokens[3] ?? tokens[1]
+    );
 
   const [amountIn, setAmountIn] =
     useState("");
@@ -106,7 +129,161 @@ export default function SwapPage() {
   const {
     balance,
     refetch: refetchBalance,
-  } = useTokenBalance(tokenIn);
+  } = useTokenBalance(
+    tokenIn
+  );
+
+  /*
+   * Read selected token/action from URL.
+   *
+   * Buy:
+   * OPN -> selected token
+   *
+   * Sell:
+   * selected token -> OPN
+   */
+
+  useEffect(() => {
+    const tokenInAddress =
+      searchParams.get(
+        "tokenIn"
+      );
+
+    const tokenOutAddress =
+      searchParams.get(
+        "tokenOut"
+      );
+
+    const action =
+      searchParams.get(
+        "action"
+      );
+
+    if (
+      !tokenInAddress &&
+      !tokenOutAddress
+    ) {
+      return;
+    }
+
+    const findToken = (
+      address: string | null
+    ) => {
+      if (!address) {
+        return undefined;
+      }
+
+      return tokens.find(
+        (token) =>
+          token.address.toLowerCase() ===
+          address.toLowerCase()
+      );
+    };
+
+    let selectedIn =
+      findToken(
+        tokenInAddress
+      );
+
+    let selectedOut =
+      findToken(
+        tokenOutAddress
+      );
+
+    /*
+     * Also search the official token list.
+     * This makes the selection work even before
+     * the local token state has updated.
+     */
+
+    if (
+      !selectedIn &&
+      tokenInAddress
+    ) {
+      const official =
+        TOKENS.find(
+          (token) =>
+            token.address.toLowerCase() ===
+            tokenInAddress.toLowerCase()
+        );
+
+      if (official) {
+        selectedIn =
+          official as unknown as Token;
+
+        addToken(
+          official as unknown as Token
+        );
+      }
+    }
+
+    if (
+      !selectedOut &&
+      tokenOutAddress
+    ) {
+      const official =
+        TOKENS.find(
+          (token) =>
+            token.address.toLowerCase() ===
+            tokenOutAddress.toLowerCase()
+        );
+
+      if (official) {
+        selectedOut =
+          official as unknown as Token;
+
+        addToken(
+          official as unknown as Token
+        );
+      }
+    }
+
+    if (selectedIn) {
+      setTokenIn(
+        selectedIn
+      );
+    }
+
+    if (selectedOut) {
+      setTokenOut(
+        selectedOut
+      );
+    }
+
+    /*
+     * Fallback action logic.
+     */
+
+    if (
+      action === "buy" &&
+      selectedOut
+    ) {
+      setTokenIn(
+        tokens[0]
+      );
+
+      setTokenOut(
+        selectedOut
+      );
+    }
+
+    if (
+      action === "sell" &&
+      selectedIn
+    ) {
+      setTokenIn(
+        selectedIn
+      );
+
+      setTokenOut(
+        tokens[0]
+      );
+    }
+  }, [
+    searchParams,
+    tokens,
+    addToken,
+  ]);
 
   useEffect(() => {
     if (swapSuccess) {
@@ -117,54 +294,59 @@ export default function SwapPage() {
     refetchBalance,
   ]);
 
+  /*
+   * QUOTE
+   */
+
   useEffect(() => {
-    const timer = setTimeout(
-      async () => {
-        if (!amountIn) {
-          setAmountOut("");
-          setRate("");
-          setRoute([]);
-          return;
-        }
+    const timer =
+      setTimeout(
+        async () => {
+          if (!amountIn) {
+            setAmountOut("");
+            setRate("");
+            setRoute([]);
+            return;
+          }
 
-        try {
-          const quote =
-            await getQuote(
-              amountIn,
-              tokenIn,
-              tokenOut
+          try {
+            const quote =
+              await getQuote(
+                amountIn,
+                tokenIn,
+                tokenOut
+              );
+
+            const formattedQuote =
+              formatAmount(
+                quote,
+                2
+              );
+
+            setAmountOut(
+              formattedQuote
             );
 
-          const formattedQuote =
-            formatAmount(
-              quote,
-              2
+            setRate(
+              `1 ${tokenIn.symbol} = ${formatAmount(
+                quote,
+                6
+              )} ${tokenOut.symbol}`
             );
 
-          setAmountOut(
-            formattedQuote
-          );
-
-          setRate(
-            `1 ${tokenIn.symbol} = ${formatAmount(
-              quote,
-              6
-            )} ${tokenOut.symbol}`
-          );
-
-          setRoute([
-            tokenIn.symbol,
-            "WOPN",
-            tokenOut.symbol,
-          ]);
-        } catch {
-          setAmountOut("");
-          setRate("");
-          setRoute([]);
-        }
-      },
-      500
-    );
+            setRoute([
+              tokenIn.symbol,
+              "WOPN",
+              tokenOut.symbol,
+            ]);
+          } catch {
+            setAmountOut("");
+            setRate("");
+            setRoute([]);
+          }
+        },
+        500
+      );
 
     return () =>
       clearTimeout(timer);
@@ -176,23 +358,39 @@ export default function SwapPage() {
   ]);
 
   function flip() {
-    const old = tokenIn;
+    const old =
+      tokenIn;
 
-    setTokenIn(tokenOut);
-    setTokenOut(old);
+    setTokenIn(
+      tokenOut
+    );
+
+    setTokenOut(
+      old
+    );
 
     setAmountOut("");
     setRate("");
     setRoute([]);
   }
 
-  function select(token: Token) {
-    if (selector === "in") {
-      setTokenIn(token);
+  function select(
+    token: Token
+  ) {
+    if (
+      selector === "in"
+    ) {
+      setTokenIn(
+        token
+      );
     }
 
-    if (selector === "out") {
-      setTokenOut(token);
+    if (
+      selector === "out"
+    ) {
+      setTokenOut(
+        token
+      );
     }
 
     setSelector(null);
@@ -209,7 +407,6 @@ export default function SwapPage() {
         pt-1
         transition-colors
         duration-300
-
         ${
           darkMode
             ? "bg-[#050816] text-white"
@@ -217,7 +414,6 @@ export default function SwapPage() {
         }
       `}
     >
-
       {/* BACKGROUND GLOW */}
 
       <div
@@ -232,7 +428,6 @@ export default function SwapPage() {
           -translate-x-1/2
           rounded-full
           blur-[90px]
-
           ${
             darkMode
               ? "bg-cyan-500/10"
@@ -252,7 +447,6 @@ export default function SwapPage() {
           w-48
           rounded-full
           blur-[90px]
-
           ${
             darkMode
               ? "bg-purple-500/10"
@@ -270,8 +464,7 @@ export default function SwapPage() {
           max-w-md
         "
       >
-
-        {/* PAGE HEADER */}
+        {/* HEADER */}
 
         <div
           className="
@@ -281,9 +474,7 @@ export default function SwapPage() {
             justify-between
           "
         >
-
           <div className="min-w-0">
-
             <div
               className="
                 flex
@@ -291,7 +482,6 @@ export default function SwapPage() {
                 gap-2
               "
             >
-
               <div
                 className="
                   flex
@@ -319,7 +509,6 @@ export default function SwapPage() {
               >
                 Swap
               </h1>
-
             </div>
 
             <p
@@ -333,15 +522,24 @@ export default function SwapPage() {
                 }
               `}
             >
-              Trade tokens instantly on IOPn Chain
+              {searchParams.get(
+                "action"
+              ) === "buy"
+                ? `Buy ${tokenOut.symbol}`
+                : searchParams.get(
+                    "action"
+                  ) === "sell"
+                ? `Sell ${tokenIn.symbol}`
+                : "Trade tokens instantly on IOPn Chain"}
             </p>
-
           </div>
 
           <button
             type="button"
             onClick={() =>
-              setSlippageOpen(true)
+              setSlippageOpen(
+                true
+              )
             }
             className={`
               ml-3
@@ -354,7 +552,6 @@ export default function SwapPage() {
               rounded-xl
               border
               transition
-
               ${
                 darkMode
                   ? "border-white/10 bg-white/[0.04] text-white/50 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
@@ -362,9 +559,10 @@ export default function SwapPage() {
               }
             `}
           >
-            <Settings2 size={17} />
+            <Settings2
+              size={17}
+            />
           </button>
-
         </div>
 
         {/* NETWORK STATUS */}
@@ -379,7 +577,6 @@ export default function SwapPage() {
             border
             px-3
             py-2
-
             ${
               darkMode
                 ? "border-emerald-400/10 bg-emerald-400/[0.04]"
@@ -387,15 +584,7 @@ export default function SwapPage() {
             }
           `}
         >
-
-          <div
-            className="
-              flex
-              items-center
-              gap-2
-            "
-          >
-
+          <div className="flex items-center gap-2">
             <span
               className="
                 h-1.5
@@ -419,42 +608,43 @@ export default function SwapPage() {
             >
               OPN Testnet
             </span>
-
           </div>
 
-          <span
-            className="
-              text-[11px]
-              font-medium
-              text-emerald-400
-            "
-          >
+          <span className="text-[11px] font-medium text-emerald-400">
             Network Online
           </span>
-
         </div>
 
         {/* SWAP CARD */}
 
         <SwapCard
           amountIn={amountIn}
-          setAmountIn={setAmountIn}
-          amountOut={amountOut}
-          tokenIn={tokenIn}
-          tokenOut={tokenOut}
+          setAmountIn={
+            setAmountIn
+          }
+          amountOut={
+            amountOut
+          }
+          tokenIn={
+            tokenIn
+          }
+          tokenOut={
+            tokenOut
+          }
           onSelectIn={() =>
             setSelector("in")
           }
           onSelectOut={() =>
             setSelector("out")
           }
-          onFlip={flip}
+          onFlip={
+            flip
+          }
           balance={formatAmount(
             balance,
             2
           )}
           onSwap={async () => {
-
             if (!isConnected) {
               return;
             }
@@ -492,16 +682,15 @@ export default function SwapPage() {
                   "success",
               });
             }
-
           }}
           buttonText={
             !isConnected
               ? "Connect Wallet"
               : !amountIn
-                ? "Enter Amount"
-                : needsApproval
-                  ? `Approve ${tokenIn.symbol}`
-                  : "Swap"
+              ? "Enter Amount"
+              : needsApproval
+              ? `Approve ${tokenIn.symbol}`
+              : "Swap"
           }
           loading={
             isPending ||
@@ -518,8 +707,6 @@ export default function SwapPage() {
             border
             p-3.5
             backdrop-blur-xl
-            transition-colors
-
             ${
               darkMode
                 ? "border-white/10 bg-white/[0.04]"
@@ -527,22 +714,8 @@ export default function SwapPage() {
             }
           `}
         >
-
-          <div
-            className="
-              mb-2.5
-              flex
-              items-center
-              justify-between
-            "
-          >
-
-            <h2
-              className="
-                text-sm
-                font-black
-              "
-            >
+          <div className="mb-2.5 flex items-center justify-between">
+            <h2 className="text-sm font-black">
               Swap Details
             </h2>
 
@@ -558,24 +731,10 @@ export default function SwapPage() {
             >
               {slippage}% slippage
             </span>
-
           </div>
 
-          <div
-            className="
-              space-y-2.5
-            "
-          >
-
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                gap-4
-              "
-            >
-
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-4">
               <span
                 className={`
                   text-xs
@@ -589,29 +748,12 @@ export default function SwapPage() {
                 Rate
               </span>
 
-              <span
-                className="
-                  max-w-[65%]
-                  truncate
-                  text-right
-                  text-xs
-                  font-semibold
-                "
-              >
+              <span className="max-w-[65%] truncate text-right text-xs font-semibold">
                 {rate || "--"}
               </span>
-
             </div>
 
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                gap-4
-              "
-            >
-
+            <div className="flex items-center justify-between gap-4">
               <span
                 className={`
                   text-xs
@@ -625,15 +767,7 @@ export default function SwapPage() {
                 Minimum received
               </span>
 
-              <span
-                className="
-                  max-w-[65%]
-                  truncate
-                  text-right
-                  text-xs
-                  font-semibold
-                "
-              >
+              <span className="max-w-[65%] truncate text-right text-xs font-semibold">
                 {amountOut
                   ? `${(
                       Number(
@@ -649,18 +783,9 @@ export default function SwapPage() {
                     }`
                   : "--"}
               </span>
-
             </div>
 
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                gap-4
-              "
-            >
-
+            <div className="flex items-center justify-between gap-4">
               <span
                 className={`
                   text-xs
@@ -674,33 +799,16 @@ export default function SwapPage() {
                 Route
               </span>
 
-              <span
-                className="
-                  max-w-[65%]
-                  truncate
-                  text-right
-                  text-xs
-                  font-semibold
-                  text-cyan-400
-                "
-              >
+              <span className="max-w-[65%] truncate text-right text-xs font-semibold text-cyan-400">
                 {route.length
                   ? route.join(
                       " → "
                     )
                   : "--"}
               </span>
-
             </div>
 
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-              "
-            >
-
+            <div className="flex items-center justify-between">
               <span
                 className={`
                   text-xs
@@ -714,36 +822,22 @@ export default function SwapPage() {
                 Network
               </span>
 
-              <span
-                className="
-                  text-xs
-                  font-semibold
-                "
-              >
+              <span className="text-xs font-semibold">
                 OPN Testnet
               </span>
-
             </div>
-
           </div>
-
         </div>
 
         {/* QUICK TOOLS */}
 
-        <div
-          className="
-            mt-2.5
-            grid
-            grid-cols-2
-            gap-2.5
-          "
-        >
-
+        <div className="mt-2.5 grid grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={() =>
-              setImportOpen(true)
+              setImportOpen(
+                true
+              )
             }
             className={`
               flex
@@ -756,7 +850,6 @@ export default function SwapPage() {
               text-xs
               font-bold
               transition
-
               ${
                 darkMode
                   ? "border-white/10 bg-white/[0.04] text-white/70 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
@@ -771,7 +864,9 @@ export default function SwapPage() {
           <button
             type="button"
             onClick={() =>
-              setSlippageOpen(true)
+              setSlippageOpen(
+                true
+              )
             }
             className={`
               flex
@@ -784,7 +879,6 @@ export default function SwapPage() {
               text-xs
               font-bold
               transition
-
               ${
                 darkMode
                   ? "border-white/10 bg-white/[0.04] text-white/70 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
@@ -795,10 +889,9 @@ export default function SwapPage() {
             <Settings2 size={15} />
             Slippage
           </button>
-
         </div>
 
-        {/* SECURITY NOTE */}
+        {/* SECURITY */}
 
         <div
           className={`
@@ -808,7 +901,6 @@ export default function SwapPage() {
             rounded-xl
             border
             p-3
-
             ${
               darkMode
                 ? "border-white/10 bg-white/[0.025]"
@@ -816,14 +908,9 @@ export default function SwapPage() {
             }
           `}
         >
-
           <ShieldCheck
             size={17}
-            className="
-              mt-0.5
-              shrink-0
-              text-cyan-400
-            "
+            className="mt-0.5 shrink-0 text-cyan-400"
           />
 
           <p
@@ -842,7 +929,6 @@ export default function SwapPage() {
             are executed directly through
             your connected wallet.
           </p>
-
         </div>
 
         {/* HISTORY */}
@@ -850,7 +936,6 @@ export default function SwapPage() {
         <div className="mt-2.5">
           <SwapHistory />
         </div>
-
       </div>
 
       {/* TOKEN SELECTOR */}
@@ -863,15 +948,19 @@ export default function SwapPage() {
         onClose={() =>
           setSelector(null)
         }
-        onSelect={select}
+        onSelect={
+          select
+        }
       />
 
-      {/* TOKEN IMPORT */}
+      {/* IMPORT */}
 
       <TokenImport
         open={importOpen}
         onClose={() =>
-          setImportOpen(false)
+          setImportOpen(
+            false
+          )
         }
         onImport={(token) => {
           addToken(token);
@@ -884,12 +973,29 @@ export default function SwapPage() {
       <SlippageModal
         open={slippageOpen}
         onClose={() =>
-          setSlippageOpen(false)
+          setSlippageOpen(
+            false
+          )
         }
-        slippage={slippage}
-        setSlippage={setSlippage}
+        slippage={
+          slippage
+        }
+        setSlippage={
+          setSlippage
+        }
       />
-
     </main>
+  );
+}
+
+export default function SwapPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#050816]" />
+      }
+    >
+      <SwapPageContent />
+    </Suspense>
   );
 }

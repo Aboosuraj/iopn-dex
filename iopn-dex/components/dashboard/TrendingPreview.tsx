@@ -1,26 +1,27 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   ArrowUpRight,
   ChevronRight,
   TrendingUp,
+  CandlestickChart,
 } from "lucide-react";
 
 import { TOKENS } from "@/lib/tokens";
 
 export default function TrendingPreview() {
-  const trendingTokens = TOKENS.slice(0, 5);
+  const trendingTokens =
+    TOKENS.slice(0, 5);
 
   return (
     <section className="mt-8">
-
       {/* HEADER */}
-      <div className="mb-4 flex items-center justify-between">
 
+      <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-
             <div
               className="
                 flex
@@ -50,13 +51,12 @@ export default function TrendingPreview() {
             >
               Trending
             </h2>
-
           </div>
 
           <p
             className="
-              mt-1
               ml-10
+              mt-1
               text-[10px]
               font-medium
               text-white/30
@@ -66,8 +66,8 @@ export default function TrendingPreview() {
           </p>
         </div>
 
+        {/* VIEW ALL */}
 
-        {/* VIEW ALL → MARKETS */}
         <Link
           href="/markets"
           className="
@@ -100,260 +100,247 @@ export default function TrendingPreview() {
             "
           />
         </Link>
-
       </div>
 
-
       {/* TRENDING LIST */}
+
       <div className="space-y-2.5">
+        {trendingTokens.map(
+          (token, index) => {
+            const tradeUrl =
+              `/trade?token=${encodeURIComponent(
+                token.address
+              )}`;
 
-        {trendingTokens.map((token, index) => (
-
-          <div
-            key={token.address}
-            className="
-              group
-              relative
-              overflow-hidden
-              rounded-2xl
-              border
-              border-white/[0.07]
-              bg-white/[0.035]
-              p-3
-              backdrop-blur-xl
-              transition-all
-              duration-200
-              hover:-translate-y-[1px]
-              hover:border-cyan-400/20
-              hover:bg-white/[0.05]
-            "
-          >
-
-            {/* SUBTLE GLOW */}
-            <div
-              className="
-                pointer-events-none
-                absolute
-                right-[-35px]
-                top-[-35px]
-                h-20
-                w-20
-                rounded-full
-                bg-cyan-400/[0.05]
-                blur-2xl
-              "
-            />
-
-
-            <div
-              className="
-                relative
-                flex
-                items-center
-                justify-between
-              "
-            >
-
-              {/* TOKEN INFO */}
-              <Link
-                href="/markets"
+            return (
+              <div
+                key={
+                  token.address
+                }
                 className="
-                  flex
-                  min-w-0
-                  flex-1
-                  items-center
-                  gap-3
+                  group
+                  relative
+                  overflow-hidden
+                  rounded-2xl
+                  border
+                  border-white/[0.07]
+                  bg-white/[0.035]
+                  p-3
+                  backdrop-blur-xl
+                  transition-all
+                  duration-200
+                  hover:-translate-y-[1px]
+                  hover:border-cyan-400/20
+                  hover:bg-white/[0.05]
                 "
               >
+                {/* GLOW */}
 
-                {/* RANK */}
-                <span
+                <div
                   className="
-                    w-4
-                    text-center
-                    text-[10px]
-                    font-bold
-                    text-white/20
+                    pointer-events-none
+                    absolute
+                    right-[-35px]
+                    top-[-35px]
+                    h-20
+                    w-20
+                    rounded-full
+                    bg-cyan-400/[0.05]
+                    blur-2xl
                   "
-                >
-                  {String(index + 1).padStart(2, "0")}
-                </span>
+                />
 
-
-                {/* TOKEN ICON */}
                 <div
                   className="
                     relative
                     flex
-                    h-10
-                    w-10
-                    shrink-0
                     items-center
-                    justify-center
-                    overflow-hidden
-                    rounded-xl
-                    border
-                    border-cyan-400/10
-                    bg-gradient-to-br
-                    from-cyan-400/10
-                    to-violet-500/10
-                    shadow-[0_0_18px_rgba(34,211,238,0.06)]
+                    justify-between
                   "
                 >
+                  {/* TOKEN INFO */}
 
-                  <div
+                  <Link
+                    href={
+                      tradeUrl
+                    }
                     className="
-                      absolute
-                      inset-0
-                      bg-cyan-400/[0.03]
-                    "
-                  />
-
-                  <span
-                    className="
-                      relative
-                      text-sm
-                      font-black
-                      text-cyan-300
+                      flex
+                      min-w-0
+                      flex-1
+                      items-center
+                      gap-3
                     "
                   >
-                    {token.symbol?.slice(0, 1)}
-                  </span>
-
-                </div>
-
-
-                {/* TOKEN NAME */}
-                <div className="min-w-0">
-
-                  <div className="flex items-center gap-2">
-
-                    <h3
-                      className="
-                        truncate
-                        text-sm
-                        font-black
-                        text-white
-                      "
-                    >
-                      {token.symbol}
-                    </h3>
+                    {/* RANK */}
 
                     <span
                       className="
-                        rounded-md
-                        bg-emerald-400/[0.08]
-                        px-1.5
-                        py-0.5
-                        text-[8px]
+                        w-4
+                        text-center
+                        text-[10px]
                         font-bold
-                        uppercase
-                        tracking-wide
-                        text-emerald-400
+                        text-white/20
                       "
                     >
-                      Live
+                      {String(
+                        index + 1
+                      ).padStart(
+                        2,
+                        "0"
+                      )}
                     </span>
 
+                    {/* ICON */}
+
+                    <div
+                      className="
+                        relative
+                        flex
+                        h-10
+                        w-10
+                        shrink-0
+                        items-center
+                        justify-center
+                        overflow-hidden
+                        rounded-xl
+                        border
+                        border-cyan-400/10
+                        bg-gradient-to-br
+                        from-cyan-400/10
+                        to-violet-500/10
+                        shadow-[0_0_18px_rgba(34,211,238,0.06)]
+                      "
+                    >
+                      <span
+                        className="
+                          relative
+                          text-sm
+                          font-black
+                          text-cyan-300
+                        "
+                      >
+                        {token.symbol?.slice(
+                          0,
+                          1
+                        )}
+                      </span>
+                    </div>
+
+                    {/* TOKEN NAME */}
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3
+                          className="
+                            truncate
+                            text-sm
+                            font-black
+                            text-white
+                          "
+                        >
+                          {
+                            token.symbol
+                          }
+                        </h3>
+
+                        <span
+                          className="
+                            rounded-md
+                            bg-emerald-400/[0.08]
+                            px-1.5
+                            py-0.5
+                            text-[8px]
+                            font-bold
+                            uppercase
+                            tracking-wide
+                            text-emerald-400
+                          "
+                        >
+                          Live
+                        </span>
+                      </div>
+
+                      <p
+                        className="
+                          mt-0.5
+                          truncate
+                          text-[10px]
+                          text-white/35
+                        "
+                      >
+                        {
+                          token.name
+                        }
+                      </p>
+                    </div>
+                  </Link>
+
+                  {/* RIGHT */}
+
+                  <div
+                    className="
+                      ml-3
+                      flex
+                      shrink-0
+                      items-center
+                      gap-2
+                    "
+                  >
+                    <div className="hidden text-right sm:block">
+                      <p className="text-[9px] uppercase tracking-wider text-white/20">
+                        Market
+                      </p>
+
+                      <p className="mt-0.5 text-[10px] font-bold text-emerald-400">
+                        Active
+                      </p>
+                    </div>
+
+                    {/* TRADE */}
+
+                    <Link
+                      href={
+                        tradeUrl
+                      }
+                      className="
+                        flex
+                        h-9
+                        items-center
+                        gap-1.5
+                        rounded-xl
+                        border
+                        border-cyan-400/10
+                        bg-cyan-400/[0.08]
+                        px-3
+                        text-[10px]
+                        font-black
+                        text-cyan-300
+                        transition-all
+                        hover:border-cyan-400/25
+                        hover:bg-cyan-400/[0.14]
+                        hover:text-cyan-200
+                        active:scale-95
+                      "
+                    >
+                      Trade
+
+                      <ArrowUpRight
+                        size={12}
+                      />
+                    </Link>
                   </div>
-
-                  <p
-                    className="
-                      mt-0.5
-                      truncate
-                      text-[10px]
-                      text-white/35
-                    "
-                  >
-                    {token.name}
-                  </p>
-
                 </div>
-
-              </Link>
-
-
-              {/* RIGHT SIDE */}
-              <div
-                className="
-                  ml-3
-                  flex
-                  shrink-0
-                  items-center
-                  gap-2
-                "
-              >
-
-                {/* MARKET STATUS */}
-                <div className="hidden text-right sm:block">
-
-                  <p
-                    className="
-                      text-[9px]
-                      uppercase
-                      tracking-wider
-                      text-white/20
-                    "
-                  >
-                    Market
-                  </p>
-
-                  <p
-                    className="
-                      mt-0.5
-                      text-[10px]
-                      font-bold
-                      text-emerald-400
-                    "
-                  >
-                    Active
-                  </p>
-
-                </div>
-
-
-                {/* SWAP → SWAP INTERFACE */}
-                <Link
-                  href="/swap"
-                  className="
-                    flex
-                    h-9
-                    items-center
-                    gap-1.5
-                    rounded-xl
-                    border
-                    border-cyan-400/10
-                    bg-cyan-400/[0.08]
-                    px-3
-                    text-[10px]
-                    font-black
-                    text-cyan-300
-                    transition-all
-                    hover:border-cyan-400/25
-                    hover:bg-cyan-400/[0.14]
-                    hover:text-cyan-200
-                    active:scale-95
-                  "
-                >
-                  Swap
-
-                  <ArrowUpRight size={12} />
-                </Link>
-
               </div>
-
-            </div>
-
-          </div>
-
-        ))}
-
+            );
+          }
+        )}
       </div>
 
+      {/* EMPTY */}
 
-      {/* EMPTY STATE */}
-      {trendingTokens.length === 0 && (
-
+      {trendingTokens.length ===
+        0 && (
         <div
           className="
             rounded-2xl
@@ -364,31 +351,15 @@ export default function TrendingPreview() {
             text-center
           "
         >
-
-          <p
-            className="
-              text-sm
-              font-bold
-              text-white/50
-            "
-          >
+          <p className="text-sm font-bold text-white/50">
             No trending tokens
           </p>
 
-          <p
-            className="
-              mt-1
-              text-[10px]
-              text-white/25
-            "
-          >
+          <p className="mt-1 text-[10px] text-white/25">
             Token data will appear here when available.
           </p>
-
         </div>
-
       )}
-
     </section>
   );
 }

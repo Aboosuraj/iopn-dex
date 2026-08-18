@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import Link from "next/link";
+
 import {
   Search,
   TrendingUp,
@@ -19,6 +21,7 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  CandlestickChart,
 } from "lucide-react";
 
 import {
@@ -178,10 +181,6 @@ export default function MarketPage() {
     setImportSuccess,
   ] = useState("");
 
-  /*
-   * Load imported tokens
-   */
-
   useEffect(() => {
     const loadImported = () => {
       setImportedTokens(
@@ -214,10 +213,6 @@ export default function MarketPage() {
     };
   }, []);
 
-  /*
-   * Official + imported tokens
-   */
-
   const allTokens =
     useMemo(() => {
       const map =
@@ -226,7 +221,9 @@ export default function MarketPage() {
           Token
         >();
 
-      for (const token of tokens) {
+      for (
+        const token of tokens
+      ) {
         map.set(
           token.address.toLowerCase(),
           token
@@ -255,10 +252,6 @@ export default function MarketPage() {
       tokens,
       importedTokens,
     ]);
-
-  /*
-   * Load prices
-   */
 
   async function loadPrices() {
     if (!allTokens.length) {
@@ -321,10 +314,6 @@ export default function MarketPage() {
     loadPrices();
   }, [allTokens]);
 
-  /*
-   * IMPORT TOKEN
-   */
-
   async function importToken() {
     const query =
       search.trim();
@@ -368,11 +357,6 @@ export default function MarketPage() {
     try {
       const address =
         query as `0x${string}`;
-
-      /*
-       * Read metadata directly
-       * from the token contract.
-       */
 
       const [
         symbol,
@@ -445,10 +429,6 @@ export default function MarketPage() {
     }
   }
 
-  /*
-   * Market tokens
-   */
-
   const marketTokens:
     MarketToken[] =
     useMemo(() => {
@@ -474,10 +454,6 @@ export default function MarketPage() {
       prices,
       importedTokens,
     ]);
-
-  /*
-   * Search + tabs
-   */
 
   const filteredTokens =
     useMemo(() => {
@@ -508,7 +484,7 @@ export default function MarketPage() {
         result =
           result.slice(
             0,
-            4
+            50
           );
       }
 
@@ -518,15 +494,48 @@ export default function MarketPage() {
             .reverse()
             .slice(
               0,
-              4
+              50
             );
       }
 
       if (
-        tab === "gainers" ||
+        tab === "gainers"
+      ) {
+        result =
+          [...result]
+            .sort(
+              (a, b) =>
+                Number(
+                  b.priceInOPN
+                ) -
+                Number(
+                  a.priceInOPN
+                )
+            )
+            .slice(
+              0,
+              50
+            );
+      }
+
+      if (
         tab === "losers"
       ) {
-        result = [];
+        result =
+          [...result]
+            .sort(
+              (a, b) =>
+                Number(
+                  a.priceInOPN
+                ) -
+                Number(
+                  b.priceInOPN
+                )
+            )
+            .slice(
+              0,
+              50
+            );
       }
 
       return result;
@@ -590,7 +599,6 @@ export default function MarketPage() {
         text-white
       "
     >
-
       {/* BACKGROUND */}
 
       <div
@@ -639,27 +647,11 @@ export default function MarketPage() {
           pt-5
         "
       >
-
         {/* HEADER */}
 
-        <div
-          className="
-            flex
-            items-center
-            justify-between
-          "
-        >
-
+        <div className="flex items-center justify-between">
           <div>
-
-            <div
-              className="
-                flex
-                items-center
-                gap-2
-              "
-            >
-
+            <div className="flex items-center gap-2">
               <div
                 className="
                   flex
@@ -677,27 +669,14 @@ export default function MarketPage() {
                 />
               </div>
 
-              <h1
-                className="
-                  text-2xl
-                  font-black
-                "
-              >
+              <h1 className="text-2xl font-black">
                 Markets
               </h1>
-
             </div>
 
-            <p
-              className="
-                mt-1
-                text-sm
-                text-white/40
-              "
-            >
+            <p className="mt-1 text-sm text-white/40">
               Explore the IOPn token market
             </p>
-
           </div>
 
           <button
@@ -732,7 +711,6 @@ export default function MarketPage() {
               }
             />
           </button>
-
         </div>
 
         {/* NETWORK */}
@@ -751,58 +729,22 @@ export default function MarketPage() {
             py-3
           "
         >
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
 
-          <div
-            className="
-              flex
-              items-center
-              gap-2
-            "
-          >
-
-            <span
-              className="
-                h-2
-                w-2
-                animate-pulse
-                rounded-full
-                bg-emerald-400
-              "
-            />
-
-            <span
-              className="
-                text-xs
-                font-semibold
-                text-white/60
-              "
-            >
+            <span className="text-xs font-semibold text-white/60">
               IOPn Testnet
             </span>
-
           </div>
 
-          <span
-            className="
-              text-xs
-              font-bold
-              text-emerald-400
-            "
-          >
+          <span className="text-xs font-bold text-emerald-400">
             Live On-Chain Prices
           </span>
-
         </div>
 
         {/* SEARCH */}
 
-        <div
-          className="
-            relative
-            mt-4
-          "
-        >
-
+        <div className="relative mt-4">
           <Search
             size={17}
             className="
@@ -825,9 +767,7 @@ export default function MarketPage() {
               setImportError("");
               setImportSuccess("");
             }}
-            placeholder="
-              Search token or paste contract address...
-            "
+            placeholder="Search token or paste contract address..."
             className="
               h-12
               w-full
@@ -874,10 +814,9 @@ export default function MarketPage() {
               <X size={14} />
             </button>
           )}
-
         </div>
 
-        {/* IMPORT TOKEN */}
+        {/* IMPORT */}
 
         {isContractSearch &&
           !exactTokenExists && (
@@ -896,55 +835,23 @@ export default function MarketPage() {
                 py-3
               "
             >
-
-              <div
-                className="
-                  min-w-0
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-2
-                  "
-                >
-
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
                   <Download
                     size={15}
-                    className="
-                      shrink-0
-                      text-cyan-400
-                    "
+                    className="shrink-0 text-cyan-400"
                   />
 
-                  <span
-                    className="
-                      text-xs
-                      font-bold
-                      text-white
-                    "
-                  >
+                  <span className="text-xs font-bold text-white">
                     Token not listed
                   </span>
-
                 </div>
 
-                <p
-                  className="
-                    mt-1
-                    truncate
-                    font-mono
-                    text-[9px]
-                    text-white/30
-                  "
-                >
+                <p className="mt-1 truncate font-mono text-[9px] text-white/30">
                   {shortenAddress(
                     search.trim()
                   )}
                 </p>
-
               </div>
 
               <button
@@ -976,9 +883,7 @@ export default function MarketPage() {
                   <>
                     <RefreshCw
                       size={13}
-                      className="
-                        animate-spin
-                      "
+                      className="animate-spin"
                     />
                     Reading...
                   </>
@@ -991,7 +896,6 @@ export default function MarketPage() {
                   </>
                 )}
               </button>
-
             </div>
           )}
 
@@ -1061,7 +965,6 @@ export default function MarketPage() {
             scrollbar-none
           "
         >
-
           {tabs.map(
             (item) => {
               const Icon =
@@ -1109,7 +1012,6 @@ export default function MarketPage() {
               );
             }
           )}
-
         </div>
 
         {/* SUMMARY */}
@@ -1123,133 +1025,60 @@ export default function MarketPage() {
             sm:grid-cols-4
           "
         >
+          {[
+            [
+              "Tokens",
+              String(
+                allTokens.length
+              ),
+              "",
+            ],
+            [
+              "Network",
+              "OPN",
+              "",
+            ],
+            [
+              "Pricing",
+              "Live",
+              "text-cyan-400",
+            ],
+            [
+              "Status",
+              "Online",
+              "text-emerald-400",
+            ],
+          ].map(
+            (item) => (
+              <div
+                key={
+                  item[0]
+                }
+                className="
+                  rounded-2xl
+                  border
+                  border-white/10
+                  bg-white/[0.035]
+                  p-3.5
+                "
+              >
+                <p className="text-[10px] uppercase tracking-wider text-white/30">
+                  {item[0]}
+                </p>
 
-          <div
-            className="
-              rounded-2xl
-              border
-              border-white/10
-              bg-white/[0.035]
-              p-3.5
-            "
-          >
-            <p
-              className="
-                text-[10px]
-                uppercase
-                tracking-wider
-                text-white/30
-              "
-            >
-              Tokens
-            </p>
-
-            <p
-              className="
-                mt-1
-                text-xl
-                font-black
-              "
-            >
-              {allTokens.length}
-            </p>
-          </div>
-
-          <div
-            className="
-              rounded-2xl
-              border
-              border-white/10
-              bg-white/[0.035]
-              p-3.5
-            "
-          >
-            <p
-              className="
-                text-[10px]
-                uppercase
-                tracking-wider
-                text-white/30
-              "
-            >
-              Network
-            </p>
-
-            <p
-              className="
-                mt-1
-                text-xl
-                font-black
-              "
-            >
-              OPN
-            </p>
-          </div>
-
-          <div
-            className="
-              rounded-2xl
-              border
-              border-white/10
-              bg-white/[0.035]
-              p-3.5
-            "
-          >
-            <p
-              className="
-                text-[10px]
-                uppercase
-                tracking-wider
-                text-white/30
-              "
-            >
-              Pricing
-            </p>
-
-            <p
-              className="
-                mt-1
-                text-xl
-                font-black
-                text-cyan-400
-              "
-            >
-              Live
-            </p>
-          </div>
-
-          <div
-            className="
-              rounded-2xl
-              border
-              border-white/10
-              bg-white/[0.035]
-              p-3.5
-            "
-          >
-            <p
-              className="
-                text-[10px]
-                uppercase
-                tracking-wider
-                text-white/30
-              "
-            >
-              Status
-            </p>
-
-            <p
-              className="
-                mt-1
-                text-xl
-                font-black
-                text-emerald-400
-              "
-            >
-              Online
-            </p>
-          </div>
-
+                <p
+                  className={`
+                    mt-1
+                    text-xl
+                    font-black
+                    ${item[2]}
+                  `}
+                >
+                  {item[1]}
+                </p>
+              </div>
+            )
+          )}
         </div>
 
         {/* MARKET LIST */}
@@ -1265,7 +1094,6 @@ export default function MarketPage() {
             backdrop-blur-xl
           "
         >
-
           <div
             className="
               flex
@@ -1277,13 +1105,8 @@ export default function MarketPage() {
               py-4
             "
           >
-
             <div>
-              <h2
-                className="
-                  font-black
-                "
-              >
+              <h2 className="font-black">
                 {
                   tabs.find(
                     (item) =>
@@ -1293,127 +1116,38 @@ export default function MarketPage() {
                 }
               </h2>
 
-              <p
-                className="
-                  mt-0.5
-                  text-xs
-                  text-white/30
-                "
-              >
-                Prices quoted against OPN
+              <p className="mt-0.5 text-xs text-white/30">
+                Tap a token to open its trading page
               </p>
             </div>
 
-            <span
-              className="
-                rounded-full
-                bg-cyan-400/10
-                px-2.5
-                py-1
-                text-[10px]
-                font-bold
-                text-cyan-400
-              "
-            >
+            <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[10px] font-bold text-cyan-400">
               {
                 filteredTokens.length
               }
             </span>
-
           </div>
 
           {loading ? (
-            <div
-              className="
-                px-5
-                py-12
-                text-center
-              "
-            >
+            <div className="px-5 py-12 text-center">
               <RefreshCw
                 size={24}
-                className="
-                  mx-auto
-                  animate-spin
-                  text-cyan-400
-                "
+                className="mx-auto animate-spin text-cyan-400"
               />
 
-              <p
-                className="
-                  mt-3
-                  text-sm
-                  text-white/40
-                "
-              >
+              <p className="mt-3 text-sm text-white/40">
                 Loading on-chain prices...
-              </p>
-            </div>
-          ) : tab ===
-              "gainers" ||
-            tab ===
-              "losers" ? (
-            <div
-              className="
-                px-5
-                py-12
-                text-center
-              "
-            >
-              <BarChart3
-                size={26}
-                className="
-                  mx-auto
-                  text-white/20
-                "
-              />
-
-              <h3
-                className="
-                  mt-3
-                  font-bold
-                "
-              >
-                24H data coming next
-              </h3>
-
-              <p
-                className="
-                  mx-auto
-                  mt-1
-                  max-w-xs
-                  text-xs
-                  leading-5
-                  text-white/35
-                "
-              >
-                Gainers and losers need real historical market data.
               </p>
             </div>
           ) : filteredTokens.length ===
             0 ? (
-            <div
-              className="
-                px-5
-                py-12
-                text-center
-              "
-            >
+            <div className="px-5 py-12 text-center">
               <Search
                 size={25}
-                className="
-                  mx-auto
-                  text-white/20
-                "
+                className="mx-auto text-white/20"
               />
 
-              <p
-                className="
-                  mt-3
-                  text-sm
-                  text-white/35
-                "
-              >
+              <p className="mt-3 text-sm text-white/35">
                 No tokens found.
               </p>
             </div>
@@ -1427,12 +1161,21 @@ export default function MarketPage() {
                   const price =
                     token.priceInOPN;
 
+                  const tradeUrl =
+                    `/trade?token=${encodeURIComponent(
+                      token.address
+                    )}`;
+
                   return (
-                    <div
+                    <Link
                       key={
                         token.address
                       }
+                      href={
+                        tradeUrl
+                      }
                       className="
+                        group
                         flex
                         items-center
                         justify-between
@@ -1443,28 +1186,12 @@ export default function MarketPage() {
                         py-3
                         transition
                         last:border-b-0
-                        hover:bg-white/[0.025]
+                        hover:bg-cyan-400/[0.025]
+                        active:bg-cyan-400/[0.05]
                       "
                     >
-
-                      <div
-                        className="
-                          flex
-                          min-w-0
-                          items-center
-                          gap-3
-                        "
-                      >
-
-                        <span
-                          className="
-                            w-4
-                            text-center
-                            text-[10px]
-                            font-bold
-                            text-white/20
-                          "
-                        >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="w-4 text-center text-[10px] font-bold text-white/20">
                           {index + 1}
                         </span>
 
@@ -1474,74 +1201,28 @@ export default function MarketPage() {
                           }
                         />
 
-                        <div
-                          className="
-                            min-w-0
-                          "
-                        >
-
-                          <div
-                            className="
-                              flex
-                              items-center
-                              gap-1.5
-                            "
-                          >
-
-                            <p
-                              className="
-                                truncate
-                                text-sm
-                                font-black
-                              "
-                            >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate text-sm font-black">
                               {
                                 token.symbol
                               }
                             </p>
 
                             {token.native && (
-                              <span
-                                className="
-                                  rounded-md
-                                  bg-cyan-400/10
-                                  px-1.5
-                                  py-0.5
-                                  text-[8px]
-                                  font-bold
-                                  text-cyan-400
-                                "
-                              >
+                              <span className="rounded-md bg-cyan-400/10 px-1.5 py-0.5 text-[8px] font-bold text-cyan-400">
                                 NATIVE
                               </span>
                             )}
 
                             {token.imported && (
-                              <span
-                                className="
-                                  rounded-md
-                                  bg-purple-400/10
-                                  px-1.5
-                                  py-0.5
-                                  text-[8px]
-                                  font-bold
-                                  text-purple-300
-                                "
-                              >
+                              <span className="rounded-md bg-purple-400/10 px-1.5 py-0.5 text-[8px] font-bold text-purple-300">
                                 IMPORTED
                               </span>
                             )}
-
                           </div>
 
-                          <p
-                            className="
-                              mt-0.5
-                              truncate
-                              text-[10px]
-                              text-white/30
-                            "
-                          >
+                          <p className="mt-0.5 truncate text-[10px] text-white/30">
                             {token.native
                               ? "Native OPN"
                               : token.imported
@@ -1550,49 +1231,50 @@ export default function MarketPage() {
                                 )
                               : "ERC-20 Token"}
                           </p>
+                        </div>
+                      </div>
 
+                      <div className="flex shrink-0 items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-black">
+                            {formatPrice(
+                              price
+                            )}
+                          </p>
+
+                          <p className="mt-0.5 text-[10px] font-semibold text-cyan-400">
+                            OPN
+                          </p>
                         </div>
 
-                      </div>
-
-                      <div
-                        className="
-                          shrink-0
-                          text-right
-                        "
-                      >
-
-                        <p
+                        <div
                           className="
-                            text-sm
-                            font-black
-                          "
-                        >
-                          {formatPrice(
-                            price
-                          )}
-                        </p>
-
-                        <p
-                          className="
-                            mt-0.5
-                            text-[10px]
-                            font-semibold
+                            flex
+                            h-8
+                            w-8
+                            items-center
+                            justify-center
+                            rounded-xl
+                            border
+                            border-cyan-400/10
+                            bg-cyan-400/[0.05]
                             text-cyan-400
+                            opacity-60
+                            transition
+                            group-hover:opacity-100
                           "
                         >
-                          OPN
-                        </p>
-
+                          <CandlestickChart
+                            size={15}
+                          />
+                        </div>
                       </div>
-
-                    </div>
+                    </Link>
                   );
                 }
               )}
             </div>
           )}
-
         </section>
 
         {/* INFO */}
@@ -1609,32 +1291,18 @@ export default function MarketPage() {
             p-3.5
           "
         >
-
           <TrendingUp
             size={18}
-            className="
-              mt-0.5
-              shrink-0
-              text-cyan-400
-            "
+            className="mt-0.5 shrink-0 text-cyan-400"
           />
 
-          <p
-            className="
-              text-xs
-              leading-5
-              text-white/35
-            "
-          >
-            Search by token symbol or contract address.
-            Imported tokens are read directly from their
-            IOPn smart contract and saved to your device.
+          <p className="text-xs leading-5 text-white/35">
+            Select any token to open its dedicated
+            trading page. From there you can review
+            the market chart and choose Buy or Sell.
           </p>
-
         </div>
-
       </div>
-
     </main>
   );
 }
