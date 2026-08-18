@@ -59,9 +59,7 @@ export default function RootLayout({
       >
         <Providers>
 
-          <main className="min-h-screen pb-24">
-            {children}
-          </main>
+          {children}
 
           <BottomNav />
 

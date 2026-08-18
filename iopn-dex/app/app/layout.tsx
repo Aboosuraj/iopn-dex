@@ -23,7 +23,7 @@ export default function AppLayout({
           max-w-md
           px-4
           pt-[88px]
-          pb-28
+          pb-24
         "
       >
         {children}
