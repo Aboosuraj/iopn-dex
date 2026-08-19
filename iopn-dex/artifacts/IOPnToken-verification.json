@@ -1,0 +1,15 @@
+{
+  "contractName": "IOPnToken",
+  "sourceName": "IOPnToken.sol",
+  "compiler": {
+    "name": "solc",
+    "version": "v0.8.36+commit.8a079791.Emscripten.clang",
+    "fullVersion": "0.8.36+commit.8a079791.Emscripten.clang"
+  },
+  "optimization": {
+    "enabled": true,
+    "runs": 200
+  },
+  "evmVersion": "default",
+  "generatedAt": "2026-08-19T00:00:18.042Z"
+}
