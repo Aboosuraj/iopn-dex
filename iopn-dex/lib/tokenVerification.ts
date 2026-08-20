@@ -1,66 +1,28 @@
-import { encodeAbiParameters, parseAbiParameters } from "viem";
+export const EXPLORER_URL =
+  "https://testnet.iopn.tech";
 
-export const EXPLORER_URL = "https://testnet.iopn.tech";
+export const EXPLORER_API_URL =
+  `${EXPLORER_URL}/api/v2`;
 
-export const TOKEN_SOURCE_NAME = "IOPnToken.sol";
+export const CHAIN_ID = 984;
 
-/**
- * Compilation settings used by the token compiler.
- *
- * Keep these values synchronized with scripts/compile-token.mjs.
- */
-export const TOKEN_COMPILER_SETTINGS = {
-  language: "Solidity",
-  compilerVersion: "0.8.20",
-  optimizer: {
-    enabled: true,
-    runs: 200,
-  },
-  evmVersion: "paris",
-} as const;
+export const TOKEN_CONTRACT_NAME =
+  "IOPnToken";
 
-export type TokenVerificationData = {
-  address: `0x${string}`;
-  transactionHash?: `0x${string}`;
+export const TOKEN_SOURCE_NAME =
+  "IOPnToken.sol";
 
-  name: string;
-  symbol: string;
-  initialSupply: string;
-  decimals: number;
-  owner: `0x${string}`;
+export const TOKEN_STANDARD_INPUT =
+  "/artifacts/IOPnToken-standard-input.json";
 
-  sourceCode: string;
-  compilerVersion: string;
-  optimizationEnabled: boolean;
-  optimizationRuns: number;
-  evmVersion: string;
+export const TOKEN_ARTIFACT =
+  "/artifacts/IOPnToken.json";
 
-  constructorArguments: `0x${string}`;
+export const TOKEN_VERIFICATION_METADATA =
+  "/artifacts/IOPnToken-verification.json";
 
-  abi: unknown;
-  bytecode: `0x${string}`;
-};
-
-export function encodeTokenConstructorArguments(params: {
-  name: string;
-  symbol: string;
-  initialSupply: bigint;
-  decimals: number;
-  owner: `0x${string}`;
-}) {
-  return encodeAbiParameters(
-    parseAbiParameters(
-      "string,string,uint256,uint8,address"
-    ),
-    [
-      params.name,
-      params.symbol,
-      params.initialSupply,
-      params.decimals,
-      params.owner,
-    ]
-  );
-}
+export const VERIFICATION_API =
+  "/api/verify";
 
 export function getExplorerAddressUrl(
   address: string
@@ -68,8 +30,25 @@ export function getExplorerAddressUrl(
   return `${EXPLORER_URL}/address/${address}`;
 }
 
-export function getExplorerTransactionUrl(
-  hash: string
+export function getExplorerContractUrl(
+  address: string
 ) {
-  return `${EXPLORER_URL}/tx/${hash}`;
+  return `${EXPLORER_URL}/address/${address}?tab=contract`;
+}
+
+export function getExplorerTxUrl(
+  txHash: string
+) {
+  return `${EXPLORER_URL}/tx/${txHash}`;
+}
+
+export function isValidAddress(
+  address: string | undefined | null
+): address is `0x${string}` {
+  return (
+    typeof address === "string" &&
+    /^0x[a-fA-F0-9]{40}$/.test(
+      address
+    )
+  );
 }

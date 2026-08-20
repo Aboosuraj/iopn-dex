@@ -2056,4 +2056,4 @@ export default function SwapPage() {
 
     </Suspense>
   );
-}
+}0
