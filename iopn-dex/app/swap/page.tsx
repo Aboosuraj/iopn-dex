@@ -40,6 +40,7 @@ import { useTheme } from "@/components/ThemeProvider";
 
 import { TOKENS } from "@/lib/tokens";
 
+
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -48,23 +49,34 @@ function formatAmount(
   value: string | number,
   decimals = 6
 ) {
-  const number = Number(value);
 
-  if (!Number.isFinite(number)) {
+  const number =
+    Number(value);
+
+  if (
+    !Number.isFinite(number)
+  ) {
     return "0";
   }
 
-  return number.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: decimals,
-  });
+  return number.toLocaleString(
+    "en-US",
+    {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: decimals,
+    }
+  );
 }
+
 
 function sameToken(
   a?: Token,
   b?: Token
 ) {
-  if (!a || !b) return false;
+
+  if (!a || !b) {
+    return false;
+  }
 
   return (
     a.address?.toLowerCase() ===
@@ -74,23 +86,31 @@ function sameToken(
   );
 }
 
-function isNativeOPN(token?: Token) {
-  if (!token) return false;
+
+function isNativeOPN(
+  token?: Token
+) {
+
+  if (!token) {
+    return false;
+  }
 
   return (
     token.native === true ||
-    token.symbol.toUpperCase() === "OPN"
+    token.symbol.toUpperCase() ===
+      "OPN"
   );
 }
 
-/*
- * Find a token by address.
- */
+
 function findTokenByAddress(
   tokens: Token[],
   address: string | null
 ) {
-  if (!address) return undefined;
+
+  if (!address) {
+    return undefined;
+  }
 
   return tokens.find(
     (token) =>
@@ -99,18 +119,19 @@ function findTokenByAddress(
   );
 }
 
-/*
- * Find a safe token that is not the other
- * selected token.
- */
+
 function findSafeDifferentToken(
   tokens: Token[],
   other?: Token
 ) {
+
   return (
     tokens.find(
       (token) =>
-        !sameToken(token, other)
+        !sameToken(
+          token,
+          other
+        )
     ) ??
     tokens.find(
       (token) =>
@@ -121,37 +142,39 @@ function findSafeDifferentToken(
   );
 }
 
+
 /* =========================================================
    PAGE
 ========================================================= */
 
 function SwapPageContent() {
+
   const searchParams =
     useSearchParams();
 
-  const { isConnected } =
-    useAccount();
+  const {
+    isConnected,
+  } = useAccount();
 
-  const { darkMode } =
-    useTheme();
+  const {
+    darkMode,
+  } = useTheme();
 
   const {
     tokens,
     addToken,
   } = useTokens();
 
+
   const {
     addTransaction,
   } = useTransactionHistory();
 
-  /*
-   * IMPORTANT:
-   * Never allow the initial state to be
-   * OPN -> OPN.
-   */
+
   const defaultIn =
     tokens[0] ??
     TOKENS[0];
+
 
   const defaultOut =
     tokens.find(
@@ -165,158 +188,235 @@ function SwapPageContent() {
     TOKENS[1] ??
     TOKENS[0];
 
-  const [tokenIn, setTokenIn] =
+
+  const [
+    tokenIn,
+    setTokenIn,
+  ] =
     useState<Token>(
       defaultIn
     );
 
-  const [tokenOut, setTokenOut] =
+
+  const [
+    tokenOut,
+    setTokenOut,
+  ] =
     useState<Token>(
       defaultOut
     );
 
-  const [amountIn, setAmountIn] =
+
+  const [
+    amountIn,
+    setAmountIn,
+  ] =
     useState("");
 
-  const [amountOut, setAmountOut] =
+
+  const [
+    amountOut,
+    setAmountOut,
+  ] =
     useState("");
+
 
   const {
     needsApproval,
     approve,
-    isPending: approving,
-  } = useApproval(
-    tokenIn,
-    amountIn
-  );
+    isPending:
+      approving,
+  } =
+    useApproval(
+      tokenIn,
+      amountIn
+    );
 
-  const [route, setRoute] =
+
+  const [
+    route,
+    setRoute,
+  ] =
     useState<string[]>([]);
 
-  const [rate, setRate] =
+
+  const [
+    rate,
+    setRate,
+  ] =
     useState("");
 
-  const [selector, setSelector] =
+
+  const [
+    selector,
+    setSelector,
+  ] =
     useState<
       "in" | "out" | null
     >(null);
 
-  const [importOpen, setImportOpen] =
+
+  const [
+    importOpen,
+    setImportOpen,
+  ] =
     useState(false);
 
-  const [slippage, setSlippage] =
+
+  const [
+    slippage,
+    setSlippage,
+  ] =
     useState(0.5);
 
-  const [slippageOpen, setSlippageOpen] =
+
+  const [
+    slippageOpen,
+    setSlippageOpen,
+  ] =
     useState(false);
 
-  const [sameTokenError, setSameTokenError] =
+
+  const [
+    sameTokenError,
+    setSameTokenError,
+  ] =
     useState(false);
 
-  const [quoteLoading, setQuoteLoading] =
+
+  const [
+    quoteLoading,
+    setQuoteLoading,
+  ] =
     useState(false);
+
 
   const {
     getQuote,
     swap,
     isPending,
     swapSuccess,
-  } = useSwap();
+  } =
+    useSwap();
+
 
   const {
     balance,
-    refetch: refetchBalance,
-  } = useTokenBalance(
-    tokenIn
-  );
+    refetch:
+      refetchBalance,
+  } =
+    useTokenBalance(
+      tokenIn
+    );
+
 
   /* =========================================================
      TOKEN LIST
   ========================================================= */
 
-  /*
-   * Make sure the official tokens are available
-   * even if useTokens has not finished loading yet.
-   */
-  const availableTokens = useMemo(() => {
-    const map =
-      new Map<string, Token>();
+  const availableTokens =
+    useMemo(() => {
 
-    for (const token of TOKENS) {
-      map.set(
-        token.address.toLowerCase(),
-        token as unknown as Token
+      const map =
+        new Map<
+          string,
+          Token
+        >();
+
+
+      for (
+        const token of TOKENS
+      ) {
+
+        map.set(
+          token.address.toLowerCase(),
+          token as unknown as Token
+        );
+
+      }
+
+
+      for (
+        const token of tokens
+      ) {
+
+        map.set(
+          token.address.toLowerCase(),
+          token
+        );
+
+      }
+
+
+      return Array.from(
+        map.values()
       );
-    }
 
-    for (const token of tokens) {
-      map.set(
-        token.address.toLowerCase(),
-        token
-      );
-    }
+    }, [
+      tokens,
+    ]);
 
-    return Array.from(
-      map.values()
-    );
-  }, [tokens]);
 
   /* =========================================================
      URL TOKEN SELECTION
   ========================================================= */
 
   useEffect(() => {
+
     if (
       !availableTokens.length
     ) {
       return;
     }
 
+
     const tokenInAddress =
       searchParams.get(
         "tokenIn"
       );
+
 
     const tokenOutAddress =
       searchParams.get(
         "tokenOut"
       );
 
+
     const action =
       searchParams.get(
         "action"
       );
 
-    /*
-     * BUY
-     *
-     * OPN -> selected token
-     */
+
     if (
       action === "buy" &&
       tokenOutAddress
     ) {
+
       const selectedOut =
         findTokenByAddress(
           availableTokens,
           tokenOutAddress
         );
 
+
       if (selectedOut) {
-        /*
-         * Buying native OPN itself makes no sense.
-         * Do not create OPN -> OPN.
-         */
+
         if (
-          isNativeOPN(selectedOut)
+          isNativeOPN(
+            selectedOut
+          )
         ) {
+
           const safeOut =
             findSafeDifferentToken(
               availableTokens,
               availableTokens[0]
             );
 
+
           if (safeOut) {
+
             setTokenIn(
               availableTokens[0]
             );
@@ -324,6 +424,7 @@ function SwapPageContent() {
             setTokenOut(
               safeOut
             );
+
           }
 
           setSameTokenError(
@@ -333,52 +434,61 @@ function SwapPageContent() {
           return;
         }
 
+
         const native =
           availableTokens.find(
             (token) =>
               isNativeOPN(token)
           );
 
+
         if (native) {
-          setTokenIn(native);
+
+          setTokenIn(
+            native
+          );
+
           setTokenOut(
             selectedOut
           );
-          setSameTokenError(false);
+
+          setSameTokenError(
+            false
+          );
+
         }
 
         return;
       }
     }
 
-    /*
-     * SELL
-     *
-     * selected token -> OPN
-     */
+
     if (
       action === "sell" &&
       tokenInAddress
     ) {
+
       const selectedIn =
         findTokenByAddress(
           availableTokens,
           tokenInAddress
         );
 
+
       if (selectedIn) {
-        /*
-         * Selling OPN itself makes no sense.
-         * Do not create OPN -> OPN.
-         */
+
         if (
-          isNativeOPN(selectedIn)
+          isNativeOPN(
+            selectedIn
+          )
         ) {
+
           const safeIn =
             findSafeDifferentToken(
               availableTokens,
               availableTokens[0]
             );
+
 
           const native =
             availableTokens.find(
@@ -386,10 +496,12 @@ function SwapPageContent() {
                 isNativeOPN(token)
             );
 
+
           if (
             safeIn &&
             native
           ) {
+
             setTokenIn(
               safeIn
             );
@@ -397,6 +509,7 @@ function SwapPageContent() {
             setTokenOut(
               native
             );
+
           }
 
           setSameTokenError(
@@ -406,13 +519,16 @@ function SwapPageContent() {
           return;
         }
 
+
         const native =
           availableTokens.find(
             (token) =>
               isNativeOPN(token)
           );
 
+
         if (native) {
+
           setTokenIn(
             selectedIn
           );
@@ -421,28 +537,28 @@ function SwapPageContent() {
             native
           );
 
-          setSameTokenError(false);
+          setSameTokenError(
+            false
+          );
+
         }
 
         return;
       }
     }
 
-    /*
-     * NORMAL URL:
-     *
-     * ?tokenIn=...
-     * ?tokenOut=...
-     */
+
     if (
       tokenInAddress ||
       tokenOutAddress
     ) {
+
       const selectedIn =
         findTokenByAddress(
           availableTokens,
           tokenInAddress
         );
+
 
       const selectedOut =
         findTokenByAddress(
@@ -450,15 +566,7 @@ function SwapPageContent() {
           tokenOutAddress
         );
 
-      /*
-       * CRITICAL FIX:
-       *
-       * Never permit:
-       *
-       * OPN -> OPN
-       *
-       * or any token -> itself.
-       */
+
       if (
         selectedIn &&
         selectedOut &&
@@ -467,21 +575,27 @@ function SwapPageContent() {
           selectedOut
         )
       ) {
+
         const safeOut =
           findSafeDifferentToken(
             availableTokens,
             selectedIn
           );
 
+
         setTokenIn(
           selectedIn
         );
 
+
         if (safeOut) {
+
           setTokenOut(
             safeOut
           );
+
         }
+
 
         setSameTokenError(
           true
@@ -490,30 +604,42 @@ function SwapPageContent() {
         return;
       }
 
+
       if (selectedIn) {
+
         setTokenIn(
           selectedIn
         );
+
       }
 
+
       if (selectedOut) {
+
         setTokenOut(
           selectedOut
         );
+
       }
 
-      setSameTokenError(false);
+
+      setSameTokenError(
+        false
+      );
     }
+
   }, [
     searchParams,
     availableTokens,
   ]);
+
 
   /* =========================================================
      SAFETY CHECK
   ========================================================= */
 
   useEffect(() => {
+
     if (
       !tokenIn ||
       !tokenOut
@@ -521,26 +647,29 @@ function SwapPageContent() {
       return;
     }
 
-    /*
-     * Never allow same token.
-     */
+
     if (
       sameToken(
         tokenIn,
         tokenOut
       )
     ) {
+
       const safeOut =
         findSafeDifferentToken(
           availableTokens,
           tokenIn
         );
 
+
       if (safeOut) {
+
         setTokenOut(
           safeOut
         );
+
       }
+
 
       setSameTokenError(
         true
@@ -553,81 +682,106 @@ function SwapPageContent() {
       return;
     }
 
-    setSameTokenError(false);
+
+    setSameTokenError(
+      false
+    );
+
   }, [
     tokenIn,
     tokenOut,
     availableTokens,
   ]);
 
+
   /* =========================================================
      REFRESH BALANCE AFTER SWAP
   ========================================================= */
 
   useEffect(() => {
-    if (swapSuccess) {
+
+    if (
+      swapSuccess
+    ) {
+
       refetchBalance();
+
       setAmountIn("");
       setAmountOut("");
       setRate("");
       setRoute([]);
+
     }
+
   }, [
     swapSuccess,
     refetchBalance,
   ]);
 
+
   /* =========================================================
      QUOTE
+     
+     IMPORTANT FIX:
+     getQuote is now stable because
+     useSwap uses useCallback.
+     
+     Therefore this effect only runs when:
+     
+     - amount changes
+     - input token changes
+     - output token changes
+     
+     It will NOT run again simply
+     because the page re-rendered.
   ========================================================= */
 
   useEffect(() => {
+
     let cancelled = false;
+
 
     const timer =
       setTimeout(
         async () => {
-          /*
-           * Nothing to quote.
-           */
+
           if (
             !amountIn ||
             Number(amountIn) <= 0
           ) {
+
             setAmountOut("");
             setRate("");
             setRoute([]);
             setQuoteLoading(false);
+
             return;
           }
 
-          /*
-           * Same-token protection.
-           */
+
           if (
             sameToken(
               tokenIn,
               tokenOut
             )
           ) {
+
             setAmountOut("");
             setRate("");
             setRoute([]);
             setQuoteLoading(false);
             setSameTokenError(true);
+
             return;
           }
 
+
           try {
+
             setQuoteLoading(true);
+
             setSameTokenError(false);
 
-            /*
-             * Clear old quote first.
-             */
-            setAmountOut("");
-            setRate("");
-            setRoute([]);
 
             const quote =
               await getQuote(
@@ -636,30 +790,32 @@ function SwapPageContent() {
                 tokenOut
               );
 
+
             if (
               cancelled
             ) {
               return;
             }
 
+
             const numericQuote =
               Number(quote);
 
-            /*
-             * Never display an invalid
-             * or zero quote as a real quote.
-             */
+
             if (
               !Number.isFinite(
                 numericQuote
               ) ||
               numericQuote <= 0
             ) {
+
               setAmountOut("");
               setRate("");
               setRoute([]);
+
               return;
             }
+
 
             const formattedQuote =
               formatAmount(
@@ -669,22 +825,22 @@ function SwapPageContent() {
                   : tokenOut.decimals
               );
 
+
             setAmountOut(
               formattedQuote
             );
 
-            /*
-             * Rate must be based on
-             * 1 input token.
-             */
+
             const amount =
               Number(amountIn);
+
 
             const rateValue =
               amount > 0
                 ? numericQuote /
                   amount
                 : 0;
+
 
             setRate(
               `1 ${tokenIn.symbol} = ${formatAmount(
@@ -693,44 +849,53 @@ function SwapPageContent() {
               )} ${tokenOut.symbol}`
             );
 
-            /*
-             * IMPORTANT:
-             *
-             * Do not invent a WOPN route here.
-             *
-             * The useSwap hook is responsible
-             * for determining the actual route.
-             *
-             * We only display a meaningful
-             * high-level route.
-             */
+
             setRoute([
               tokenIn.symbol,
               tokenOut.symbol,
             ]);
-          } catch {
+
+          }
+
+          catch {
+
             if (
               cancelled
             ) {
               return;
             }
 
+
             setAmountOut("");
             setRate("");
             setRoute([]);
-          } finally {
+
+          }
+
+          finally {
+
             if (
               !cancelled
             ) {
-              setQuoteLoading(false);
+
+              setQuoteLoading(
+                false
+              );
+
             }
+
           }
+
         },
         450
       );
 
+
     return () =>
-      clearTimeout(timer);
+      clearTimeout(
+        timer
+      );
+
   }, [
     amountIn,
     tokenIn,
@@ -738,14 +903,13 @@ function SwapPageContent() {
     getQuote,
   ]);
 
+
   /* =========================================================
      FLIP
   ========================================================= */
 
   function flip() {
-    /*
-     * Never create same-token state.
-     */
+
     if (
       sameToken(
         tokenIn,
@@ -755,11 +919,13 @@ function SwapPageContent() {
       return;
     }
 
+
     const oldIn =
       tokenIn;
 
     const oldOut =
       tokenOut;
+
 
     setTokenIn(
       oldOut
@@ -769,12 +935,15 @@ function SwapPageContent() {
       oldIn
     );
 
+
     setAmountIn("");
     setAmountOut("");
     setRate("");
     setRoute([]);
     setSameTokenError(false);
+
   }
+
 
   /* =========================================================
      SELECT TOKEN
@@ -783,14 +952,12 @@ function SwapPageContent() {
   function select(
     token: Token
   ) {
+
     if (!token) {
       return;
     }
 
-    /*
-     * Selecting the same token on
-     * both sides is not allowed.
-     */
+
     if (
       selector === "in" &&
       sameToken(
@@ -798,10 +965,16 @@ function SwapPageContent() {
         tokenOut
       )
     ) {
-      setSameTokenError(true);
+
+      setSameTokenError(
+        true
+      );
+
       setSelector(null);
+
       return;
     }
+
 
     if (
       selector === "out" &&
@@ -810,76 +983,95 @@ function SwapPageContent() {
         tokenIn
       )
     ) {
-      setSameTokenError(true);
+
+      setSameTokenError(
+        true
+      );
+
       setSelector(null);
+
       return;
     }
+
 
     if (
       selector === "in"
     ) {
+
       setTokenIn(
         token
       );
+
     }
+
 
     if (
       selector === "out"
     ) {
+
       setTokenOut(
         token
       );
+
     }
+
 
     setAmountOut("");
     setRate("");
     setRoute([]);
     setSameTokenError(false);
     setSelector(null);
+
   }
+
 
   /* =========================================================
      SWAP
   ========================================================= */
 
   async function handleSwap() {
+
     if (!isConnected) {
       return;
     }
 
-    /*
-     * Absolute safety check.
-     */
+
     if (
       sameToken(
         tokenIn,
         tokenOut
       )
     ) {
-      setSameTokenError(true);
+
+      setSameTokenError(
+        true
+      );
+
       return;
     }
+
 
     if (
       !amountIn ||
       Number(amountIn) <= 0
     ) {
+
       return;
     }
 
-    /*
-     * ERC20 approval.
-     *
-     * Native OPN does not need approval.
-     */
+
     if (
       needsApproval
     ) {
+
       await approve();
+
       return;
     }
 
+
     try {
+
       const result =
         await swap(
           amountIn,
@@ -888,34 +1080,49 @@ function SwapPageContent() {
           slippage
         );
 
+
       if (result) {
+
         addTransaction({
-          id: result.hash,
+
+          id:
+            result.hash,
+
           tokenIn:
-            result.tokenIn
-              .symbol,
+            result.tokenIn.symbol,
+
           tokenOut:
-            result.tokenOut
-              .symbol,
+            result.tokenOut.symbol,
+
           amountIn:
             result.amountIn,
+
           amountOut:
             result.amountOut,
+
           hash:
             result.hash,
+
           timestamp:
             Date.now(),
+
           status:
             "success",
+
         });
+
       }
-    } catch {
+
+    }
+    catch {
       /*
-       * useSwap handles the
-       * transaction error.
+       * useSwap handles
+       * transaction errors.
        */
     }
+
   }
+
 
   /* =========================================================
      BUTTON TEXT
@@ -939,20 +1146,22 @@ function SwapPageContent() {
       ? "No Route Available"
       : "Swap";
 
+
   const minimumReceived =
     amountOut
       ? (
           Number(amountOut) *
-          (1 -
-            slippage /
-              100)
+          (
+            1 -
+            slippage / 100
+          )
         ).toFixed(
-          tokenOut.decimals >
-            6
+          tokenOut.decimals > 6
             ? 6
             : tokenOut.decimals
         )
       : "";
+
 
   /* =========================================================
      UI
@@ -976,6 +1185,7 @@ function SwapPageContent() {
         }
       `}
     >
+
       {/* BACKGROUND GLOW */}
 
       <div
@@ -998,6 +1208,7 @@ function SwapPageContent() {
         `}
       />
 
+
       <div
         className={`
           pointer-events-none
@@ -1017,6 +1228,7 @@ function SwapPageContent() {
         `}
       />
 
+
       <div
         className="
           relative
@@ -1026,6 +1238,7 @@ function SwapPageContent() {
           max-w-md
         "
       >
+
         {/* HEADER */}
 
         <div
@@ -1036,7 +1249,9 @@ function SwapPageContent() {
             justify-between
           "
         >
+
           <div className="min-w-0">
+
             <div
               className="
                 flex
@@ -1044,6 +1259,7 @@ function SwapPageContent() {
                 gap-2
               "
             >
+
               <div
                 className="
                   flex
@@ -1062,6 +1278,7 @@ function SwapPageContent() {
                 />
               </div>
 
+
               <h1
                 className="
                   text-xl
@@ -1071,7 +1288,9 @@ function SwapPageContent() {
               >
                 Swap
               </h1>
+
             </div>
+
 
             <p
               className={`
@@ -1094,14 +1313,14 @@ function SwapPageContent() {
                 ? `Sell ${tokenIn.symbol}`
                 : "Trade tokens instantly on IOPn Chain"}
             </p>
+
           </div>
+
 
           <button
             type="button"
             onClick={() =>
-              setSlippageOpen(
-                true
-              )
+              setSlippageOpen(true)
             }
             className={`
               ml-3
@@ -1125,7 +1344,9 @@ function SwapPageContent() {
               size={17}
             />
           </button>
+
         </div>
+
 
         {/* NETWORK STATUS */}
 
@@ -1146,7 +1367,15 @@ function SwapPageContent() {
             }
           `}
         >
-          <div className="flex items-center gap-2">
+
+          <div
+            className="
+              flex
+              items-center
+              gap-2
+            "
+          >
+
             <span
               className="
                 h-1.5
@@ -1170,12 +1399,22 @@ function SwapPageContent() {
             >
               OPN Testnet
             </span>
+
           </div>
 
-          <span className="text-[11px] font-medium text-emerald-400">
+
+          <span
+            className="
+              text-[11px]
+              font-medium
+              text-emerald-400
+            "
+          >
             Network Online
           </span>
+
         </div>
+
 
         {/* SAME TOKEN WARNING */}
 
@@ -1196,13 +1435,25 @@ function SwapPageContent() {
               }
             `}
           >
+
             <AlertTriangle
               size={17}
-              className="mt-0.5 shrink-0 text-amber-400"
+              className="
+                mt-0.5
+                shrink-0
+                text-amber-400
+              "
             />
 
             <div>
-              <p className="text-xs font-bold text-amber-400">
+
+              <p
+                className="
+                  text-xs
+                  font-bold
+                  text-amber-400
+                "
+              >
                 Select two different tokens
               </p>
 
@@ -1220,9 +1471,12 @@ function SwapPageContent() {
                 Swapping a token to itself is
                 not supported.
               </p>
+
             </div>
+
           </div>
         )}
+
 
         {/* SWAP CARD */}
 
@@ -1268,6 +1522,7 @@ function SwapPageContent() {
           }
         />
 
+
         {/* QUOTE STATUS */}
 
         {amountIn &&
@@ -1275,42 +1530,65 @@ function SwapPageContent() {
             tokenIn,
             tokenOut
           ) && (
-            <div
-              className={`
-                mt-2
-                flex
-                items-center
-                justify-center
-                gap-1.5
-                text-[10px]
-                ${
-                  quoteLoading
-                    ? "text-cyan-400"
-                    : amountOut
-                    ? "text-emerald-400"
-                    : darkMode
-                    ? "text-white/30"
-                    : "text-slate-400"
-                }
-              `}
-            >
-              {quoteLoading ? (
-                <>
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400" />
-                  Finding best route...
-                </>
-              ) : amountOut ? (
-                <>
-                  <CheckCircle2
-                    size={12}
-                  />
-                  Quote available
-                </>
-              ) : (
-                "No route available"
-              )}
-            </div>
-          )}
+
+          <div
+            className={`
+              mt-2
+              flex
+              items-center
+              justify-center
+              gap-1.5
+              text-[10px]
+              ${
+                quoteLoading
+                  ? "text-cyan-400"
+                  : amountOut
+                  ? "text-emerald-400"
+                  : darkMode
+                  ? "text-white/30"
+                  : "text-slate-400"
+              }
+            `}
+          >
+
+            {quoteLoading ? (
+              <>
+
+                <span
+                  className="
+                    h-1.5
+                    w-1.5
+                    animate-pulse
+                    rounded-full
+                    bg-cyan-400
+                  "
+                />
+
+                Finding best route...
+
+              </>
+            ) : amountOut ? (
+
+              <>
+
+                <CheckCircle2
+                  size={12}
+                />
+
+                Quote available
+
+              </>
+
+            ) : (
+
+              "No route available"
+
+            )}
+
+          </div>
+
+        )}
+
 
         {/* SWAP DETAILS */}
 
@@ -1328,10 +1606,25 @@ function SwapPageContent() {
             }
           `}
         >
-          <div className="mb-2.5 flex items-center justify-between">
-            <h2 className="text-sm font-black">
+
+          <div
+            className="
+              mb-2.5
+              flex
+              items-center
+              justify-between
+            "
+          >
+
+            <h2
+              className="
+                text-sm
+                font-black
+              "
+            >
               Swap Details
             </h2>
+
 
             <span
               className={`
@@ -1345,10 +1638,21 @@ function SwapPageContent() {
             >
               {slippage}% slippage
             </span>
+
           </div>
 
+
           <div className="space-y-2.5">
-            <div className="flex items-center justify-between gap-4">
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-4
+              "
+            >
+
               <span
                 className={`
                   text-xs
@@ -1362,12 +1666,31 @@ function SwapPageContent() {
                 Rate
               </span>
 
-              <span className="max-w-[65%] truncate text-right text-xs font-semibold">
+
+              <span
+                className="
+                  max-w-[65%]
+                  truncate
+                  text-right
+                  text-xs
+                  font-semibold
+                "
+              >
                 {rate || "--"}
               </span>
+
             </div>
 
-            <div className="flex items-center justify-between gap-4">
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-4
+              "
+            >
+
               <span
                 className={`
                   text-xs
@@ -1381,14 +1704,33 @@ function SwapPageContent() {
                 Minimum received
               </span>
 
-              <span className="max-w-[65%] truncate text-right text-xs font-semibold">
+
+              <span
+                className="
+                  max-w-[65%]
+                  truncate
+                  text-right
+                  text-xs
+                  font-semibold
+                "
+              >
                 {minimumReceived
                   ? `${minimumReceived} ${tokenOut.symbol}`
                   : "--"}
               </span>
+
             </div>
 
-            <div className="flex items-center justify-between gap-4">
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                gap-4
+              "
+            >
+
               <span
                 className={`
                   text-xs
@@ -1402,16 +1744,33 @@ function SwapPageContent() {
                 Route
               </span>
 
-              <span className="max-w-[65%] truncate text-right text-xs font-semibold text-cyan-400">
+
+              <span
+                className="
+                  max-w-[65%]
+                  truncate
+                  text-right
+                  text-xs
+                  font-semibold
+                  text-cyan-400
+                "
+              >
                 {route.length
-                  ? route.join(
-                      " → "
-                    )
+                  ? route.join(" → ")
                   : "--"}
               </span>
+
             </div>
 
-            <div className="flex items-center justify-between">
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+              "
+            >
+
               <span
                 className={`
                   text-xs
@@ -1425,51 +1784,38 @@ function SwapPageContent() {
                 Network
               </span>
 
-              <span className="text-xs font-semibold">
+
+              <span
+                className="
+                  text-xs
+                  font-semibold
+                "
+              >
                 OPN Testnet
               </span>
+
             </div>
+
           </div>
+
         </div>
+
 
         {/* QUICK TOOLS */}
 
-        <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-          <button
-            type="button"
-            onClick={() =>
-              setImportOpen(
-                true
-              )
-            }
-            className={`
-              flex
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              border
-              py-2.5
-              text-xs
-              font-bold
-              transition
-              ${
-                darkMode
-                  ? "border-white/10 bg-white/[0.04] text-white/70 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-500"
-              }
-            `}
-          >
-            <Zap size={15} />
-            Import Token
-          </button>
+        <div
+          className="
+            mt-2.5
+            grid
+            grid-cols-2
+            gap-2.5
+          "
+        >
 
           <button
             type="button"
             onClick={() =>
-              setSlippageOpen(
-                true
-              )
+              setImportOpen(true)
             }
             className={`
               flex
@@ -1489,10 +1835,50 @@ function SwapPageContent() {
               }
             `}
           >
-            <Settings2 size={15} />
-            Slippage
+
+            <Zap
+              size={15}
+            />
+
+            Import Token
+
           </button>
+
+
+          <button
+            type="button"
+            onClick={() =>
+              setSlippageOpen(true)
+            }
+            className={`
+              flex
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              border
+              py-2.5
+              text-xs
+              font-bold
+              transition
+              ${
+                darkMode
+                  ? "border-white/10 bg-white/[0.04] text-white/70 hover:border-cyan-400/30 hover:bg-cyan-400/10 hover:text-cyan-400"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-500"
+              }
+            `}
+          >
+
+            <Settings2
+              size={15}
+            />
+
+            Slippage
+
+          </button>
+
         </div>
+
 
         {/* SECURITY */}
 
@@ -1511,10 +1897,16 @@ function SwapPageContent() {
             }
           `}
         >
+
           <ShieldCheck
             size={17}
-            className="mt-0.5 shrink-0 text-cyan-400"
+            className="
+              mt-0.5
+              shrink-0
+              text-cyan-400
+            "
           />
+
 
           <p
             className={`
@@ -1532,14 +1924,22 @@ function SwapPageContent() {
             are executed directly through
             your connected wallet.
           </p>
+
         </div>
+
 
         {/* HISTORY */}
 
-        <div className="mt-2.5">
+        <div
+          className="
+            mt-2.5
+          "
+        >
           <SwapHistory />
         </div>
+
       </div>
+
 
       {/* TOKEN SELECTOR */}
 
@@ -1558,6 +1958,7 @@ function SwapPageContent() {
         }
       />
 
+
       {/* IMPORT */}
 
       <TokenImport
@@ -1565,28 +1966,28 @@ function SwapPageContent() {
           importOpen
         }
         onClose={() =>
-          setImportOpen(
-            false
-          )
+          setImportOpen(false)
         }
         onImport={(token) => {
+
           addToken(token);
 
-          /*
-           * Imported token should be placed
-           * on the output side only if it is
-           * different from the input token.
-           */
+
           if (
             !sameToken(
               token,
               tokenIn
             )
           ) {
+
             setTokenOut(
               token
             );
-          } else {
+
+          }
+
+          else {
+
             setTokenIn(
               findSafeDifferentToken(
                 availableTokens,
@@ -1597,15 +1998,19 @@ function SwapPageContent() {
             setTokenOut(
               token
             );
+
           }
+
 
           setAmountOut("");
           setRate("");
           setRoute([]);
           setSameTokenError(false);
           setImportOpen(false);
+
         }}
       />
+
 
       {/* SLIPPAGE */}
 
@@ -1614,9 +2019,7 @@ function SwapPageContent() {
           slippageOpen
         }
         onClose={() =>
-          setSlippageOpen(
-            false
-          )
+          setSlippageOpen(false)
         }
         slippage={
           slippage
@@ -1625,22 +2028,32 @@ function SwapPageContent() {
           setSlippage
         }
       />
+
     </main>
   );
 }
+
 
 /* =========================================================
    EXPORT
 ========================================================= */
 
 export default function SwapPage() {
+
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[#050816]" />
+        <main
+          className="
+            min-h-screen
+            bg-[#050816]
+          "
+        />
       }
     >
+
       <SwapPageContent />
+
     </Suspense>
   );
 }
