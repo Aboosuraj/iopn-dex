@@ -43,6 +43,14 @@ type ContractArtifact = {
   bytecode: Hex | string;
 };
 
+type ConstructorArgs = readonly [
+  string,
+  string,
+  bigint,
+  number,
+  Address
+];
+
 type DeployStatus =
   | "idle"
   | "loading"
@@ -78,12 +86,6 @@ const CONTRACT_NAME =
 
 const LICENSE_TYPE = "1";
 
-/*
- * Verification is asynchronous on the explorer.
- *
- * We check several times after submitting the
- * verification request.
- */
 const VERIFICATION_POLL_INTERVAL = 4000;
 
 const VERIFICATION_MAX_ATTEMPTS = 15;
@@ -124,7 +126,7 @@ export default function DeployPage() {
     );
 
   /* =======================================================
-     ARTIFACT STATE
+     ARTIFACT
   ======================================================= */
 
   const [artifact, setArtifact] =
@@ -143,7 +145,7 @@ export default function DeployPage() {
   ] = useState("");
 
   /* =======================================================
-     DEPLOYMENT STATE
+     DEPLOYMENT
   ======================================================= */
 
   const [
@@ -177,8 +179,23 @@ export default function DeployPage() {
     setCopied,
   ] = useState(false);
 
+  /*
+   * IMPORTANT:
+   *
+   * Store the exact constructor arguments used
+   * by deployContract().
+   *
+   * We later use THIS value for verification.
+   */
+  const [
+    deploymentConstructorArgs,
+    setDeploymentConstructorArgs,
+  ] = useState<
+    ConstructorArgs | null
+  >(null);
+
   /* =======================================================
-     VERIFICATION STATE
+     VERIFICATION
   ======================================================= */
 
   const [
@@ -261,7 +278,7 @@ export default function DeployPage() {
   }, []);
 
   /* =======================================================
-     WAIT FOR DEPLOYMENT TRANSACTION
+     WAIT FOR DEPLOYMENT
   ======================================================= */
 
   const {
@@ -297,7 +314,7 @@ export default function DeployPage() {
       : "";
 
   /* =======================================================
-     DEPLOYMENT STATUS
+     DEPLOYMENT STATE
   ======================================================= */
 
   const isDeploying =
@@ -312,14 +329,13 @@ export default function DeployPage() {
   function resetStatus() {
     setStatus("idle");
     setError("");
-
     setTxHash(undefined);
-
-    setContractAddress(
-      undefined
-    );
-
+    setContractAddress(undefined);
     setCopied(false);
+
+    setDeploymentConstructorArgs(
+      null
+    );
 
     setVerificationStatus(
       "idle"
@@ -329,7 +345,7 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     FORM VALIDATION
+     VALIDATION
   ======================================================= */
 
   function validateForm() {
@@ -382,12 +398,6 @@ export default function DeployPage() {
       return "Enter the initial supply.";
     }
 
-    /*
-     * Do not use Number() for token supply.
-     *
-     * Large supplies can exceed JavaScript's
-     * safe integer range.
-     */
     if (
       !/^[0-9]+$/.test(
         supply.trim()
@@ -430,13 +440,7 @@ export default function DeployPage() {
 
   async function verifyContract(
     deployedAddress: Address,
-    constructorArgs: readonly [
-      string,
-      string,
-      bigint,
-      number,
-      Address
-    ]
+    constructorArgs: ConstructorArgs
   ) {
     try {
       setVerificationStatus(
@@ -446,15 +450,7 @@ export default function DeployPage() {
       setVerificationError("");
 
       /*
-       * Encode the exact constructor arguments.
-       *
-       * Solidity constructor:
-       *
-       * string
-       * string
-       * uint256
-       * uint8
-       * address
+       * Encode EXACT constructor arguments.
        */
       const encodedConstructorArgs =
         encodeAbiParameters(
@@ -479,8 +475,7 @@ export default function DeployPage() {
         );
 
       /*
-       * Load the exact Standard JSON Input used
-       * to compile the deployed contract.
+       * Load exact Standard JSON Input.
        */
       const standardInputResponse =
         await fetch(
@@ -502,11 +497,8 @@ export default function DeployPage() {
         await standardInputResponse.text();
 
       /*
-       * Send the information to our
+       * Send verification request to our
        * Next.js server route.
-       *
-       * The browser does NOT directly call
-       * the explorer verification API.
        */
       const form =
         new FormData();
@@ -565,14 +557,14 @@ export default function DeployPage() {
       }
 
       /*
-       * Verification request has been accepted.
+       * Explorer accepted the request.
        */
       setVerificationStatus(
         "submitted"
       );
 
       /*
-       * Start checking the explorer.
+       * Check actual explorer verification state.
        */
       await pollVerificationStatus(
         deployedAddress
@@ -596,7 +588,7 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     VERIFICATION STATUS POLLING
+     POLL VERIFICATION STATUS
   ======================================================= */
 
   async function pollVerificationStatus(
@@ -628,9 +620,16 @@ export default function DeployPage() {
             await response.json();
 
           /*
-           * Blockscout-style response contains
-           * is_fully_verified when verification
-           * has completed successfully.
+           * IMPORTANT:
+           *
+           * Only these fields prove verification.
+           *
+           * Do NOT use:
+           *
+           * data.status === "success"
+           *
+           * because "success" only means the API
+           * request itself succeeded.
            */
           if (
             data?.is_fully_verified ===
@@ -646,18 +645,16 @@ export default function DeployPage() {
           }
 
           /*
-           * Some explorer responses expose
-           * status = success.
+           * If explicitly reported as not verified,
+           * continue polling.
            */
           if (
-            data?.status ===
-            "success"
+            data?.is_fully_verified ===
+              false ||
+            data?.is_verified ===
+              false
           ) {
-            setVerificationStatus(
-              "verified"
-            );
-
-            return;
+            // Still processing.
           }
         }
       } catch (err) {
@@ -667,9 +664,6 @@ export default function DeployPage() {
         );
       }
 
-      /*
-       * Wait before checking again.
-       */
       await new Promise(
         (resolve) =>
           setTimeout(
@@ -680,10 +674,9 @@ export default function DeployPage() {
     }
 
     /*
-     * Verification may still be processing.
+     * Do NOT call this a verification failure.
      *
-     * Do not call this a failure because the
-     * explorer can finish asynchronously.
+     * The explorer may still be processing.
      */
     setVerificationStatus(
       "submitted"
@@ -700,14 +693,8 @@ export default function DeployPage() {
     event.preventDefault();
 
     setError("");
-
-    setContractAddress(
-      undefined
-    );
-
-    setTxHash(
-      undefined
-    );
+    setContractAddress(undefined);
+    setTxHash(undefined);
 
     setVerificationStatus(
       "idle"
@@ -715,14 +702,16 @@ export default function DeployPage() {
 
     setVerificationError("");
 
+    setDeploymentConstructorArgs(
+      null
+    );
+
     const validationError =
       validateForm();
 
     if (validationError) {
       setStatus("error");
-      setError(
-        validationError
-      );
+      setError(validationError);
       return;
     }
 
@@ -756,7 +745,7 @@ export default function DeployPage() {
 
       /*
        * Convert human-readable supply
-       * into ERC-20 base units.
+       * to ERC-20 base units.
        */
       const initialSupply =
         parseUnits(
@@ -765,15 +754,7 @@ export default function DeployPage() {
         );
 
       /*
-       * EXACT Solidity constructor:
-       *
-       * constructor(
-       *     string memory tokenName,
-       *     string memory tokenSymbol,
-       *     uint256 initialSupply,
-       *     uint8 tokenDecimals,
-       *     address initialOwner
-       * )
+       * EXACT constructor used by IOPnToken.
        */
       const constructorArgs = [
         trimmedName,
@@ -784,7 +765,16 @@ export default function DeployPage() {
       ] as const;
 
       /*
-       * Deploy.
+       * IMPORTANT:
+       *
+       * Save the exact arguments BEFORE deployment.
+       */
+      setDeploymentConstructorArgs(
+        constructorArgs
+      );
+
+      /*
+       * Deploy contract.
        */
       const hash =
         await walletClient.deployContract(
@@ -805,9 +795,7 @@ export default function DeployPage() {
           }
         );
 
-      setTxHash(
-        hash
-      );
+      setTxHash(hash);
 
       setStatus(
         "confirming"
@@ -818,9 +806,7 @@ export default function DeployPage() {
         err
       );
 
-      setStatus(
-        "error"
-      );
+      setStatus("error");
 
       setError(
         err instanceof Error
@@ -849,65 +835,33 @@ export default function DeployPage() {
       deployedAddress
     );
 
-    setStatus(
-      "success"
-    );
+    setStatus("success");
 
     /*
-     * Reconstruct the exact constructor
-     * arguments used during deployment.
+     * Verify ONLY using the exact constructor
+     * arguments saved before deployment.
      */
     if (
-      !address ||
-      !name.trim() ||
-      !symbol.trim() ||
-      !supply.trim()
+      !deploymentConstructorArgs
     ) {
-      return;
-    }
-
-    try {
-      const constructorArgs = [
-        name.trim(),
-        symbol
-          .trim()
-          .toUpperCase(),
-        parseUnits(
-          supply.trim(),
-          Number(decimals)
-        ),
-        Number(decimals),
-        address,
-      ] as const;
-
-      /*
-       * AUTOMATIC VERIFICATION
-       */
-      verifyContract(
-        deployedAddress,
-        constructorArgs
-      );
-    } catch (err) {
-      console.error(
-        "Unable to prepare verification:",
-        err
-      );
-
       setVerificationStatus(
         "error"
       );
 
       setVerificationError(
-        err instanceof Error
-          ? err.message
-          : "Unable to prepare contract verification."
+        "The deployment was successful, but the exact constructor arguments were not available for verification."
       );
+
+      return;
     }
 
-    /*
-     * We intentionally run this when the
-     * deployment receipt changes.
-     */
+    verifyContract(
+      deployedAddress,
+      deploymentConstructorArgs
+    );
+
+    // This effect intentionally reacts to the
+    // deployment receipt and saved constructor args.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isConfirmed,
@@ -915,7 +869,7 @@ export default function DeployPage() {
   ]);
 
   /* =======================================================
-     COPY CONTRACT ADDRESS
+     COPY ADDRESS
   ======================================================= */
 
   async function copyAddress() {
@@ -930,19 +884,14 @@ export default function DeployPage() {
         contractAddress
       );
 
-      setCopied(
-        true
-      );
+      setCopied(true);
 
-      setTimeout(() => {
-        setCopied(
-          false
-        );
-      }, 1800);
-    } catch {
-      setCopied(
-        false
+      setTimeout(
+        () => setCopied(false),
+        1800
       );
+    } catch {
+      setCopied(false);
     }
   }
 
@@ -956,15 +905,7 @@ export default function DeployPage() {
       "loading"
     ) {
       return (
-        <div
-          className="
-            mt-4
-            rounded-2xl
-            border border-cyan-400/20
-            bg-cyan-400/[0.06]
-            p-4
-          "
-        >
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <Loader2
               size={20}
@@ -978,8 +919,8 @@ export default function DeployPage() {
 
               <p className="mt-1 text-xs leading-5 text-white/40">
                 Sending the compiled source and
-                constructor information to the
-                IOPn Explorer.
+                exact constructor information to
+                the IOPn Explorer.
               </p>
             </div>
           </div>
@@ -992,15 +933,7 @@ export default function DeployPage() {
       "submitted"
     ) {
       return (
-        <div
-          className="
-            mt-4
-            rounded-2xl
-            border border-cyan-400/20
-            bg-cyan-400/[0.06]
-            p-4
-          "
-        >
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <Loader2
               size={20}
@@ -1013,8 +946,9 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                The IOPn Explorer is processing
-                the verification request.
+                The IOPn Explorer accepted the
+                request. Verification may still be
+                processing.
               </p>
             </div>
           </div>
@@ -1027,15 +961,7 @@ export default function DeployPage() {
       "checking"
     ) {
       return (
-        <div
-          className="
-            mt-4
-            rounded-2xl
-            border border-cyan-400/20
-            bg-cyan-400/[0.06]
-            p-4
-          "
-        >
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <Loader2
               size={20}
@@ -1048,8 +974,8 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Waiting for the explorer to finish
-                verifying the deployed bytecode.
+                Waiting for the explorer to confirm
+                that the deployed bytecode is verified.
               </p>
             </div>
           </div>
@@ -1062,15 +988,7 @@ export default function DeployPage() {
       "verified"
     ) {
       return (
-        <div
-          className="
-            mt-4
-            rounded-2xl
-            border border-emerald-400/20
-            bg-emerald-400/[0.06]
-            p-4
-          "
-        >
+        <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <CheckCircle2
               size={21}
@@ -1097,15 +1015,7 @@ export default function DeployPage() {
       "error"
     ) {
       return (
-        <div
-          className="
-            mt-4
-            rounded-2xl
-            border border-red-400/20
-            bg-red-400/[0.06]
-            p-4
-          "
-        >
+        <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <XCircle
               size={20}
@@ -1123,8 +1033,8 @@ export default function DeployPage() {
 
               <p className="mt-2 text-xs leading-5 text-red-300/50">
                 Your token deployment is still
-                successful. You can retry verification
-                from the explorer.
+                successful. You can open the explorer
+                and retry verification manually.
               </p>
             </div>
           </div>
@@ -1143,23 +1053,11 @@ export default function DeployPage() {
     <main className="min-h-screen bg-[#030712] px-4 pb-28 pt-6 text-white">
       <div className="mx-auto w-full max-w-2xl">
 
-        {/* ===================================================
-            HEADER
-        =================================================== */}
+        {/* HEADER */}
 
         <div className="mb-6">
-
           <div className="mb-4 flex items-center gap-3">
-
-            <div
-              className="
-                flex h-12 w-12
-                items-center justify-center
-                rounded-2xl
-                border border-cyan-400/20
-                bg-cyan-400/10
-              "
-            >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
               <Rocket
                 size={24}
                 className="text-cyan-400"
@@ -1168,7 +1066,6 @@ export default function DeployPage() {
             </div>
 
             <div>
-
               <h1 className="text-2xl font-black tracking-tight">
                 Deploy Token
               </h1>
@@ -1177,26 +1074,11 @@ export default function DeployPage() {
                 Create and verify your ERC-20 token
                 on IOPn Testnet
               </p>
-
             </div>
-
           </div>
 
-          {/* Network */}
-
-          <div
-            className="
-              flex items-center justify-between
-              rounded-2xl
-              border border-white/10
-              bg-white/[0.035]
-              px-4 py-3
-              backdrop-blur-xl
-            "
-          >
-
+          <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 backdrop-blur-xl">
             <div>
-
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
                 Network
               </p>
@@ -1204,61 +1086,27 @@ export default function DeployPage() {
               <p className="mt-1 text-sm font-bold">
                 IOPn Testnet
               </p>
-
             </div>
 
             <div className="flex items-center gap-2">
-
-              <span
-                className="
-                  h-2 w-2 rounded-full
-                  bg-emerald-400
-                  shadow-[0_0_12px_rgba(52,211,153,.8)]
-                "
-              />
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]" />
 
               <span className="text-xs font-bold text-emerald-400">
                 Chain {chainId}
               </span>
-
             </div>
-
           </div>
-
         </div>
 
-        {/* ===================================================
-            WALLET
-        =================================================== */}
+        {/* WALLET */}
 
-        <div
-          className="
-            mb-5
-            rounded-[26px]
-            border border-white/[0.08]
-            bg-white/[0.035]
-            p-5
-            shadow-[0_20px_70px_rgba(0,0,0,.3)]
-            backdrop-blur-xl
-          "
-        >
-
+        <div className="mb-5 rounded-[26px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-xl">
           <div className="flex items-center gap-3">
-
-            <div
-              className="
-                flex h-11 w-11
-                items-center justify-center
-                rounded-2xl
-                bg-cyan-400/10
-                text-cyan-400
-              "
-            >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-400">
               <Wallet size={22} />
             </div>
 
             <div className="min-w-0 flex-1">
-
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
                 Deployment Wallet
               </p>
@@ -1275,7 +1123,6 @@ export default function DeployPage() {
                   Wallet not connected
                 </p>
               )}
-
             </div>
 
             {isConnected && (
@@ -1284,62 +1131,24 @@ export default function DeployPage() {
                 className="shrink-0 text-emerald-400"
               />
             )}
-
           </div>
-
         </div>
 
-        {/* ===================================================
-            FORM
-        =================================================== */}
+        {/* FORM */}
 
-        <form
-          onSubmit={
-            handleDeploy
-          }
-        >
+        <form onSubmit={handleDeploy}>
+          <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_25px_80px_rgba(0,0,0,.35)] backdrop-blur-xl">
 
-          <div
-            className="
-              relative overflow-hidden
-              rounded-[28px]
-              border border-white/[0.08]
-              bg-white/[0.035]
-              p-5
-              shadow-[0_25px_80px_rgba(0,0,0,.35)]
-              backdrop-blur-xl
-            "
-          >
-
-            <div
-              className="
-                pointer-events-none
-                absolute
-                -right-24
-                -top-24
-                h-48
-                w-48
-                rounded-full
-                bg-cyan-400/[0.06]
-                blur-3xl
-              "
-            />
+            <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-cyan-400/[0.06] blur-3xl" />
 
             <div className="relative space-y-5">
 
-              {/* Token Name */}
+              {/* NAME */}
 
               <div>
-
                 <label
                   htmlFor="token-name"
-                  className="
-                    mb-2 block
-                    text-xs font-black
-                    uppercase
-                    tracking-[0.18em]
-                    text-white/45
-                  "
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
                 >
                   Token Name
                 </label>
@@ -1352,46 +1161,20 @@ export default function DeployPage() {
                     setName(
                       e.target.value
                     );
-
                     resetStatus();
                   }}
                   placeholder="My Token"
-                  disabled={
-                    isDeploying
-                  }
-                  className="
-                    h-14 w-full
-                    rounded-2xl
-                    border border-white/10
-                    bg-[#070b16]
-                    px-4
-                    text-base
-                    font-semibold
-                    text-white
-                    outline-none
-                    transition
-                    placeholder:text-white/20
-                    focus:border-cyan-400/40
-                    focus:ring-2
-                    focus:ring-cyan-400/10
-                  "
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
                 />
-
               </div>
 
-              {/* Symbol */}
+              {/* SYMBOL */}
 
               <div>
-
                 <label
                   htmlFor="token-symbol"
-                  className="
-                    mb-2 block
-                    text-xs font-black
-                    uppercase
-                    tracking-[0.18em]
-                    text-white/45
-                  "
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
                 >
                   Token Symbol
                 </label>
@@ -1413,47 +1196,20 @@ export default function DeployPage() {
                           12
                         )
                     );
-
                     resetStatus();
                   }}
                   placeholder="TST"
-                  disabled={
-                    isDeploying
-                  }
-                  className="
-                    h-14 w-full
-                    rounded-2xl
-                    border border-white/10
-                    bg-[#070b16]
-                    px-4
-                    text-base
-                    font-semibold
-                    uppercase
-                    text-white
-                    outline-none
-                    transition
-                    placeholder:text-white/20
-                    focus:border-cyan-400/40
-                    focus:ring-2
-                    focus:ring-cyan-400/10
-                  "
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold uppercase text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
                 />
-
               </div>
 
-              {/* Supply */}
+              {/* SUPPLY */}
 
               <div>
-
                 <label
                   htmlFor="initial-supply"
-                  className="
-                    mb-2 block
-                    text-xs font-black
-                    uppercase
-                    tracking-[0.18em]
-                    text-white/45
-                  "
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
                 >
                   Initial Supply
                 </label>
@@ -1470,50 +1226,24 @@ export default function DeployPage() {
                         ""
                       )
                     );
-
                     resetStatus();
                   }}
                   placeholder="1000000"
-                  disabled={
-                    isDeploying
-                  }
-                  className="
-                    h-14 w-full
-                    rounded-2xl
-                    border border-white/10
-                    bg-[#070b16]
-                    px-4
-                    text-base
-                    font-semibold
-                    text-white
-                    outline-none
-                    transition
-                    placeholder:text-white/20
-                    focus:border-cyan-400/40
-                    focus:ring-2
-                    focus:ring-cyan-400/10
-                  "
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
                 />
 
                 <p className="mt-2 text-xs text-white/30">
                   Example: 1,000,000 tokens
                 </p>
-
               </div>
 
-              {/* Decimals */}
+              {/* DECIMALS */}
 
               <div>
-
                 <label
                   htmlFor="token-decimals"
-                  className="
-                    mb-2 block
-                    text-xs font-black
-                    uppercase
-                    tracking-[0.18em]
-                    text-white/45
-                  "
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
                 >
                   Decimals
                 </label>
@@ -1523,62 +1253,32 @@ export default function DeployPage() {
                   type="number"
                   min="0"
                   max="18"
-                  value={
-                    decimals
-                  }
+                  value={decimals}
                   onChange={(e) => {
                     setDecimals(
                       e.target.value
                     );
-
                     resetStatus();
                   }}
-                  disabled={
-                    isDeploying
-                  }
-                  className="
-                    h-14 w-full
-                    rounded-2xl
-                    border border-white/10
-                    bg-[#070b16]
-                    px-4
-                    text-base
-                    font-semibold
-                    text-white
-                    outline-none
-                    transition
-                    focus:border-cyan-400/40
-                    focus:ring-2
-                    focus:ring-cyan-400/10
-                  "
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold text-white outline-none transition focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
                 />
 
                 <p className="mt-2 text-xs text-white/30">
                   Standard ERC-20 setting: 18
                 </p>
-
               </div>
 
-              {/* Security */}
+              {/* SECURITY */}
 
-              <div
-                className="
-                  rounded-2xl
-                  border border-cyan-400/10
-                  bg-cyan-400/[0.035]
-                  p-4
-                "
-              >
-
+              <div className="rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.035] p-4">
                 <div className="flex items-start gap-3">
-
                   <ShieldCheck
                     size={20}
                     className="mt-0.5 shrink-0 text-cyan-400"
                   />
 
                   <div>
-
                     <p className="text-sm font-bold">
                       Secure token deployment
                     </p>
@@ -1588,59 +1288,34 @@ export default function DeployPage() {
                       the initial owner of the deployed
                       token contract.
                     </p>
-
                   </div>
-
                 </div>
-
               </div>
 
-              {/* Artifact Loading */}
+              {/* ARTIFACT LOADING */}
 
               {artifactLoading && (
-                <div
-                  className="
-                    flex items-center gap-3
-                    rounded-2xl
-                    border border-white/10
-                    bg-white/[0.025]
-                    p-4
-                    text-sm text-white/50
-                  "
-                >
-
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm text-white/50">
                   <Loader2
                     size={18}
                     className="animate-spin text-cyan-400"
                   />
 
                   Loading token contract...
-
                 </div>
               )}
 
-              {/* Artifact Error */}
+              {/* ARTIFACT ERROR */}
 
               {artifactError && (
-                <div
-                  className="
-                    rounded-2xl
-                    border border-red-400/20
-                    bg-red-400/[0.06]
-                    p-4
-                    text-sm text-red-300
-                  "
-                >
-
+                <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4 text-sm text-red-300">
                   <div className="flex gap-3">
-
                     <XCircle
                       size={19}
                       className="mt-0.5 shrink-0"
                     />
 
                     <div>
-
                       <p className="font-bold">
                         Contract artifact unavailable
                       </p>
@@ -1656,39 +1331,24 @@ export default function DeployPage() {
                       <code className="mt-1 block text-[11px] text-red-300/70">
                         public/artifacts/IOPnToken-standard-input.json
                       </code>
-
                     </div>
-
                   </div>
-
                 </div>
               )}
 
-              {/* Deployment Error */}
+              {/* DEPLOYMENT ERROR */}
 
               {status ===
                 "error" &&
                 error && (
-                  <div
-                    className="
-                      rounded-2xl
-                      border border-red-400/20
-                      bg-red-400/[0.06]
-                      p-4
-                      text-sm
-                      text-red-300
-                    "
-                  >
-
+                  <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4 text-sm text-red-300">
                     <div className="flex gap-3">
-
                       <XCircle
                         size={19}
                         className="mt-0.5 shrink-0"
                       />
 
                       <div className="min-w-0">
-
                         <p className="font-bold">
                           Deployment failed
                         </p>
@@ -1696,37 +1356,24 @@ export default function DeployPage() {
                         <p className="mt-1 break-words text-xs leading-5 text-red-300/70">
                           {error}
                         </p>
-
                       </div>
-
                     </div>
-
                   </div>
                 )}
 
-              {/* Confirmation */}
+              {/* CONFIRMATION */}
 
               {status ===
                 "confirming" &&
                 txHash && (
-                  <div
-                    className="
-                      rounded-2xl
-                      border border-cyan-400/20
-                      bg-cyan-400/[0.06]
-                      p-4
-                    "
-                  >
-
+                  <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
                     <div className="flex items-start gap-3">
-
                       <Loader2
                         size={20}
                         className="mt-0.5 animate-spin text-cyan-400"
                       />
 
                       <div className="min-w-0">
-
                         <p className="font-bold">
                           Waiting for confirmation
                         </p>
@@ -1742,15 +1389,7 @@ export default function DeployPage() {
                             }
                             target="_blank"
                             rel="noreferrer"
-                            className="
-                              mt-3
-                              inline-flex
-                              items-center
-                              gap-2
-                              text-xs
-                              font-bold
-                              text-cyan-400
-                            "
+                            className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-cyan-400"
                           >
                             View transaction
                             <ExternalLink
@@ -1758,55 +1397,28 @@ export default function DeployPage() {
                             />
                           </a>
                         )}
-
                       </div>
-
                     </div>
-
                   </div>
                 )}
 
-              {/* =================================================
-                  SUCCESS
-              ================================================= */}
+              {/* SUCCESS */}
 
               {status ===
                 "success" &&
                 contractAddress && (
-                  <div
-                    className="
-                      overflow-hidden
-                      rounded-[24px]
-                      border border-emerald-400/20
-                      bg-emerald-400/[0.045]
-                    "
-                  >
-
-                    {/* Success */}
+                  <div className="overflow-hidden rounded-[24px] border border-emerald-400/20 bg-emerald-400/[0.045]">
 
                     <div className="p-5">
-
                       <div className="flex items-start gap-3">
-
-                        <div
-                          className="
-                            flex h-10 w-10
-                            shrink-0
-                            items-center justify-center
-                            rounded-xl
-                            bg-emerald-400/10
-                          "
-                        >
-
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10">
                           <CheckCircle2
                             size={21}
                             className="text-emerald-400"
                           />
-
                         </div>
 
                         <div>
-
                           <p className="font-black text-emerald-300">
                             Token deployed successfully
                           </p>
@@ -1816,29 +1428,17 @@ export default function DeployPage() {
                             deployed successfully on
                             IOPn Testnet.
                           </p>
-
                         </div>
-
                       </div>
 
-                      {/* Address */}
+                      {/* ADDRESS */}
 
-                      <div
-                        className="
-                          mt-4
-                          rounded-2xl
-                          border border-white/10
-                          bg-black/20
-                          p-3
-                        "
-                      >
-
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
                         <p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-white/30">
                           Contract Address
                         </p>
 
                         <div className="flex items-center gap-2">
-
                           <p className="min-w-0 flex-1 break-all text-xs font-bold text-white/80">
                             {contractAddress}
                           </p>
@@ -1848,26 +1448,12 @@ export default function DeployPage() {
                             onClick={
                               copyAddress
                             }
-                            className="
-                              flex h-9 w-9
-                              shrink-0
-                              items-center
-                              justify-center
-                              rounded-xl
-                              border border-white/10
-                              bg-white/[0.05]
-                              text-white/60
-                              transition
-                              hover:text-cyan-400
-                            "
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-white/60 transition hover:text-cyan-400"
                           >
-
                             <Copy
                               size={15}
                             />
-
                           </button>
-
                         </div>
 
                         {copied && (
@@ -1875,13 +1461,11 @@ export default function DeployPage() {
                             Address copied
                           </p>
                         )}
-
                       </div>
 
-                      {/* Explorer Links */}
+                      {/* EXPLORER LINKS */}
 
                       <div className="mt-3 flex flex-wrap gap-2">
-
                         {contractUrl && (
                           <a
                             href={
@@ -1889,22 +1473,7 @@ export default function DeployPage() {
                             }
                             target="_blank"
                             rel="noreferrer"
-                            className="
-                              inline-flex
-                              items-center
-                              gap-2
-                              rounded-xl
-                              border border-white/10
-                              bg-white/[0.05]
-                              px-3
-                              py-2
-                              text-xs
-                              font-bold
-                              text-white/70
-                              transition
-                              hover:border-cyan-400/30
-                              hover:text-cyan-400
-                            "
+                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold text-white/70 transition hover:border-cyan-400/30 hover:text-cyan-400"
                           >
                             View Contract
                             <ExternalLink
@@ -1920,22 +1489,7 @@ export default function DeployPage() {
                             }
                             target="_blank"
                             rel="noreferrer"
-                            className="
-                              inline-flex
-                              items-center
-                              gap-2
-                              rounded-xl
-                              border border-white/10
-                              bg-white/[0.05]
-                              px-3
-                              py-2
-                              text-xs
-                              font-bold
-                              text-white/70
-                              transition
-                              hover:border-cyan-400/30
-                              hover:text-cyan-400
-                            "
+                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold text-white/70 transition hover:border-cyan-400/30 hover:text-cyan-400"
                           >
                             Transaction
                             <ExternalLink
@@ -1943,80 +1497,38 @@ export default function DeployPage() {
                             />
                           </a>
                         )}
-
                       </div>
-
                     </div>
 
-                    {/* =================================================
-                        VERIFICATION
-                    ================================================= */}
+                    {/* VERIFICATION */}
 
-                    <div
-                      className="
-                        border-t
-                        border-white/[0.07]
-                        bg-white/[0.02]
-                        p-5
-                      "
-                    >
-
+                    <div className="border-t border-white/[0.07] bg-white/[0.02] p-5">
                       <div className="flex items-start gap-3">
-
-                        <div
-                          className="
-                            flex h-10 w-10
-                            shrink-0
-                            items-center
-                            justify-center
-                            rounded-xl
-                            bg-cyan-400/10
-                          "
-                        >
-
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10">
                           <FileCheck2
                             size={20}
                             className="text-cyan-400"
                           />
-
                         </div>
 
                         <div>
-
                           <h3 className="font-black">
                             Contract Verification
                           </h3>
 
                           <p className="mt-1 text-xs leading-5 text-white/40">
                             IOPn DEX automatically submits
-                            your Solidity source and compiler
-                            information to the IOPn Explorer
-                            after deployment.
+                            your exact Solidity source,
+                            compiler settings and constructor
+                            arguments to the IOPn Explorer.
                           </p>
-
                         </div>
-
                       </div>
 
-                      {/* Compiler info */}
+                      {/* COMPILER */}
 
-                      <div
-                        className="
-                          mt-4
-                          grid grid-cols-2
-                          gap-2
-                        "
-                      >
-
-                        <div
-                          className="
-                            rounded-xl
-                            border border-white/10
-                            bg-black/20
-                            p-3
-                          "
-                        >
-
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                           <p className="text-[10px] text-white/30">
                             Compiler
                           </p>
@@ -2024,18 +1536,9 @@ export default function DeployPage() {
                           <p className="mt-1 text-[11px] font-bold text-white/70">
                             Solidity 0.8.36
                           </p>
-
                         </div>
 
-                        <div
-                          className="
-                            rounded-xl
-                            border border-white/10
-                            bg-black/20
-                            p-3
-                          "
-                        >
-
+                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                           <p className="text-[10px] text-white/30">
                             Optimization
                           </p>
@@ -2043,16 +1546,12 @@ export default function DeployPage() {
                           <p className="mt-1 text-[11px] font-bold text-white/70">
                             Enabled · 200 runs
                           </p>
-
                         </div>
-
                       </div>
-
-                      {/* Verification Status */}
 
                       {renderVerificationStatus()}
 
-                      {/* Explorer button */}
+                      {/* EXPLORER */}
 
                       <a
                         href={
@@ -2060,26 +1559,8 @@ export default function DeployPage() {
                         }
                         target="_blank"
                         rel="noreferrer"
-                        className="
-                          mt-4
-                          flex h-12
-                          w-full
-                          items-center
-                          justify-center
-                          gap-2
-                          rounded-2xl
-                          border border-cyan-400/20
-                          bg-cyan-400/10
-                          text-sm
-                          font-black
-                          text-cyan-300
-                          transition
-                          hover:border-cyan-400/40
-                          hover:bg-cyan-400/15
-                          active:scale-[0.98]
-                        "
+                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-sm font-black text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-400/15 active:scale-[0.98]"
                       >
-
                         <FileCheck2
                           size={18}
                         />
@@ -2089,27 +1570,21 @@ export default function DeployPage() {
                         <ExternalLink
                           size={15}
                         />
-
                       </a>
 
                       {verificationStatus ===
                         "submitted" && (
                         <p className="mt-3 text-center text-[10px] leading-4 text-white/25">
-                          Verification was accepted by
-                          the explorer. It may take a little
-                          longer to become visible as
-                          verified.
+                          The verification request was
+                          accepted. The explorer may take
+                          longer to finish processing it.
                         </p>
                       )}
-
                     </div>
-
                   </div>
                 )}
 
-              {/* =================================================
-                  DEPLOY BUTTON
-              ================================================= */}
+              {/* DEPLOY BUTTON */}
 
               <button
                 type="submit"
@@ -2119,28 +1594,8 @@ export default function DeployPage() {
                   !artifact ||
                   !isConnected
                 }
-                className="
-                  flex h-14
-                  w-full
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-2xl
-                  bg-gradient-to-r
-                  from-cyan-400
-                  to-blue-500
-                  text-sm
-                  font-black
-                  text-[#020617]
-                  shadow-[0_10px_35px_rgba(34,211,238,.18)]
-                  transition
-                  hover:brightness-110
-                  active:scale-[0.98]
-                  disabled:cursor-not-allowed
-                  disabled:opacity-40
-                "
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-sm font-black text-[#020617] shadow-[0_10px_35px_rgba(34,211,238,.18)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
-
                 {isDeploying ? (
                   <>
                     <Loader2
@@ -2155,14 +1610,11 @@ export default function DeployPage() {
                   </>
                 ) : (
                   <>
-                    <Rocket
-                      size={19}
-                    />
+                    <Rocket size={19} />
 
                     Deploy Token
                   </>
                 )}
-
               </button>
 
               <p className="text-center text-[11px] leading-5 text-white/25">
@@ -2171,36 +1623,20 @@ export default function DeployPage() {
                 IOPn DEX automatically submits the contract
                 for explorer verification.
               </p>
-
             </div>
-
           </div>
-
         </form>
 
-        {/* ===================================================
-            FOOTER
-        =================================================== */}
+        {/* FOOTER */}
 
-        <div
-          className="
-            mt-5
-            rounded-2xl
-            border border-white/[0.06]
-            bg-white/[0.02]
-            p-4
-          "
-        >
-
+        <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <div className="flex items-start gap-3">
-
             <ShieldCheck
               size={18}
               className="mt-0.5 shrink-0 text-white/30"
             />
 
             <div>
-
               <p className="text-xs font-bold text-white/60">
                 About verification
               </p>
@@ -2212,11 +1648,8 @@ export default function DeployPage() {
                 bytecode. It does not modify the deployed
                 contract or its permissions.
               </p>
-
             </div>
-
           </div>
-
         </div>
 
       </div>
