@@ -1,14 +1,13 @@
 "use client";
 
 import {
-  useEffect,
-  useState,
   Suspense,
+  useEffect,
+  useMemo,
+  useState,
 } from "react";
 
-import {
-  useSearchParams,
-} from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import SwapCard from "@/components/swap/SwapCard";
 import TokenSelector from "@/components/swap/TokenSelector";
@@ -17,8 +16,8 @@ import SlippageModal from "@/components/swap/SlippageModal";
 import SwapHistory from "@/components/swap/SwapHistory";
 
 import {
-  useTokens,
   Token,
+  useTokens,
 } from "@/hooks/useTokens";
 
 import { useSwap } from "@/hooks/useSwap";
@@ -33,15 +32,21 @@ import {
   ArrowDownUp,
   ShieldCheck,
   Zap,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 
 import { useTheme } from "@/components/ThemeProvider";
 
 import { TOKENS } from "@/lib/tokens";
 
+/* =========================================================
+   HELPERS
+========================================================= */
+
 function formatAmount(
   value: string | number,
-  decimals = 2
+  decimals = 6
 ) {
   const number = Number(value);
 
@@ -54,6 +59,71 @@ function formatAmount(
     maximumFractionDigits: decimals,
   });
 }
+
+function sameToken(
+  a?: Token,
+  b?: Token
+) {
+  if (!a || !b) return false;
+
+  return (
+    a.address?.toLowerCase() ===
+      b.address?.toLowerCase() &&
+    a.symbol.toLowerCase() ===
+      b.symbol.toLowerCase()
+  );
+}
+
+function isNativeOPN(token?: Token) {
+  if (!token) return false;
+
+  return (
+    token.native === true ||
+    token.symbol.toUpperCase() === "OPN"
+  );
+}
+
+/*
+ * Find a token by address.
+ */
+function findTokenByAddress(
+  tokens: Token[],
+  address: string | null
+) {
+  if (!address) return undefined;
+
+  return tokens.find(
+    (token) =>
+      token.address?.toLowerCase() ===
+      address.toLowerCase()
+  );
+}
+
+/*
+ * Find a safe token that is not the other
+ * selected token.
+ */
+function findSafeDifferentToken(
+  tokens: Token[],
+  other?: Token
+) {
+  return (
+    tokens.find(
+      (token) =>
+        !sameToken(token, other)
+    ) ??
+    tokens.find(
+      (token) =>
+        token.symbol.toUpperCase() !==
+        "OPN"
+    ) ??
+    tokens[0]
+  );
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
 
 function SwapPageContent() {
   const searchParams =
@@ -74,14 +144,35 @@ function SwapPageContent() {
     addTransaction,
   } = useTransactionHistory();
 
+  /*
+   * IMPORTANT:
+   * Never allow the initial state to be
+   * OPN -> OPN.
+   */
+  const defaultIn =
+    tokens[0] ??
+    TOKENS[0];
+
+  const defaultOut =
+    tokens.find(
+      (token) =>
+        !sameToken(
+          token,
+          defaultIn
+        )
+    ) ??
+    tokens[1] ??
+    TOKENS[1] ??
+    TOKENS[0];
+
   const [tokenIn, setTokenIn] =
     useState<Token>(
-      tokens[0]
+      defaultIn
     );
 
   const [tokenOut, setTokenOut] =
     useState<Token>(
-      tokens[3] ?? tokens[1]
+      defaultOut
     );
 
   const [amountIn, setAmountIn] =
@@ -119,6 +210,12 @@ function SwapPageContent() {
   const [slippageOpen, setSlippageOpen] =
     useState(false);
 
+  const [sameTokenError, setSameTokenError] =
+    useState(false);
+
+  const [quoteLoading, setQuoteLoading] =
+    useState(false);
+
   const {
     getQuote,
     swap,
@@ -133,17 +230,48 @@ function SwapPageContent() {
     tokenIn
   );
 
+  /* =========================================================
+     TOKEN LIST
+  ========================================================= */
+
   /*
-   * Read selected token/action from URL.
-   *
-   * Buy:
-   * OPN -> selected token
-   *
-   * Sell:
-   * selected token -> OPN
+   * Make sure the official tokens are available
+   * even if useTokens has not finished loading yet.
    */
+  const availableTokens = useMemo(() => {
+    const map =
+      new Map<string, Token>();
+
+    for (const token of TOKENS) {
+      map.set(
+        token.address.toLowerCase(),
+        token as unknown as Token
+      );
+    }
+
+    for (const token of tokens) {
+      map.set(
+        token.address.toLowerCase(),
+        token
+      );
+    }
+
+    return Array.from(
+      map.values()
+    );
+  }, [tokens]);
+
+  /* =========================================================
+     URL TOKEN SELECTION
+  ========================================================= */
 
   useEffect(() => {
+    if (
+      !availableTokens.length
+    ) {
+      return;
+    }
+
     const tokenInAddress =
       searchParams.get(
         "tokenIn"
@@ -159,157 +287,348 @@ function SwapPageContent() {
         "action"
       );
 
+    /*
+     * BUY
+     *
+     * OPN -> selected token
+     */
     if (
-      !tokenInAddress &&
-      !tokenOutAddress
+      action === "buy" &&
+      tokenOutAddress
+    ) {
+      const selectedOut =
+        findTokenByAddress(
+          availableTokens,
+          tokenOutAddress
+        );
+
+      if (selectedOut) {
+        /*
+         * Buying native OPN itself makes no sense.
+         * Do not create OPN -> OPN.
+         */
+        if (
+          isNativeOPN(selectedOut)
+        ) {
+          const safeOut =
+            findSafeDifferentToken(
+              availableTokens,
+              availableTokens[0]
+            );
+
+          if (safeOut) {
+            setTokenIn(
+              availableTokens[0]
+            );
+
+            setTokenOut(
+              safeOut
+            );
+          }
+
+          setSameTokenError(
+            true
+          );
+
+          return;
+        }
+
+        const native =
+          availableTokens.find(
+            (token) =>
+              isNativeOPN(token)
+          );
+
+        if (native) {
+          setTokenIn(native);
+          setTokenOut(
+            selectedOut
+          );
+          setSameTokenError(false);
+        }
+
+        return;
+      }
+    }
+
+    /*
+     * SELL
+     *
+     * selected token -> OPN
+     */
+    if (
+      action === "sell" &&
+      tokenInAddress
+    ) {
+      const selectedIn =
+        findTokenByAddress(
+          availableTokens,
+          tokenInAddress
+        );
+
+      if (selectedIn) {
+        /*
+         * Selling OPN itself makes no sense.
+         * Do not create OPN -> OPN.
+         */
+        if (
+          isNativeOPN(selectedIn)
+        ) {
+          const safeIn =
+            findSafeDifferentToken(
+              availableTokens,
+              availableTokens[0]
+            );
+
+          const native =
+            availableTokens.find(
+              (token) =>
+                isNativeOPN(token)
+            );
+
+          if (
+            safeIn &&
+            native
+          ) {
+            setTokenIn(
+              safeIn
+            );
+
+            setTokenOut(
+              native
+            );
+          }
+
+          setSameTokenError(
+            true
+          );
+
+          return;
+        }
+
+        const native =
+          availableTokens.find(
+            (token) =>
+              isNativeOPN(token)
+          );
+
+        if (native) {
+          setTokenIn(
+            selectedIn
+          );
+
+          setTokenOut(
+            native
+          );
+
+          setSameTokenError(false);
+        }
+
+        return;
+      }
+    }
+
+    /*
+     * NORMAL URL:
+     *
+     * ?tokenIn=...
+     * ?tokenOut=...
+     */
+    if (
+      tokenInAddress ||
+      tokenOutAddress
+    ) {
+      const selectedIn =
+        findTokenByAddress(
+          availableTokens,
+          tokenInAddress
+        );
+
+      const selectedOut =
+        findTokenByAddress(
+          availableTokens,
+          tokenOutAddress
+        );
+
+      /*
+       * CRITICAL FIX:
+       *
+       * Never permit:
+       *
+       * OPN -> OPN
+       *
+       * or any token -> itself.
+       */
+      if (
+        selectedIn &&
+        selectedOut &&
+        sameToken(
+          selectedIn,
+          selectedOut
+        )
+      ) {
+        const safeOut =
+          findSafeDifferentToken(
+            availableTokens,
+            selectedIn
+          );
+
+        setTokenIn(
+          selectedIn
+        );
+
+        if (safeOut) {
+          setTokenOut(
+            safeOut
+          );
+        }
+
+        setSameTokenError(
+          true
+        );
+
+        return;
+      }
+
+      if (selectedIn) {
+        setTokenIn(
+          selectedIn
+        );
+      }
+
+      if (selectedOut) {
+        setTokenOut(
+          selectedOut
+        );
+      }
+
+      setSameTokenError(false);
+    }
+  }, [
+    searchParams,
+    availableTokens,
+  ]);
+
+  /* =========================================================
+     SAFETY CHECK
+  ========================================================= */
+
+  useEffect(() => {
+    if (
+      !tokenIn ||
+      !tokenOut
     ) {
       return;
     }
 
-    const findToken = (
-      address: string | null
-    ) => {
-      if (!address) {
-        return undefined;
-      }
-
-      return tokens.find(
-        (token) =>
-          token.address.toLowerCase() ===
-          address.toLowerCase()
-      );
-    };
-
-    let selectedIn =
-      findToken(
-        tokenInAddress
-      );
-
-    let selectedOut =
-      findToken(
-        tokenOutAddress
-      );
-
     /*
-     * Also search the official token list.
-     * This makes the selection work even before
-     * the local token state has updated.
+     * Never allow same token.
      */
-
     if (
-      !selectedIn &&
-      tokenInAddress
+      sameToken(
+        tokenIn,
+        tokenOut
+      )
     ) {
-      const official =
-        TOKENS.find(
-          (token) =>
-            token.address.toLowerCase() ===
-            tokenInAddress.toLowerCase()
+      const safeOut =
+        findSafeDifferentToken(
+          availableTokens,
+          tokenIn
         );
 
-      if (official) {
-        selectedIn =
-          official as unknown as Token;
-
-        addToken(
-          official as unknown as Token
+      if (safeOut) {
+        setTokenOut(
+          safeOut
         );
       }
-    }
 
-    if (
-      !selectedOut &&
-      tokenOutAddress
-    ) {
-      const official =
-        TOKENS.find(
-          (token) =>
-            token.address.toLowerCase() ===
-            tokenOutAddress.toLowerCase()
-        );
-
-      if (official) {
-        selectedOut =
-          official as unknown as Token;
-
-        addToken(
-          official as unknown as Token
-        );
-      }
-    }
-
-    if (selectedIn) {
-      setTokenIn(
-        selectedIn
-      );
-    }
-
-    if (selectedOut) {
-      setTokenOut(
-        selectedOut
-      );
-    }
-
-    /*
-     * Fallback action logic.
-     */
-
-    if (
-      action === "buy" &&
-      selectedOut
-    ) {
-      setTokenIn(
-        tokens[0]
+      setSameTokenError(
+        true
       );
 
-      setTokenOut(
-        selectedOut
-      );
+      setAmountOut("");
+      setRate("");
+      setRoute([]);
+
+      return;
     }
 
-    if (
-      action === "sell" &&
-      selectedIn
-    ) {
-      setTokenIn(
-        selectedIn
-      );
-
-      setTokenOut(
-        tokens[0]
-      );
-    }
+    setSameTokenError(false);
   }, [
-    searchParams,
-    tokens,
-    addToken,
+    tokenIn,
+    tokenOut,
+    availableTokens,
   ]);
+
+  /* =========================================================
+     REFRESH BALANCE AFTER SWAP
+  ========================================================= */
 
   useEffect(() => {
     if (swapSuccess) {
       refetchBalance();
+      setAmountIn("");
+      setAmountOut("");
+      setRate("");
+      setRoute([]);
     }
   }, [
     swapSuccess,
     refetchBalance,
   ]);
 
-  /*
-   * QUOTE
-   */
+  /* =========================================================
+     QUOTE
+  ========================================================= */
 
   useEffect(() => {
+    let cancelled = false;
+
     const timer =
       setTimeout(
         async () => {
-          if (!amountIn) {
+          /*
+           * Nothing to quote.
+           */
+          if (
+            !amountIn ||
+            Number(amountIn) <= 0
+          ) {
             setAmountOut("");
             setRate("");
             setRoute([]);
+            setQuoteLoading(false);
+            return;
+          }
+
+          /*
+           * Same-token protection.
+           */
+          if (
+            sameToken(
+              tokenIn,
+              tokenOut
+            )
+          ) {
+            setAmountOut("");
+            setRate("");
+            setRoute([]);
+            setQuoteLoading(false);
+            setSameTokenError(true);
             return;
           }
 
           try {
+            setQuoteLoading(true);
+            setSameTokenError(false);
+
+            /*
+             * Clear old quote first.
+             */
+            setAmountOut("");
+            setRate("");
+            setRoute([]);
+
             const quote =
               await getQuote(
                 amountIn,
@@ -317,35 +636,97 @@ function SwapPageContent() {
                 tokenOut
               );
 
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            const numericQuote =
+              Number(quote);
+
+            /*
+             * Never display an invalid
+             * or zero quote as a real quote.
+             */
+            if (
+              !Number.isFinite(
+                numericQuote
+              ) ||
+              numericQuote <= 0
+            ) {
+              setAmountOut("");
+              setRate("");
+              setRoute([]);
+              return;
+            }
+
             const formattedQuote =
               formatAmount(
-                quote,
-                2
+                numericQuote,
+                tokenOut.decimals > 6
+                  ? 6
+                  : tokenOut.decimals
               );
 
             setAmountOut(
               formattedQuote
             );
 
+            /*
+             * Rate must be based on
+             * 1 input token.
+             */
+            const amount =
+              Number(amountIn);
+
+            const rateValue =
+              amount > 0
+                ? numericQuote /
+                  amount
+                : 0;
+
             setRate(
               `1 ${tokenIn.symbol} = ${formatAmount(
-                quote,
-                6
+                rateValue,
+                8
               )} ${tokenOut.symbol}`
             );
 
+            /*
+             * IMPORTANT:
+             *
+             * Do not invent a WOPN route here.
+             *
+             * The useSwap hook is responsible
+             * for determining the actual route.
+             *
+             * We only display a meaningful
+             * high-level route.
+             */
             setRoute([
               tokenIn.symbol,
-              "WOPN",
               tokenOut.symbol,
             ]);
           } catch {
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
             setAmountOut("");
             setRate("");
             setRoute([]);
+          } finally {
+            if (
+              !cancelled
+            ) {
+              setQuoteLoading(false);
+            }
           }
         },
-        500
+        450
       );
 
     return () =>
@@ -357,26 +738,83 @@ function SwapPageContent() {
     getQuote,
   ]);
 
+  /* =========================================================
+     FLIP
+  ========================================================= */
+
   function flip() {
-    const old =
+    /*
+     * Never create same-token state.
+     */
+    if (
+      sameToken(
+        tokenIn,
+        tokenOut
+      )
+    ) {
+      return;
+    }
+
+    const oldIn =
       tokenIn;
 
+    const oldOut =
+      tokenOut;
+
     setTokenIn(
-      tokenOut
+      oldOut
     );
 
     setTokenOut(
-      old
+      oldIn
     );
 
+    setAmountIn("");
     setAmountOut("");
     setRate("");
     setRoute([]);
+    setSameTokenError(false);
   }
+
+  /* =========================================================
+     SELECT TOKEN
+  ========================================================= */
 
   function select(
     token: Token
   ) {
+    if (!token) {
+      return;
+    }
+
+    /*
+     * Selecting the same token on
+     * both sides is not allowed.
+     */
+    if (
+      selector === "in" &&
+      sameToken(
+        token,
+        tokenOut
+      )
+    ) {
+      setSameTokenError(true);
+      setSelector(null);
+      return;
+    }
+
+    if (
+      selector === "out" &&
+      sameToken(
+        token,
+        tokenIn
+      )
+    ) {
+      setSameTokenError(true);
+      setSelector(null);
+      return;
+    }
+
     if (
       selector === "in"
     ) {
@@ -393,8 +831,132 @@ function SwapPageContent() {
       );
     }
 
+    setAmountOut("");
+    setRate("");
+    setRoute([]);
+    setSameTokenError(false);
     setSelector(null);
   }
+
+  /* =========================================================
+     SWAP
+  ========================================================= */
+
+  async function handleSwap() {
+    if (!isConnected) {
+      return;
+    }
+
+    /*
+     * Absolute safety check.
+     */
+    if (
+      sameToken(
+        tokenIn,
+        tokenOut
+      )
+    ) {
+      setSameTokenError(true);
+      return;
+    }
+
+    if (
+      !amountIn ||
+      Number(amountIn) <= 0
+    ) {
+      return;
+    }
+
+    /*
+     * ERC20 approval.
+     *
+     * Native OPN does not need approval.
+     */
+    if (
+      needsApproval
+    ) {
+      await approve();
+      return;
+    }
+
+    try {
+      const result =
+        await swap(
+          amountIn,
+          tokenIn,
+          tokenOut,
+          slippage
+        );
+
+      if (result) {
+        addTransaction({
+          id: result.hash,
+          tokenIn:
+            result.tokenIn
+              .symbol,
+          tokenOut:
+            result.tokenOut
+              .symbol,
+          amountIn:
+            result.amountIn,
+          amountOut:
+            result.amountOut,
+          hash:
+            result.hash,
+          timestamp:
+            Date.now(),
+          status:
+            "success",
+        });
+      }
+    } catch {
+      /*
+       * useSwap handles the
+       * transaction error.
+       */
+    }
+  }
+
+  /* =========================================================
+     BUTTON TEXT
+  ========================================================= */
+
+  const buttonText =
+    !isConnected
+      ? "Connect Wallet"
+      : sameToken(
+          tokenIn,
+          tokenOut
+        )
+      ? "Select Different Tokens"
+      : !amountIn
+      ? "Enter Amount"
+      : quoteLoading
+      ? "Getting Quote..."
+      : needsApproval
+      ? `Approve ${tokenIn.symbol}`
+      : !amountOut
+      ? "No Route Available"
+      : "Swap";
+
+  const minimumReceived =
+    amountOut
+      ? (
+          Number(amountOut) *
+          (1 -
+            slippage /
+              100)
+        ).toFixed(
+          tokenOut.decimals >
+            6
+            ? 6
+            : tokenOut.decimals
+        )
+      : "";
+
+  /* =========================================================
+     UI
+  ========================================================= */
 
   return (
     <main
@@ -615,10 +1177,59 @@ function SwapPageContent() {
           </span>
         </div>
 
+        {/* SAME TOKEN WARNING */}
+
+        {sameTokenError && (
+          <div
+            className={`
+              mb-3
+              flex
+              items-start
+              gap-2.5
+              rounded-2xl
+              border
+              p-3
+              ${
+                darkMode
+                  ? "border-amber-400/20 bg-amber-400/[0.06]"
+                  : "border-amber-200 bg-amber-50"
+              }
+            `}
+          >
+            <AlertTriangle
+              size={17}
+              className="mt-0.5 shrink-0 text-amber-400"
+            />
+
+            <div>
+              <p className="text-xs font-bold text-amber-400">
+                Select two different tokens
+              </p>
+
+              <p
+                className={`
+                  mt-0.5
+                  text-[10px]
+                  ${
+                    darkMode
+                      ? "text-white/40"
+                      : "text-slate-500"
+                  }
+                `}
+              >
+                Swapping a token to itself is
+                not supported.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* SWAP CARD */}
 
         <SwapCard
-          amountIn={amountIn}
+          amountIn={
+            amountIn
+          }
           setAmountIn={
             setAmountIn
           }
@@ -642,61 +1253,64 @@ function SwapPageContent() {
           }
           balance={formatAmount(
             balance,
-            2
+            6
           )}
-          onSwap={async () => {
-            if (!isConnected) {
-              return;
-            }
-
-            if (needsApproval) {
-              approve();
-              return;
-            }
-
-            const result =
-              await swap(
-                amountIn,
-                tokenIn,
-                tokenOut,
-                slippage
-              );
-
-            if (result) {
-              addTransaction({
-                id: result.hash,
-                tokenIn:
-                  result.tokenIn
-                    .symbol,
-                tokenOut:
-                  result.tokenOut
-                    .symbol,
-                amountIn:
-                  result.amountIn,
-                amountOut:
-                  result.amountOut,
-                hash: result.hash,
-                timestamp:
-                  Date.now(),
-                status:
-                  "success",
-              });
-            }
-          }}
+          onSwap={
+            handleSwap
+          }
           buttonText={
-            !isConnected
-              ? "Connect Wallet"
-              : !amountIn
-              ? "Enter Amount"
-              : needsApproval
-              ? `Approve ${tokenIn.symbol}`
-              : "Swap"
+            buttonText
           }
           loading={
             isPending ||
-            approving
+            approving ||
+            quoteLoading
           }
         />
+
+        {/* QUOTE STATUS */}
+
+        {amountIn &&
+          !sameToken(
+            tokenIn,
+            tokenOut
+          ) && (
+            <div
+              className={`
+                mt-2
+                flex
+                items-center
+                justify-center
+                gap-1.5
+                text-[10px]
+                ${
+                  quoteLoading
+                    ? "text-cyan-400"
+                    : amountOut
+                    ? "text-emerald-400"
+                    : darkMode
+                    ? "text-white/30"
+                    : "text-slate-400"
+                }
+              `}
+            >
+              {quoteLoading ? (
+                <>
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400" />
+                  Finding best route...
+                </>
+              ) : amountOut ? (
+                <>
+                  <CheckCircle2
+                    size={12}
+                  />
+                  Quote available
+                </>
+              ) : (
+                "No route available"
+              )}
+            </div>
+          )}
 
         {/* SWAP DETAILS */}
 
@@ -768,19 +1382,8 @@ function SwapPageContent() {
               </span>
 
               <span className="max-w-[65%] truncate text-right text-xs font-semibold">
-                {amountOut
-                  ? `${(
-                      Number(
-                        amountOut
-                      ) *
-                      (1 -
-                        slippage /
-                          100)
-                    ).toFixed(
-                      6
-                    )} ${
-                      tokenOut.symbol
-                    }`
+                {minimumReceived
+                  ? `${minimumReceived} ${tokenOut.symbol}`
                   : "--"}
               </span>
             </div>
@@ -944,7 +1547,9 @@ function SwapPageContent() {
         open={
           selector !== null
         }
-        tokens={tokens}
+        tokens={
+          availableTokens
+        }
         onClose={() =>
           setSelector(null)
         }
@@ -956,7 +1561,9 @@ function SwapPageContent() {
       {/* IMPORT */}
 
       <TokenImport
-        open={importOpen}
+        open={
+          importOpen
+        }
         onClose={() =>
           setImportOpen(
             false
@@ -964,14 +1571,48 @@ function SwapPageContent() {
         }
         onImport={(token) => {
           addToken(token);
-          setTokenOut(token);
+
+          /*
+           * Imported token should be placed
+           * on the output side only if it is
+           * different from the input token.
+           */
+          if (
+            !sameToken(
+              token,
+              tokenIn
+            )
+          ) {
+            setTokenOut(
+              token
+            );
+          } else {
+            setTokenIn(
+              findSafeDifferentToken(
+                availableTokens,
+                token
+              ) ?? token
+            );
+
+            setTokenOut(
+              token
+            );
+          }
+
+          setAmountOut("");
+          setRate("");
+          setRoute([]);
+          setSameTokenError(false);
+          setImportOpen(false);
         }}
       />
 
       {/* SLIPPAGE */}
 
       <SlippageModal
-        open={slippageOpen}
+        open={
+          slippageOpen
+        }
         onClose={() =>
           setSlippageOpen(
             false
@@ -987,6 +1628,10 @@ function SwapPageContent() {
     </main>
   );
 }
+
+/* =========================================================
+   EXPORT
+========================================================= */
 
 export default function SwapPage() {
   return (
