@@ -24,13 +24,12 @@ export default function TokenButton({
         rounded-xl
         border
         border-cyan-500/20
-        bg-black
+        bg-[#0f172a]
         px-3
         transition
         duration-200
         hover:border-cyan-400/50
-        hover:bg-[#050505]
-        active:scale-[0.98]
+        hover:bg-[#162033]
       "
     >
       {/* TOKEN ICON */}
@@ -38,21 +37,21 @@ export default function TokenButton({
       <div
         className="
           flex
-          h-8
-          w-8
+          h-7
+          w-7
           shrink-0
           items-center
           justify-center
           rounded-full
-          border
-          border-cyan-400/20
-          bg-cyan-500/10
-          text-sm
+          bg-gradient-to-br
+          from-cyan-400
+          to-violet-500
+          text-xs
           font-black
-          text-cyan-400
+          text-black
         "
       >
-        {symbol.charAt(0).toUpperCase()}
+        {symbol.charAt(0)}
       </div>
 
       {/* TOKEN SYMBOL */}
@@ -73,7 +72,7 @@ export default function TokenButton({
 
       <ChevronDown
         size={16}
-        className="shrink-0 text-white/40"
+        className="shrink-0 text-white/50"
       />
     </button>
   );

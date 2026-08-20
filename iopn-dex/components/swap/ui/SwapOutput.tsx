@@ -14,19 +14,10 @@ export default function SwapOutput({
   onSelect,
 }: Props) {
   return (
-    <div
-      className="
-        rounded-2xl
-        border
-        border-white/10
-        bg-black
-        px-4
-        py-4
-      "
-    >
+    <div className="space-y-4">
       {/* HEADER */}
 
-      <div className="mb-3">
+      <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-white/55">
           You Receive
         </span>

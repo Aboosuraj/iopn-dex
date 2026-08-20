@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   X,
@@ -16,22 +11,10 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { isAddress } from "viem";
+import { usePublicClient } from "wagmi";
 
-import {
-  isAddress,
-} from "viem";
-
-import {
-  usePublicClient,
-} from "wagmi";
-
-import {
-  ERC20_ABI,
-} from "@/lib/erc20";
-
-import {
-  saveImportedToken,
-} from "@/lib/importedTokens";
+import { ERC20_ABI } from "@/lib/erc20";
 
 type Token = {
   symbol: string;
@@ -40,7 +23,6 @@ type Token = {
   decimals: number;
   native: boolean;
   imported?: boolean;
-  verified?: boolean;
 };
 
 type Props = {
@@ -50,21 +32,14 @@ type Props = {
   onSelect: (token: Token) => void;
 };
 
-function shortenAddress(
-  address: string
-) {
-  if (!address) {
-    return "";
-  }
+function shortenAddress(address: string) {
+  if (!address) return "";
 
   if (address.length <= 12) {
     return address;
   }
 
-  return `${address.slice(
-    0,
-    6
-  )}...${address.slice(-4)}`;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 export default function TokenSelector({
@@ -73,61 +48,46 @@ export default function TokenSelector({
   onClose,
   onSelect,
 }: Props) {
-  const publicClient =
-    usePublicClient();
+  const publicClient = usePublicClient();
 
-  const [search, setSearch] =
-    useState("");
-
-  const [copied, setCopied] =
-    useState("");
-
+  const [search, setSearch] = useState("");
+  const [copied, setCopied] = useState("");
   const [chainToken, setChainToken] =
     useState<Token | null>(null);
-
   const [searchingChain, setSearchingChain] =
     useState(false);
+  const [chainError, setChainError] = useState("");
 
-  const [chainError, setChainError] =
-    useState("");
+  const filteredTokens = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-  const [importing, setImporting] =
-    useState(false);
+    if (!query) {
+      return tokens;
+    }
 
-  const filteredTokens =
-    useMemo(() => {
-      const query =
-        search.trim().toLowerCase();
-
-      if (!query) {
-        return tokens;
-      }
-
-      if (isAddress(query)) {
-        return tokens.filter(
-          (token) =>
-            token.address.toLowerCase() ===
-            query
-        );
-      }
-
+    if (isAddress(query)) {
       return tokens.filter(
         (token) =>
-          token.symbol
-            .toLowerCase()
-            .includes(query) ||
-          token.address
-            .toLowerCase()
-            .includes(query) ||
-          token.name
-            ?.toLowerCase()
-            .includes(query)
+          token.address.toLowerCase() === query
       );
-    }, [tokens, search]);
+    }
 
-  async function searchChain(
-    address: string
-  ) {
+    return tokens.filter((token) => {
+      return (
+        token.symbol
+          .toLowerCase()
+          .includes(query) ||
+        token.address
+          .toLowerCase()
+          .includes(query) ||
+        token.name
+          ?.toLowerCase()
+          .includes(query)
+      );
+    });
+  }, [tokens, search]);
+
+  async function searchChain(address: string) {
     if (!publicClient) {
       setChainError(
         "Blockchain connection unavailable."
@@ -139,27 +99,14 @@ export default function TokenSelector({
       return;
     }
 
-    const alreadyListed =
-      tokens.some(
-        (token) =>
-          token.address.toLowerCase() ===
-          address.toLowerCase()
-      );
+    const alreadyListed = tokens.some(
+      (token) =>
+        token.address.toLowerCase() ===
+        address.toLowerCase()
+    );
 
     if (alreadyListed) {
-      const existing =
-        tokens.find(
-          (token) =>
-            token.address.toLowerCase() ===
-            address.toLowerCase()
-        );
-
-      if (existing) {
-        setChainToken(
-          existing
-        );
-      }
-
+      setChainToken(null);
       setChainError("");
       return;
     }
@@ -172,29 +119,26 @@ export default function TokenSelector({
       const contractAddress =
         address as `0x${string}`;
 
-      const [
-        symbol,
-        name,
-        decimals,
-      ] = await Promise.all([
-        publicClient.readContract({
-          address: contractAddress,
-          abi: ERC20_ABI,
-          functionName: "symbol",
-        }),
+      const [symbol, name, decimals] =
+        await Promise.all([
+          publicClient.readContract({
+            address: contractAddress,
+            abi: ERC20_ABI,
+            functionName: "symbol",
+          }),
 
-        publicClient.readContract({
-          address: contractAddress,
-          abi: ERC20_ABI,
-          functionName: "name",
-        }),
+          publicClient.readContract({
+            address: contractAddress,
+            abi: ERC20_ABI,
+            functionName: "name",
+          }),
 
-        publicClient.readContract({
-          address: contractAddress,
-          abi: ERC20_ABI,
-          functionName: "decimals",
-        }),
-      ]);
+          publicClient.readContract({
+            address: contractAddress,
+            abi: ERC20_ABI,
+            functionName: "decimals",
+          }),
+        ]);
 
       setChainToken({
         symbol: String(symbol),
@@ -219,8 +163,7 @@ export default function TokenSelector({
   }
 
   useEffect(() => {
-    const query =
-      search.trim();
+    const query = search.trim();
 
     if (!isAddress(query)) {
       setChainToken(null);
@@ -228,13 +171,11 @@ export default function TokenSelector({
       return;
     }
 
-    const timer =
-      setTimeout(() => {
-        searchChain(query);
-      }, 350);
+    const timer = setTimeout(() => {
+      searchChain(query);
+    }, 350);
 
-    return () =>
-      clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, [search]);
 
   if (!open) {
@@ -246,18 +187,12 @@ export default function TokenSelector({
     setCopied("");
     setChainToken(null);
     setChainError("");
-    setImporting(false);
-
     onClose();
   }
 
-  async function copyAddress(
-    address: string
-  ) {
+  async function copyAddress(address: string) {
     try {
-      await navigator.clipboard.writeText(
-        address
-      );
+      await navigator.clipboard.writeText(address);
 
       setCopied(address);
 
@@ -269,52 +204,11 @@ export default function TokenSelector({
     }
   }
 
-  function selectToken(
-    token: Token
-  ) {
+  function selectToken(token: Token) {
     setSearch("");
     setChainToken(null);
     setChainError("");
     onSelect(token);
-  }
-
-  async function importChainToken() {
-    if (!chainToken) {
-      return;
-    }
-
-    setImporting(true);
-
-    try {
-      /*
-       * Persist imported token.
-       */
-      saveImportedToken({
-        symbol:
-          chainToken.symbol,
-        name:
-          chainToken.name ||
-          chainToken.symbol,
-        address:
-          chainToken.address,
-        decimals:
-          chainToken.decimals,
-        native: false,
-        imported: true,
-      });
-
-      /*
-       * Immediately select it.
-       * useTokens() receives the storage event
-       * and updates the list as well.
-       */
-      selectToken({
-        ...chainToken,
-        imported: true,
-      });
-    } finally {
-      setImporting(false);
-    }
   }
 
   return (
@@ -326,7 +220,7 @@ export default function TokenSelector({
         flex
         items-end
         justify-center
-        bg-black/60
+        bg-black/80
         px-0
         backdrop-blur-md
         sm:items-center
@@ -334,8 +228,7 @@ export default function TokenSelector({
       "
       onMouseDown={(event) => {
         if (
-          event.target ===
-          event.currentTarget
+          event.target === event.currentTarget
         ) {
           closeSelector();
         }
@@ -351,10 +244,10 @@ export default function TokenSelector({
           overflow-hidden
           rounded-t-[2rem]
           border
-          border-slate-200
-          bg-white
-          text-slate-950
-          shadow-2xl
+          border-white/10
+          bg-[#050816]
+          text-white
+          shadow-[0_0_80px_rgba(0,0,0,0.65)]
           sm:rounded-[2rem]
         "
       >
@@ -363,17 +256,18 @@ export default function TokenSelector({
         <div
           className="
             border-b
-            border-slate-200
+            border-white/10
+            bg-[#050816]
             p-5
           "
         >
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black">
+              <h2 className="text-xl font-black text-white">
                 Select Token
               </h2>
 
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-white/40">
                 Choose a token to swap
               </p>
             </div>
@@ -390,13 +284,13 @@ export default function TokenSelector({
                 justify-center
                 rounded-full
                 border
-                border-slate-200
-                bg-slate-50
-                text-slate-500
+                border-white/10
+                bg-white/[0.04]
+                text-white/50
                 transition
                 hover:border-cyan-400/30
                 hover:bg-cyan-400/10
-                hover:text-cyan-500
+                hover:text-cyan-400
               "
             >
               <X size={19} />
@@ -414,7 +308,7 @@ export default function TokenSelector({
                 left-4
                 top-1/2
                 -translate-y-1/2
-                text-slate-400
+                text-white/35
               "
             />
 
@@ -423,24 +317,15 @@ export default function TokenSelector({
               type="text"
               value={search}
               onChange={(event) =>
-                setSearch(
-                  event.target.value
-                )
+                setSearch(event.target.value)
               }
               onKeyDown={(event) => {
-                if (
-                  event.key ===
-                  "Enter"
-                ) {
+                if (event.key === "Enter") {
                   const query =
                     search.trim();
 
-                  if (
-                    isAddress(query)
-                  ) {
-                    searchChain(
-                      query
-                    );
+                  if (isAddress(query)) {
+                    searchChain(query);
                   }
                 }
               }}
@@ -449,18 +334,18 @@ export default function TokenSelector({
                 w-full
                 rounded-2xl
                 border
-                border-slate-200
-                bg-slate-50
+                border-white/10
+                bg-black
                 py-4
                 pl-12
                 pr-14
                 text-sm
-                text-slate-900
+                text-white
                 outline-none
-                placeholder:text-slate-400
+                placeholder:text-white/25
                 transition
                 focus:border-cyan-400/50
-                focus:bg-white
+                focus:bg-black
               "
             />
 
@@ -468,9 +353,7 @@ export default function TokenSelector({
               type="button"
               disabled={
                 searchingChain ||
-                !isAddress(
-                  search.trim()
-                )
+                !isAddress(search.trim())
               }
               onClick={() =>
                 searchChain(
@@ -489,12 +372,13 @@ export default function TokenSelector({
                 justify-center
                 rounded-xl
                 bg-cyan-400/10
-                text-cyan-500
+                text-cyan-400
                 transition
                 hover:bg-cyan-400/20
                 disabled:cursor-not-allowed
                 disabled:opacity-30
               "
+              aria-label="Search contract on IOPn"
             >
               {searchingChain ? (
                 <Loader2
@@ -507,6 +391,8 @@ export default function TokenSelector({
             </button>
           </div>
 
+          {/* CHAIN STATUS */}
+
           {searchingChain && (
             <div
               className="
@@ -515,7 +401,7 @@ export default function TokenSelector({
                 items-center
                 gap-2
                 text-[11px]
-                text-cyan-500
+                text-cyan-400
               "
             >
               <Loader2
@@ -536,12 +422,12 @@ export default function TokenSelector({
                 gap-2
                 rounded-xl
                 border
-                border-red-200
-                bg-red-50
+                border-red-400/20
+                bg-red-400/[0.06]
                 px-3
                 py-2.5
                 text-[11px]
-                text-red-600
+                text-red-300
               "
             >
               <AlertCircle
@@ -549,16 +435,22 @@ export default function TokenSelector({
                 className="mt-0.5 shrink-0"
               />
 
-              <span>
-                {chainError}
-              </span>
+              <span>{chainError}</span>
             </div>
           )}
         </div>
 
         {/* TOKEN LIST */}
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div
+          className="
+            min-h-0
+            flex-1
+            overflow-y-auto
+            bg-[#050816]
+            p-3
+          "
+        >
           {/* FOUND TOKEN */}
 
           {chainToken && (
@@ -571,7 +463,7 @@ export default function TokenSelector({
                   font-bold
                   uppercase
                   tracking-[0.15em]
-                  text-cyan-500/70
+                  text-cyan-400/70
                 "
               >
                 Found on IOPn
@@ -598,47 +490,43 @@ export default function TokenSelector({
                     items-center
                     justify-center
                     rounded-full
-                    bg-gradient-to-br
-                    from-cyan-400/20
-                    to-purple-500/20
+                    border
+                    border-cyan-400/20
+                    bg-cyan-400/10
                     text-lg
                     font-black
-                    text-cyan-500
-                    ring-1
-                    ring-cyan-400/20
+                    text-cyan-400
                   "
                 >
-                  {chainToken.symbol.charAt(
-                    0
-                  )}
+                  {chainToken.symbol.charAt(0)}
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-black">
+                    <span className="font-black text-white">
                       {chainToken.symbol}
                     </span>
 
                     <span
                       className="
                         rounded-full
-                        bg-purple-400/10
+                        bg-cyan-400/10
                         px-2
                         py-0.5
                         text-[10px]
                         font-bold
-                        text-purple-600
+                        text-cyan-400
                       "
                     >
-                      Imported
+                      Found
                     </span>
                   </div>
 
-                  <p className="mt-1 truncate text-xs text-slate-500">
+                  <p className="mt-1 truncate text-xs text-white/45">
                     {chainToken.name}
                   </p>
 
-                  <p className="mt-0.5 truncate text-[10px] text-slate-400">
+                  <p className="mt-0.5 truncate text-[10px] text-white/25">
                     {shortenAddress(
                       chainToken.address
                     )}
@@ -647,9 +535,8 @@ export default function TokenSelector({
 
                 <button
                   type="button"
-                  disabled={importing}
-                  onClick={
-                    importChainToken
+                  onClick={() =>
+                    selectToken(chainToken)
                   }
                   className="
                     flex
@@ -666,21 +553,10 @@ export default function TokenSelector({
                     transition
                     hover:bg-cyan-300
                     active:scale-95
-                    disabled:opacity-50
                   "
                 >
-                  {importing ? (
-                    <Loader2
-                      size={13}
-                      className="animate-spin"
-                    />
-                  ) : (
-                    <Download size={13} />
-                  )}
-
-                  {importing
-                    ? "Saving..."
-                    : "Import"}
+                  <Download size={13} />
+                  Import
                 </button>
               </div>
             </div>
@@ -702,17 +578,17 @@ export default function TokenSelector({
                   justify-center
                   rounded-full
                   bg-cyan-500/10
-                  text-cyan-500
+                  text-cyan-400
                 "
               >
                 <Search size={22} />
               </div>
 
-              <h3 className="mt-4 font-bold">
+              <h3 className="mt-4 font-bold text-white">
                 No token found
               </h3>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-white/35">
                 Search by symbol or paste an IOPn
                 contract address.
               </p>
@@ -722,7 +598,7 @@ export default function TokenSelector({
               {filteredTokens.map(
                 (token) => (
                   <div
-                    key={token.address.toLowerCase()}
+                    key={token.address}
                     className="
                       flex
                       items-center
@@ -730,18 +606,17 @@ export default function TokenSelector({
                       rounded-2xl
                       border
                       border-transparent
+                      bg-transparent
                       p-3
                       transition
-                      hover:border-cyan-400/20
-                      hover:bg-slate-50
+                      hover:border-white/10
+                      hover:bg-white/[0.03]
                     "
                   >
                     <button
                       type="button"
                       onClick={() =>
-                        selectToken(
-                          token
-                        )
+                        selectToken(token)
                       }
                       className="
                         flex
@@ -761,59 +636,46 @@ export default function TokenSelector({
                           items-center
                           justify-center
                           rounded-full
+                          border
+                          border-cyan-400/20
                           bg-gradient-to-br
-                          from-cyan-400/20
-                          to-purple-500/20
+                          from-cyan-400/10
+                          to-purple-500/10
                           text-lg
                           font-black
-                          text-cyan-500
-                          ring-1
-                          ring-slate-200
+                          text-cyan-400
                         "
                       >
-                        {token.symbol.charAt(
-                          0
-                        )}
+                        {token.symbol.charAt(0)}
                       </div>
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-black">
+                          <span className="font-black text-white">
                             {token.symbol}
                           </span>
 
-                          {token.imported ? (
-                            <span
-                              className="
-                                rounded-full
-                                bg-purple-400/10
-                                px-2
-                                py-0.5
-                                text-[10px]
-                                font-bold
-                                text-purple-600
-                              "
-                            >
-                              Imported
-                            </span>
-                          ) : (
-                            <span
-                              className="
-                                rounded-full
-                                bg-emerald-400/10
-                                px-2
-                                py-0.5
-                                text-[10px]
-                                font-bold
-                                text-emerald-600
-                              "
-                            >
-                              Listed
-                            </span>
-                          )}
+                          <span
+                            className={`
+                              rounded-full
+                              px-2
+                              py-0.5
+                              text-[10px]
+                              font-bold
+                              ${
+                                token.imported
+                                  ? "bg-purple-400/10 text-purple-300"
+                                  : "bg-emerald-400/10 text-emerald-400"
+                              }
+                            `}
+                          >
+                            {token.imported
+                              ? "Imported"
+                              : "Listed"}
+                          </span>
                         </div>
 
-                        <p className="mt-1 truncate text-xs text-slate-500">
+                        <p className="mt-1 truncate text-xs text-white/40">
                           {token.native
                             ? "Native OPN token"
                             : token.name ||
@@ -841,11 +703,14 @@ export default function TokenSelector({
                           items-center
                           justify-center
                           rounded-xl
-                          bg-slate-100
-                          text-slate-400
+                          border
+                          border-white/10
+                          bg-white/[0.04]
+                          text-white/35
                           transition
+                          hover:border-cyan-400/20
                           hover:bg-cyan-400/10
-                          hover:text-cyan-500
+                          hover:text-cyan-400
                         "
                       >
                         {copied ===
@@ -865,7 +730,7 @@ export default function TokenSelector({
                       size={18}
                       className="
                         shrink-0
-                        text-slate-300
+                        text-white/20
                       "
                     />
                   </div>
@@ -880,13 +745,21 @@ export default function TokenSelector({
         <div
           className="
             border-t
-            border-slate-200
+            border-white/10
+            bg-[#050816]
             px-5
             py-4
           "
         >
-          <p className="text-center text-[11px] text-slate-400">
-            Always verify token contracts before swapping.
+          <p
+            className="
+              text-center
+              text-[11px]
+              text-white/25
+            "
+          >
+            Always verify token contracts before
+            swapping.
           </p>
         </div>
       </div>

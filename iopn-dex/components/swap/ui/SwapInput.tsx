@@ -18,19 +18,10 @@ export default function SwapInput({
   onSelect,
 }: Props) {
   return (
-    <div
-      className="
-        rounded-2xl
-        border
-        border-white/10
-        bg-black
-        px-4
-        py-4
-      "
-    >
+    <div className="space-y-4">
       {/* HEADER */}
 
-      <div className="mb-3 flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-white/55">
           You Pay
         </span>
@@ -42,10 +33,11 @@ export default function SwapInput({
 
       {/* AMOUNT + TOKEN */}
 
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <input
           type="number"
           inputMode="decimal"
+          min="0"
           placeholder="0.0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
@@ -71,7 +63,7 @@ export default function SwapInput({
 
       {/* MAX */}
 
-      <div className="mt-3 flex justify-end">
+      <div className="flex justify-end">
         <button
           type="button"
           onClick={() => setAmount(balance)}
