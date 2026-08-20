@@ -8,7 +8,6 @@ import {
   ArrowUp,
   BarChart3,
   CandlestickChart,
-  ChevronDown,
   ExternalLink,
   TrendingDown,
   TrendingUp,
@@ -16,6 +15,35 @@ import {
 import { Suspense, useMemo } from "react";
 
 import { TOKENS } from "@/lib/tokens";
+import { getImportedTokens } from "@/lib/importedTokens";
+
+type ListedToken = (typeof TOKENS)[number];
+
+type ImportedToken = {
+  symbol: string;
+  address: `0x${string}`;
+  decimals: number;
+  native: false;
+  imported?: boolean;
+  name?: string;
+  logo?: string;
+  price?: number;
+  change24h?: number;
+  verified?: boolean;
+};
+
+type TradeToken = {
+  symbol: string;
+  address: `0x${string}`;
+  decimals: number;
+  native: boolean;
+  name: string;
+  logo?: string;
+  price: number;
+  change24h: number;
+  verified: boolean;
+  imported: boolean;
+};
 
 function formatPrice(value: number) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -74,13 +102,6 @@ function TokenIcon({
   );
 }
 
-/*
- * Candle data used for the chart presentation.
- *
- * The project currently has token price/change metadata but
- * does not yet have a historical OHLC API. This keeps the
- * chart interface ready without adding another dependency.
- */
 function buildCandles(
   price: number,
   change24h: number
@@ -105,8 +126,12 @@ function buildCandles(
     const progress = i / 27;
 
     const wave =
-      Math.sin(i * 1.37) * volatility * 0.7 +
-      Math.cos(i * 0.61) * volatility * 0.35;
+      Math.sin(i * 1.37) *
+        volatility *
+        0.7 +
+      Math.cos(i * 0.61) *
+        volatility *
+        0.35;
 
     const trend =
       direction *
@@ -126,7 +151,10 @@ function buildCandles(
           0.7 +
         direction *
           volatility *
-          (Math.max(progress - 0.04, 0) - 0.5)
+          (Math.max(
+            progress - 0.04,
+            0
+          ) - 0.5)
       );
 
     const high =
@@ -156,14 +184,21 @@ function CandleChart({
   change24h: number;
 }) {
   const candles = useMemo(
-    () => buildCandles(price, change24h),
+    () =>
+      buildCandles(
+        price,
+        change24h
+      ),
     [price, change24h]
   );
 
-  const values = candles.flatMap((candle) => [
-    candle.high,
-    candle.low,
-  ]);
+  const values =
+    candles.flatMap(
+      (candle) => [
+        candle.high,
+        candle.low,
+      ]
+    );
 
   const min =
     Math.min(...values) || 0;
@@ -189,8 +224,6 @@ function CandleChart({
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-[#080d1c]">
-      {/* GRID */}
-
       <div
         className="
           pointer-events-none
@@ -222,7 +255,8 @@ function CandleChart({
           (candle, index) => {
             const x =
               index *
-              (candleWidth + gap) +
+                (candleWidth +
+                  gap) +
               gap;
 
             const openY =
@@ -250,15 +284,14 @@ function CandleChart({
             const bodyHeight =
               Math.max(
                 Math.abs(
-                  closeY - openY
+                  closeY -
+                    openY
                 ),
                 2
               );
 
             return (
               <g key={index}>
-                {/* WICK */}
-
                 <line
                   x1={
                     x +
@@ -280,8 +313,6 @@ function CandleChart({
                   strokeWidth="1.2"
                 />
 
-                {/* BODY */}
-
                 <rect
                   x={x}
                   y={bodyTop}
@@ -301,8 +332,6 @@ function CandleChart({
         )}
       </svg>
 
-      {/* PRICE LABELS */}
-
       <div className="pointer-events-none absolute right-2 top-3 space-y-8">
         <span className="block rounded bg-white/[0.05] px-1.5 py-1 text-[9px] font-semibold text-white/35">
           {formatPrice(max)}
@@ -318,8 +347,6 @@ function CandleChart({
           {formatPrice(min)}
         </span>
       </div>
-
-      {/* TIME */}
 
       <div
         className="
@@ -349,35 +376,260 @@ function TradeContent() {
   const tokenAddress =
     searchParams.get("token");
 
-  const token = useMemo(() => {
-    if (!tokenAddress) {
-      return TOKENS[0];
-    }
+  /*
+   * Build a safe token list containing both:
+   *
+   * 1. Normal tokens from TOKENS
+   * 2. Imported tokens from localStorage
+   *
+   * We DO NOT cast ImportedToken to TOKENS.
+   * Instead, both are normalized into TradeToken.
+   */
+  const allTokens =
+    useMemo<TradeToken[]>(() => {
+      const importedTokens =
+        getImportedTokens();
 
-    return (
-      TOKENS.find(
-        (item) =>
-          item.address.toLowerCase() ===
-          tokenAddress.toLowerCase()
-      ) ?? TOKENS[0]
-    );
-  }, [tokenAddress]);
+      const map =
+        new Map<
+          string,
+          TradeToken
+        >();
+
+      /*
+       * Normal listed tokens
+       */
+      for (
+        const token of TOKENS
+      ) {
+        map.set(
+          token.address.toLowerCase(),
+          {
+            symbol:
+              token.symbol,
+            address:
+              token.address,
+            decimals:
+              token.decimals,
+            native:
+              Boolean(
+                token.native
+              ),
+            name:
+              token.name ??
+              token.symbol,
+            logo:
+              token.logo,
+            price:
+              typeof token.price ===
+              "number"
+                ? token.price
+                : 0,
+            change24h:
+              typeof token.change24h ===
+              "number"
+                ? token.change24h
+                : 0,
+            verified:
+              Boolean(
+                token.verified
+              ),
+            imported: false,
+          }
+        );
+      }
+
+      /*
+       * Imported tokens
+       *
+       * Imported tokens may not contain:
+       * name
+       * logo
+       * price
+       * change24h
+       * verified
+       *
+       * So we provide safe defaults.
+       */
+      for (
+        const token of importedTokens as ImportedToken[]
+      ) {
+        map.set(
+          token.address.toLowerCase(),
+          {
+            symbol:
+              token.symbol,
+            address:
+              token.address,
+            decimals:
+              Number(
+                token.decimals
+              ),
+            native: false,
+            name:
+              token.name ??
+              token.symbol,
+            logo:
+              token.logo,
+            price:
+              typeof token.price ===
+              "number"
+                ? token.price
+                : 0,
+            change24h:
+              typeof token.change24h ===
+              "number"
+                ? token.change24h
+                : 0,
+            verified:
+              Boolean(
+                token.verified
+              ),
+            imported: true,
+          }
+        );
+      }
+
+      return Array.from(
+        map.values()
+      );
+    }, []);
+
+  /*
+   * Find the token selected from:
+   *
+   * /trade?token=CONTRACT_ADDRESS
+   *
+   * This works for both listed and imported tokens.
+   */
+  const token =
+    useMemo<TradeToken>(() => {
+      if (!tokenAddress) {
+        const first =
+          allTokens[0];
+
+        return (
+          first ?? {
+            symbol: "OPN",
+            address:
+              "0x0000000000000000000000000000000000000000",
+            decimals: 18,
+            native: true,
+            name: "OPN",
+            price: 1,
+            change24h: 0,
+            verified: true,
+            imported: false,
+          }
+        );
+      }
+
+      const normalized =
+        tokenAddress.toLowerCase();
+
+      const found =
+        allTokens.find(
+          (item) =>
+            item.address.toLowerCase() ===
+            normalized
+        );
+
+      if (found) {
+        return found;
+      }
+
+      /*
+       * Unknown address:
+       * safely fall back to OPN.
+       */
+      const nativeToken =
+        allTokens.find(
+          (item) =>
+            item.native
+        );
+
+      return (
+        nativeToken ??
+        allTokens[0]
+      );
+    }, [
+      tokenAddress,
+      allTokens,
+    ]);
+
+  /*
+   * Find the actual native OPN token.
+   *
+   * This is safer than blindly using TOKENS[0].
+   */
+  const nativeToken =
+    useMemo<TradeToken>(() => {
+      const native =
+        allTokens.find(
+          (item) =>
+            item.native
+        );
+
+      if (native) {
+        return native;
+      }
+
+      return {
+        symbol: "OPN",
+        address:
+          TOKENS[0]
+            ?.address ??
+          ("0x0000000000000000000000000000000000000000" as `0x${string}`),
+        decimals:
+          TOKENS[0]
+            ?.decimals ?? 18,
+        native: true,
+        name:
+          TOKENS[0]
+            ?.name ?? "OPN",
+        logo:
+          TOKENS[0]?.logo,
+        price: 1,
+        change24h: 0,
+        verified: true,
+        imported: false,
+      };
+    }, [allTokens]);
 
   const isPositive =
     token.change24h >= 0;
 
+  /*
+   * BUY
+   *
+   * OPN -> selected token
+   *
+   * IMPORTANT:
+   * token.address is preserved here.
+   * Therefore an imported token gets its
+   * imported contract address.
+   */
   const buyUrl =
     `/swap?tokenIn=${encodeURIComponent(
-      TOKENS[0].address
+      nativeToken.address
     )}&tokenOut=${encodeURIComponent(
       token.address
     )}&action=buy`;
 
+  /*
+   * SELL
+   *
+   * selected token -> OPN
+   *
+   * IMPORTANT:
+   * For an imported token, token.address
+   * remains the imported token contract.
+   */
   const sellUrl =
     `/swap?tokenIn=${encodeURIComponent(
       token.address
     )}&tokenOut=${encodeURIComponent(
-      TOKENS[0].address
+      nativeToken.address
     )}&action=sell`;
 
   return (
@@ -465,7 +717,9 @@ function TradeContent() {
               hover:text-cyan-400
             "
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft
+              size={18}
+            />
           </Link>
 
           <div className="text-center">
@@ -496,7 +750,9 @@ function TradeContent() {
               hover:text-cyan-400
             "
           >
-            <ExternalLink size={17} />
+            <ExternalLink
+              size={17}
+            />
           </Link>
         </div>
 
@@ -523,7 +779,9 @@ function TradeContent() {
           >
             <div className="flex items-center gap-3">
               <TokenIcon
-                symbol={token.symbol}
+                symbol={
+                  token.symbol
+                }
               />
 
               <div>
@@ -545,6 +803,22 @@ function TradeContent() {
                       "
                     >
                       VERIFIED
+                    </span>
+                  )}
+
+                  {token.imported && (
+                    <span
+                      className="
+                        rounded-md
+                        bg-purple-400/10
+                        px-1.5
+                        py-0.5
+                        text-[8px]
+                        font-black
+                        text-purple-300
+                      "
+                    >
+                      IMPORTED
                     </span>
                   )}
                 </div>
@@ -632,7 +906,8 @@ function TradeContent() {
                 </h3>
 
                 <p className="text-[9px] text-white/25">
-                  {token.symbol}/OPN
+                  {token.symbol}/
+                  {nativeToken.symbol}
                 </p>
               </div>
             </div>
@@ -651,7 +926,9 @@ function TradeContent() {
                 text-cyan-400
               "
             >
-              <BarChart3 size={11} />
+              <BarChart3
+                size={11}
+              />
               24H
             </div>
           </div>
@@ -734,11 +1011,13 @@ function TradeContent() {
         >
           <div className="mb-3">
             <h3 className="text-sm font-black">
-              Trade {token.symbol}
+              Trade{" "}
+              {token.symbol}
             </h3>
 
             <p className="mt-1 text-[10px] text-white/30">
-              Choose whether you want to buy or sell
+              Choose whether you
+              want to buy or sell
               this token.
             </p>
           </div>
@@ -769,7 +1048,8 @@ function TradeContent() {
                 size={18}
               />
 
-              Buy {token.symbol}
+              Buy{" "}
+              {token.symbol}
             </Link>
 
             <Link
@@ -798,7 +1078,8 @@ function TradeContent() {
                 size={18}
               />
 
-              Sell {token.symbol}
+              Sell{" "}
+              {token.symbol}
             </Link>
           </div>
         </section>
