@@ -1,12 +1,14 @@
 export type ImportedToken = {
   symbol: string;
+  name?: string;
   address: string;
   decimals: number;
   native: false;
   imported: true;
 };
 
-export const IMPORTED_TOKENS_KEY = "iopn-imported-tokens";
+export const IMPORTED_TOKENS_KEY =
+  "iopn-imported-tokens";
 
 function normalizeAddress(address: string) {
   return address.toLowerCase();
@@ -18,7 +20,9 @@ export function getImportedTokens(): ImportedToken[] {
   }
 
   try {
-    const stored = localStorage.getItem(IMPORTED_TOKENS_KEY);
+    const stored = localStorage.getItem(
+      IMPORTED_TOKENS_KEY
+    );
 
     if (!stored) {
       return [];
@@ -30,38 +34,67 @@ export function getImportedTokens(): ImportedToken[] {
       return [];
     }
 
-    return parsed;
+    return parsed.filter(
+      (token): token is ImportedToken => {
+        return (
+          token &&
+          typeof token === "object" &&
+          typeof token.symbol === "string" &&
+          typeof token.address === "string" &&
+          typeof token.decimals === "number" &&
+          token.native === false &&
+          token.imported === true
+        );
+      }
+    );
   } catch {
     return [];
   }
 }
 
-export function saveImportedToken(token: ImportedToken) {
+export function saveImportedToken(
+  token: ImportedToken
+) {
   if (typeof window === "undefined") {
     return;
   }
 
-  const existing = getImportedTokens();
+  const existing =
+    getImportedTokens();
 
-  const alreadyExists = existing.some(
-    (item) =>
-      normalizeAddress(item.address) ===
-      normalizeAddress(token.address)
-  );
+  const alreadyExists =
+    existing.some(
+      (item) =>
+        normalizeAddress(item.address) ===
+        normalizeAddress(token.address)
+    );
 
   if (alreadyExists) {
     return;
   }
 
+  const normalizedToken: ImportedToken = {
+    symbol: token.symbol,
+    name:
+      token.name ||
+      token.symbol,
+    address: token.address,
+    decimals: token.decimals,
+    native: false,
+    imported: true,
+  };
+
   localStorage.setItem(
     IMPORTED_TOKENS_KEY,
     JSON.stringify([
       ...existing,
-      token,
+      normalizedToken,
     ])
   );
 
   window.dispatchEvent(
-    new Event("iopn-imported-tokens-updated")
+    new Event(
+      "iopn-imported-tokens-updated"
+    )
   );
 }
