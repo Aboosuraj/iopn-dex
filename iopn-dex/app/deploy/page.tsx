@@ -4,6 +4,7 @@ import {
   FormEvent,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -13,11 +14,11 @@ import {
   ExternalLink,
   FileCheck2,
   Loader2,
+  RefreshCw,
   Rocket,
   ShieldCheck,
   Wallet,
   XCircle,
-  RefreshCw,
 } from "lucide-react";
 
 import {
@@ -43,10 +44,12 @@ type ContractArtifact = {
   abi: Abi;
   bytecode: Hex | string;
   contractName?: string;
+
   compiler?: {
     version?: string;
     fullVersion?: string;
   };
+
   optimization?: {
     enabled?: boolean;
     runs?: number;
@@ -87,17 +90,19 @@ const EXPLORER_URL =
 
 const DEFAULT_DECIMALS = 18;
 
-const CONTRACT_NAME =
-  "IOPnToken";
+const CONTRACT_NAME = "IOPnToken";
 
-const LICENSE_TYPE =
-  "mit";
+const LICENSE_TYPE = "mit";
 
-const STATUS_POLL_INTERVAL =
-  5000;
+const STATUS_POLL_INTERVAL = 5000;
 
-const STATUS_MAX_ATTEMPTS =
-  24;
+/*
+ * 30 × 5 seconds = approximately 2.5 minutes.
+ *
+ * We do NOT claim verification after these attempts.
+ * We switch to manual/check-again mode instead.
+ */
+const STATUS_MAX_ATTEMPTS = 30;
 
 /* =========================================================
    COMPONENT
@@ -109,8 +114,7 @@ export default function DeployPage() {
     isConnected,
   } = useAccount();
 
-  const chainId =
-    useChainId();
+  const chainId = useChainId();
 
   const {
     data: walletClient,
@@ -120,14 +124,11 @@ export default function DeployPage() {
      FORM
   ======================================================= */
 
-  const [name, setName] =
-    useState("");
+  const [name, setName] = useState("");
 
-  const [symbol, setSymbol] =
-    useState("");
+  const [symbol, setSymbol] = useState("");
 
-  const [supply, setSupply] =
-    useState("");
+  const [supply, setSupply] = useState("");
 
   const [decimals, setDecimals] =
     useState(
@@ -157,43 +158,29 @@ export default function DeployPage() {
      DEPLOYMENT
   ======================================================= */
 
-  const [
-    status,
-    setStatus,
-  ] = useState<DeployStatus>(
-    "idle"
-  );
+  const [status, setStatus] =
+    useState<DeployStatus>("idle");
 
-  const [
-    error,
-    setError,
-  ] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const [
-    txHash,
-    setTxHash,
-  ] = useState<
-    Hex | undefined
-  >();
+  const [txHash, setTxHash] =
+    useState<Hex | undefined>();
 
   const [
     contractAddress,
     setContractAddress,
-  ] = useState<
-    Address | undefined
-  >();
+  ] = useState<Address | undefined>();
 
-  const [
-    copied,
-    setCopied,
-  ] = useState(false);
+  const [copied, setCopied] =
+    useState(false);
 
   const [
     deploymentConstructorArgs,
     setDeploymentConstructorArgs,
-  ] = useState<
-    ConstructorArgs | null
-  >(null);
+  ] = useState<ConstructorArgs | null>(
+    null
+  );
 
   /* =======================================================
      VERIFICATION
@@ -227,6 +214,12 @@ export default function DeployPage() {
     setCheckingAgain,
   ] = useState(false);
 
+  /*
+   * Prevent duplicate automatic verification calls.
+   */
+  const verificationRunning =
+    useRef(false);
+
   /* =======================================================
      LOAD ARTIFACT
   ======================================================= */
@@ -240,15 +233,11 @@ export default function DeployPage() {
         setArtifactError("");
 
         /*
-         * IMPORTANT:
+         * The artifact is NOT served from public/.
          *
-         * Artifact is stored in:
+         * Server route reads:
          *
          * artifacts/IOPnToken.json
-         *
-         * not public/artifacts/.
-         *
-         * The API route safely reads it from the server.
          */
         const response =
           await fetch(
@@ -263,7 +252,7 @@ export default function DeployPage() {
 
         if (
           !response.ok ||
-          !result.success
+          !result?.success
         ) {
           throw new Error(
             result?.error ||
@@ -274,13 +263,13 @@ export default function DeployPage() {
         const json =
           result.artifact as ContractArtifact;
 
-        if (!json.abi) {
+        if (!json?.abi) {
           throw new Error(
             "IOPnToken artifact does not contain an ABI."
           );
         }
 
-        if (!json.bytecode) {
+        if (!json?.bytecode) {
           throw new Error(
             "IOPnToken artifact does not contain deployment bytecode."
           );
@@ -312,7 +301,7 @@ export default function DeployPage() {
   }, []);
 
   /* =======================================================
-     RECEIPT
+     TRANSACTION RECEIPT
   ======================================================= */
 
   const {
@@ -348,16 +337,13 @@ export default function DeployPage() {
       : "";
 
   /*
-   * This is the explorer's verification page.
+   * This sends the user to the explorer contract page.
    *
-   * The user can paste the contract address and upload:
-   *
-   * IOPnToken-standard-input.json
+   * Depending on the explorer UI, the user can use
+   * the Contract / Verify & Publish section there.
    */
   const manualVerificationUrl =
-    contractAddress
-      ? `${EXPLORER_URL}/address/${contractAddress}?tab=contract`
-      : EXPLORER_URL;
+    verificationUrl || EXPLORER_URL;
 
   /* =======================================================
      DEPLOYING
@@ -367,34 +353,6 @@ export default function DeployPage() {
     status === "loading" ||
     status === "confirming" ||
     isConfirming;
-
-  /* =======================================================
-     RESET
-  ======================================================= */
-
-  function resetStatus() {
-    if (isDeploying) {
-      return;
-    }
-
-    setStatus("idle");
-    setError("");
-    setTxHash(undefined);
-    setContractAddress(undefined);
-    setCopied(false);
-
-    setDeploymentConstructorArgs(
-      null
-    );
-
-    setVerificationStatus(
-      "idle"
-    );
-
-    setVerificationError("");
-    setVerificationMessage("");
-    setVerificationAttempts(0);
-  }
 
   /* =======================================================
      VALIDATION
@@ -488,20 +446,10 @@ export default function DeployPage() {
     useCallback(
       async (
         addressToCheck: Address,
-        options?: {
-          manual?: boolean;
-        }
-      ) => {
+        showChecking = true
+      ): Promise<boolean> => {
         try {
-          setCheckingAgain(true);
-
-          if (
-            options?.manual
-          ) {
-            setVerificationStatus(
-              "checking"
-            );
-          } else {
+          if (showChecking) {
             setVerificationStatus(
               "checking"
             );
@@ -511,51 +459,92 @@ export default function DeployPage() {
 
           const response =
             await fetch(
-              `/api/verify?address=${addressToCheck}`,
+              `/api/verify?address=${addressToCheck}&_=${Date.now()}`,
               {
+                method: "GET",
                 cache: "no-store",
+                headers: {
+                  Accept:
+                    "application/json",
+                  "Cache-Control":
+                    "no-cache",
+                },
               }
             );
 
           const result =
             await response.json();
 
+          /*
+           * CRITICAL:
+           *
+           * We only display VERIFIED when the server
+           * explicitly returns:
+           *
+           * verified === true
+           *
+           * Submission is NOT verification.
+           */
           if (
-            result?.verified ===
-            true
+            response.ok &&
+            result?.verified === true
           ) {
             setVerificationStatus(
               "verified"
             );
 
             setVerificationMessage(
-              "Your contract is verified on the IOPn Explorer."
+              "The IOPn Explorer confirms that the contract source code is verified."
             );
+
+            setVerificationError("");
 
             return true;
           }
 
+          /*
+           * The contract is known by the explorer,
+           * but source verification is not confirmed.
+           */
           if (
-            result?.indexed ===
-            false
+            response.ok &&
+            result?.indexed === true
+          ) {
+            setVerificationStatus(
+              "submitted"
+            );
+
+            setVerificationMessage(
+              "The explorer knows this contract, but source-code verification has not been confirmed yet."
+            );
+
+            return false;
+          }
+
+          /*
+           * Explorer has not indexed the contract.
+           */
+          if (
+            response.ok &&
+            result?.indexed === false
           ) {
             setVerificationStatus(
               "waiting-contract"
             );
 
             setVerificationMessage(
-              "The explorer has not indexed the contract yet. We will keep trying."
+              "The contract is deployed, but the explorer has not indexed it yet."
             );
 
             return false;
           }
 
           setVerificationStatus(
-            "submitted"
+            "manual"
           );
 
           setVerificationMessage(
-            "Verification is still being processed by the explorer."
+            "The explorer did not confirm source-code verification."
           );
 
           return false;
@@ -575,9 +564,11 @@ export default function DeployPage() {
               : "Unable to check verification status."
           );
 
+          setVerificationMessage(
+            "The contract is deployed successfully, but verification could not be confirmed automatically."
+          );
+
           return false;
-        } finally {
-          setCheckingAgain(false);
         }
       },
       []
@@ -591,6 +582,15 @@ export default function DeployPage() {
     deployedAddress: Address,
     constructorArgs: ConstructorArgs
   ) {
+    if (
+      verificationRunning.current
+    ) {
+      return;
+    }
+
+    verificationRunning.current =
+      true;
+
     try {
       setVerificationStatus(
         "loading"
@@ -601,10 +601,17 @@ export default function DeployPage() {
       setVerificationAttempts(0);
 
       /*
-       * Encode EXACT constructor arguments.
+       * =====================================================
+       * ENCODE EXACT CONSTRUCTOR ARGUMENTS
+       * =====================================================
        *
-       * The tuple is explicitly typed so TypeScript knows
-       * all 5 required values exist.
+       * IOPnToken constructor:
+       *
+       * string
+       * string
+       * uint256
+       * uint8
+       * address
        */
       const encodedConstructorArgs =
         encodeAbiParameters(
@@ -638,12 +645,11 @@ export default function DeployPage() {
         );
 
       /*
-       * Load Standard JSON input through the server.
-       *
-       * The file remains in:
-       *
-       * artifacts/IOPnToken-standard-input.json
+       * =====================================================
+       * LOAD STANDARD JSON
+       * =====================================================
        */
+
       const standardInputResponse =
         await fetch(
           "/api/verify?standardInput=true",
@@ -657,7 +663,7 @@ export default function DeployPage() {
 
       if (
         !standardInputResponse.ok ||
-        !standardInputResult.success
+        !standardInputResult?.success
       ) {
         throw new Error(
           standardInputResult?.error ||
@@ -667,6 +673,16 @@ export default function DeployPage() {
 
       const standardInput =
         standardInputResult.standardInput;
+
+      if (
+        typeof standardInput !==
+          "string" ||
+        !standardInput.trim()
+      ) {
+        throw new Error(
+          "Standard JSON compiler input is empty."
+        );
+      }
 
       const compilerVersion =
         artifact?.compiler?.version ||
@@ -681,14 +697,16 @@ export default function DeployPage() {
         200;
 
       /*
-       * ----------------------------------------------------
-       * FIRST:
-       * Check whether it has already been verified.
-       * ----------------------------------------------------
+       * =====================================================
+       * FIRST CHECK
+       * =====================================================
+       *
+       * Maybe the user already manually verified it.
        */
       const alreadyVerified =
         await checkVerification(
-          deployedAddress
+          deployedAddress,
+          true
         );
 
       if (
@@ -698,20 +716,27 @@ export default function DeployPage() {
       }
 
       /*
-       * ----------------------------------------------------
-       * SUBMIT
-       * ----------------------------------------------------
+       * =====================================================
+       * SUBMIT VERIFICATION
+       * =====================================================
        */
+
+      setVerificationStatus(
+        "submitted"
+      );
+
+      setVerificationMessage(
+        "Submitting the exact Standard JSON source and constructor information to the IOPn Explorer..."
+      );
+
       const response =
         await fetch(
           "/api/verify",
           {
             method: "POST",
-
             headers: {
               "Content-Type":
                 "application/json",
-
               Accept:
                 "application/json",
             },
@@ -746,48 +771,48 @@ export default function DeployPage() {
       const result =
         await response.json();
 
-      if (
-        !response.ok ||
-        !result.success
-      ) {
-        throw new Error(
-          result?.error ||
-            result?.message ||
-            "Explorer verification failed."
-        );
-      }
-
       /*
-       * The explorer may tell us that it was already
-       * verified during submission.
+       * =====================================================
+       * IMPORTANT
+       *
+       * "submitted" is NOT "verified".
+       * =====================================================
        */
+
       if (
-        result.verified ===
-        true
+        result?.verified === true
       ) {
         setVerificationStatus(
           "verified"
         );
 
         setVerificationMessage(
-          "Your contract is verified on the IOPn Explorer."
+          "The IOPn Explorer confirms that the contract source code is verified."
         );
 
         return;
       }
 
-      /*
-       * Explorer has accepted the request.
-       */
       if (
-        result.waitingForIndexing
+        !response.ok ||
+        result?.success === false
+      ) {
+        throw new Error(
+          result?.error ||
+            result?.message ||
+            "Explorer rejected the verification request."
+        );
+      }
+
+      if (
+        result?.waitingForIndexing
       ) {
         setVerificationStatus(
           "waiting-contract"
         );
 
         setVerificationMessage(
-          "The explorer is still indexing your contract."
+          "The contract is deployed, but the explorer is still indexing it."
         );
       } else {
         setVerificationStatus(
@@ -795,17 +820,16 @@ export default function DeployPage() {
         );
 
         setVerificationMessage(
-          "Verification submitted. Waiting for the explorer to finish processing."
+          "Verification was submitted successfully. The explorer has not yet confirmed that the source is verified."
         );
       }
 
       /*
-       * ----------------------------------------------------
-       * POLL
-       *
-       * 24 × 5 seconds = about 2 minutes.
-       * ----------------------------------------------------
+       * =====================================================
+       * POLLING
+       * =====================================================
        */
+
       for (
         let attempt = 1;
         attempt <=
@@ -816,7 +840,7 @@ export default function DeployPage() {
           attempt
         );
 
-        await new Promise(
+        await new Promise<void>(
           (resolve) =>
             setTimeout(
               resolve,
@@ -824,9 +848,16 @@ export default function DeployPage() {
             )
         );
 
+        /*
+         * Never automatically mark verified here.
+         *
+         * Only the server's verified:true response
+         * can change the UI to verified.
+         */
         const verified =
           await checkVerification(
-            deployedAddress
+            deployedAddress,
+            false
           );
 
         if (
@@ -834,21 +865,35 @@ export default function DeployPage() {
         ) {
           return;
         }
+
+        /*
+         * Restore submitted status after each check
+         * unless explorer says it is still indexing.
+         */
+        if (
+          verificationStatus !==
+            "waiting-contract" &&
+          verificationStatus !==
+            "verified"
+        ) {
+          setVerificationStatus(
+            "submitted"
+          );
+        }
       }
 
       /*
-       * IMPORTANT:
-       *
-       * Do NOT pretend that polling is still active.
-       *
-       * Give the user a clear fallback.
+       * =====================================================
+       * MANUAL FALLBACK
+       * =====================================================
        */
+
       setVerificationStatus(
         "manual"
       );
 
       setVerificationMessage(
-        "The explorer is taking longer than expected. Your token is deployed successfully. You can check again or verify manually."
+        "The explorer has not confirmed verification yet. You can verify manually or check again without redeploying."
       );
     } catch (err) {
       console.error(
@@ -867,8 +912,11 @@ export default function DeployPage() {
       );
 
       setVerificationMessage(
-        "Your token deployment is still successful. You can check again or verify manually."
+        "Your token is deployed successfully. Verification can be checked again or completed manually on the explorer."
       );
+    } finally {
+      verificationRunning.current =
+        false;
     }
   }
 
@@ -882,7 +930,11 @@ export default function DeployPage() {
     event.preventDefault();
 
     setError("");
-    setContractAddress(undefined);
+
+    setContractAddress(
+      undefined
+    );
+
     setTxHash(undefined);
 
     setVerificationStatus(
@@ -890,7 +942,10 @@ export default function DeployPage() {
     );
 
     setVerificationError("");
+
     setVerificationMessage("");
+
+    setVerificationAttempts(0);
 
     setDeploymentConstructorArgs(
       null
@@ -939,6 +994,13 @@ export default function DeployPage() {
           decimalsNumber
         );
 
+      /*
+       * Explicit 5-element tuple.
+       *
+       * This also prevents the TypeScript error:
+       *
+       * any[] is not assignable to readonly [...]
+       */
       const constructorArgs: ConstructorArgs =
         [
           trimmedName,
@@ -1024,10 +1086,14 @@ export default function DeployPage() {
         "Deployment succeeded, but the exact constructor arguments were unavailable."
       );
 
+      setVerificationMessage(
+        "The token is deployed. Verify it manually or check the explorer."
+      );
+
       return;
     }
 
-    verifyContract(
+    void verifyContract(
       deployedAddress,
       deploymentConstructorArgs
     );
@@ -1071,21 +1137,84 @@ export default function DeployPage() {
 
   async function handleCheckAgain() {
     if (
-      !contractAddress
+      !contractAddress ||
+      checkingAgain
     ) {
       return;
     }
 
-    setVerificationAttempts(
-      0
+    setCheckingAgain(true);
+
+    setVerificationError("");
+
+    setVerificationAttempts(0);
+
+    try {
+      /*
+       * This is the only operation that can turn
+       * the UI into "verified" after manual verification.
+       */
+      const verified =
+        await checkVerification(
+          contractAddress,
+          true
+        );
+
+      if (
+        verified
+      ) {
+        return;
+      }
+
+      setVerificationStatus(
+        "manual"
+      );
+
+      setVerificationMessage(
+        "The explorer still does not confirm that this contract's source code is verified."
+      );
+    } finally {
+      setCheckingAgain(false);
+    }
+  }
+
+  /* =======================================================
+     RESET
+  ======================================================= */
+
+  function resetStatus() {
+    if (isDeploying) {
+      return;
+    }
+
+    verificationRunning.current =
+      false;
+
+    setStatus("idle");
+
+    setError("");
+
+    setTxHash(undefined);
+
+    setContractAddress(
+      undefined
     );
 
-    await checkVerification(
-      contractAddress,
-      {
-        manual: true,
-      }
+    setCopied(false);
+
+    setDeploymentConstructorArgs(
+      null
     );
+
+    setVerificationStatus(
+      "idle"
+    );
+
+    setVerificationError("");
+
+    setVerificationMessage("");
+
+    setVerificationAttempts(0);
   }
 
   /* =======================================================
@@ -1111,8 +1240,9 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Preparing the exact compiler input and
-                constructor arguments used by this deployment.
+                Preparing the exact compiler input,
+                deployment bytecode and constructor
+                arguments used by this deployment.
               </p>
             </div>
           </div>
@@ -1125,22 +1255,32 @@ export default function DeployPage() {
       "waiting-contract"
     ) {
       return (
-        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
+        <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <Loader2
               size={20}
-              className="mt-0.5 shrink-0 animate-spin text-cyan-400"
+              className="mt-0.5 shrink-0 animate-spin text-amber-400"
             />
 
             <div className="min-w-0">
-              <p className="font-bold">
+              <p className="font-bold text-amber-300">
                 Waiting for explorer indexing
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Your token is already deployed. The explorer
-                has not finished indexing the contract yet.
+                Your token is already deployed. The
+                explorer has not finished indexing the
+                contract yet.
               </p>
+
+              {verificationAttempts >
+                0 && (
+                <p className="mt-2 text-[10px] text-white/25">
+                  Checking...{" "}
+                  {verificationAttempts}/
+                  {STATUS_MAX_ATTEMPTS}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -1160,19 +1300,19 @@ export default function DeployPage() {
             />
 
             <div className="min-w-0 flex-1">
-              <p className="font-bold">
+              <p className="font-bold text-cyan-300">
                 Verification submitted
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
                 {verificationMessage ||
-                  "The explorer is processing your verification request."}
+                  "The explorer has received the verification request. This does not mean the contract is verified yet."}
               </p>
 
               {verificationAttempts >
                 0 && (
                 <p className="mt-2 text-[10px] text-white/25">
-                  Checking status...{" "}
+                  Checking explorer...{" "}
                   {verificationAttempts}/
                   {STATUS_MAX_ATTEMPTS}
                 </p>
@@ -1201,8 +1341,8 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Checking the current verification status
-                directly from the explorer.
+                Checking the current source verification
+                status from the explorer.
               </p>
             </div>
           </div>
@@ -1222,15 +1362,31 @@ export default function DeployPage() {
               className="mt-0.5 shrink-0 text-emerald-400"
             />
 
-            <div>
+            <div className="min-w-0">
               <p className="font-black text-emerald-300">
                 Contract verified
               </p>
 
-              <p className="mt-1 text-xs leading-5 text-white/40">
-                Your token source code is verified on the
-                IOPn Explorer.
+              <p className="mt-1 text-xs leading-5 text-white/45">
+                The IOPn Explorer has confirmed that the
+                source code for this contract is verified.
               </p>
+
+              {verificationUrl && (
+                <a
+                  href={
+                    verificationUrl
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-black text-emerald-400 hover:text-emerald-300"
+                >
+                  View verified contract
+                  <ExternalLink
+                    size={13}
+                  />
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -1249,18 +1405,18 @@ export default function DeployPage() {
               className="mt-0.5 shrink-0 text-amber-400"
             />
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-black text-amber-300">
-                Verification needs another check
+                Verification not confirmed
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/45">
                 {verificationMessage ||
                   verificationError ||
-                  "The explorer is taking longer than expected."}
+                  "The explorer has not confirmed source-code verification yet."}
               </p>
 
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={
@@ -1269,7 +1425,7 @@ export default function DeployPage() {
                   disabled={
                     checkingAgain
                   }
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 text-xs font-black text-black transition hover:bg-cyan-300 disabled:opacity-50"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 text-xs font-black text-black transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {checkingAgain ? (
                     <Loader2
@@ -1299,6 +1455,12 @@ export default function DeployPage() {
                   />
                 </a>
               </div>
+
+              {verificationError && (
+                <p className="mt-3 break-words text-[10px] leading-4 text-red-300/60">
+                  {verificationError}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -1342,7 +1504,9 @@ export default function DeployPage() {
     <main className="min-h-screen bg-[#030712] px-4 pb-28 pt-6 text-white">
       <div className="mx-auto w-full max-w-2xl">
 
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
         <div className="mb-6">
           <div className="mb-4 flex items-center gap-3">
@@ -1387,7 +1551,9 @@ export default function DeployPage() {
           </div>
         </div>
 
-        {/* WALLET */}
+        {/* =================================================
+            WALLET
+        ================================================= */}
 
         <div className="mb-5 rounded-[26px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -1423,12 +1589,12 @@ export default function DeployPage() {
           </div>
         </div>
 
-        {/* FORM */}
+        {/* =================================================
+            FORM
+        ================================================= */}
 
         <form
-          onSubmit={
-            handleDeploy
-          }
+          onSubmit={handleDeploy}
         >
           <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_25px_80px_rgba(0,0,0,.35)] backdrop-blur-xl">
 
@@ -1721,7 +1887,9 @@ export default function DeployPage() {
                   </div>
                 )}
 
-              {/* SUCCESS */}
+              {/* =================================================
+                  SUCCESS
+              ================================================= */}
 
               {status ===
                 "success" &&
@@ -1729,6 +1897,7 @@ export default function DeployPage() {
                   <div className="overflow-hidden rounded-[24px] border border-emerald-400/20 bg-emerald-400/[0.045]">
 
                     <div className="p-5">
+
                       <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10">
                           <CheckCircle2
@@ -1818,9 +1987,12 @@ export default function DeployPage() {
                       </div>
                     </div>
 
-                    {/* VERIFICATION */}
+                    {/* =================================================
+                        VERIFICATION
+                    ================================================= */}
 
                     <div className="border-t border-white/[0.07] bg-white/[0.02] p-5">
+
                       <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10">
                           <FileCheck2
@@ -1835,9 +2007,10 @@ export default function DeployPage() {
                           </h3>
 
                           <p className="mt-1 text-xs leading-5 text-white/40">
-                            IOPn DEX automatically submits your
-                            Standard JSON source and checks the
-                            explorer until the contract is verified.
+                            IOPn DEX submits the exact Standard
+                            JSON source and constructor arguments,
+                            then checks the explorer for confirmed
+                            source-code verification.
                           </p>
                         </div>
                       </div>
@@ -1879,35 +2052,33 @@ export default function DeployPage() {
                       {/* CHECK AGAIN */}
 
                       {verificationStatus !==
-                        "verified" &&
-                        verificationStatus !==
-                          "loading" &&
-                        verificationStatus !==
-                          "checking" && (
-                          <button
-                            type="button"
-                            onClick={
-                              handleCheckAgain
-                            }
-                            disabled={
-                              checkingAgain
-                            }
-                            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-sm font-black text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {checkingAgain ? (
-                              <Loader2
-                                size={17}
-                                className="animate-spin"
-                              />
-                            ) : (
-                              <RefreshCw
-                                size={17}
-                              />
-                            )}
+                        "verified" && (
+                        <button
+                          type="button"
+                          onClick={
+                            handleCheckAgain
+                          }
+                          disabled={
+                            checkingAgain ||
+                            verificationStatus ===
+                              "checking"
+                          }
+                          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-sm font-black text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {checkingAgain ? (
+                            <Loader2
+                              size={17}
+                              className="animate-spin"
+                            />
+                          ) : (
+                            <RefreshCw
+                              size={17}
+                            />
+                          )}
 
-                            Check Verification Again
-                          </button>
-                        )}
+                          Check Verification Again
+                        </button>
+                      )}
 
                       {/* MANUAL */}
 
@@ -1933,19 +2104,30 @@ export default function DeployPage() {
                         </a>
                       )}
 
+                      {/* VERIFIED CONFIRMATION */}
+
                       {verificationStatus ===
                         "verified" && (
-                        <div className="mt-4 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.035] p-3 text-center">
-                          <p className="text-xs font-bold text-emerald-300">
-                            ✓ Your contract is verified
-                          </p>
+                        <div className="mt-4 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.035] p-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <CheckCircle2
+                              size={16}
+                              className="text-emerald-400"
+                            />
 
-                          <p className="mt-1 text-[10px] text-white/30">
-                            The verified source is now visible
-                            on the IOPn Explorer.
+                            <p className="text-xs font-black text-emerald-300">
+                              Contract verified
+                            </p>
+                          </div>
+
+                          <p className="mt-1 text-[10px] leading-4 text-white/30">
+                            The IOPn Explorer has confirmed the
+                            verified source code.
                           </p>
                         </div>
                       )}
+
+                      {/* INFO */}
 
                       <p className="mt-3 text-center text-[10px] leading-4 text-white/25">
                         If you verify the contract manually,
@@ -1953,14 +2135,20 @@ export default function DeployPage() {
                         <span className="font-bold text-white/40">
                           Check Verification Again
                         </span>
-                        . The app will detect the verified
-                        contract without redeploying it.
+                        . The app will only display
+                        <span className="font-bold text-emerald-400/70">
+                          {" "}
+                          Contract verified
+                        </span>{" "}
+                        after the explorer confirms it.
                       </p>
                     </div>
                   </div>
                 )}
 
-              {/* DEPLOY BUTTON */}
+              {/* =================================================
+                  DEPLOY BUTTON
+              ================================================= */}
 
               <button
                 type="submit"
@@ -1998,11 +2186,28 @@ export default function DeployPage() {
                 and network gas. Verification does not require
                 another wallet transaction.
               </p>
+
+              {/* RESET */}
+
+              {status ===
+                "success" && (
+                <button
+                  type="button"
+                  onClick={
+                    resetStatus
+                  }
+                  className="w-full text-center text-xs font-bold text-white/30 transition hover:text-white/60"
+                >
+                  Deploy another token
+                </button>
+              )}
             </div>
           </div>
         </form>
 
-        {/* FOOTER */}
+        {/* =================================================
+            FOOTER
+        ================================================= */}
 
         <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <div className="flex items-start gap-3">
