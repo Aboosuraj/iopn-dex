@@ -41,14 +41,15 @@ import {
 type ContractArtifact = {
   abi: Abi;
   bytecode: Hex | string;
-
+  contractName?: string;
   compiler?: {
-    name?: string;
     version?: string;
     fullVersion?: string;
   };
-
-  compilerInput?: unknown;
+  optimization?: {
+    enabled?: boolean;
+    runs?: number;
+  };
 };
 
 type ConstructorArgs = readonly [
@@ -69,6 +70,7 @@ type DeployStatus =
 type VerificationStatus =
   | "idle"
   | "loading"
+  | "waiting-contract"
   | "submitted"
   | "checking"
   | "verified"
@@ -81,9 +83,6 @@ type VerificationStatus =
 const EXPLORER_URL =
   "https://testnet.iopn.tech";
 
-const EXPLORER_API =
-  `${EXPLORER_URL}/api/v2`;
-
 const DEFAULT_DECIMALS = 18;
 
 const CONTRACT_NAME =
@@ -92,11 +91,21 @@ const CONTRACT_NAME =
 const LICENSE_TYPE =
   "mit";
 
-const VERIFICATION_POLL_INTERVAL =
-  4000;
+/*
+ * We intentionally wait for the explorer indexer
+ * before sending the verification request.
+ */
+const CONTRACT_READY_INTERVAL = 2000;
 
-const VERIFICATION_MAX_ATTEMPTS =
-  20;
+const CONTRACT_READY_MAX_ATTEMPTS = 20;
+
+/*
+ * After submitting verification, the explorer may
+ * need additional time to process the source.
+ */
+const VERIFICATION_POLL_INTERVAL = 3000;
+
+const VERIFICATION_MAX_ATTEMPTS = 20;
 
 /* =========================================================
    COMPONENT
@@ -116,7 +125,7 @@ export default function DeployPage() {
   } = useWalletClient();
 
   /* =======================================================
-     FORM STATE
+     FORM
   ======================================================= */
 
   const [name, setName] =
@@ -188,8 +197,8 @@ export default function DeployPage() {
   ] = useState(false);
 
   /*
-   * EXACT constructor arguments used
-   * during deployment.
+   * EXACT constructor arguments used during
+   * deployment.
    */
   const [
     deploymentConstructorArgs,
@@ -282,7 +291,7 @@ export default function DeployPage() {
   }, []);
 
   /* =======================================================
-     WAIT FOR DEPLOYMENT
+     WAIT FOR DEPLOYMENT RECEIPT
   ======================================================= */
 
   const {
@@ -318,7 +327,7 @@ export default function DeployPage() {
       : "";
 
   /* =======================================================
-     DEPLOYMENT STATE
+     DEPLOYING
   ======================================================= */
 
   const isDeploying =
@@ -439,111 +448,6 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     GET EXPLORER VERIFICATION STATUS
-  ======================================================= */
-
-  async function getVerificationStatus(
-    deployedAddress: Address
-  ) {
-    const response =
-      await fetch(
-        `${EXPLORER_API}/smart-contracts/${deployedAddress}`,
-        {
-          method: "GET",
-          headers: {
-            Accept:
-              "application/json",
-          },
-          cache: "no-store",
-        }
-      );
-
-    if (!response.ok) {
-      return {
-        verified: false,
-        data: null,
-      };
-    }
-
-    const data =
-      await response.json();
-
-    const verified =
-      data?.is_fully_verified ===
-        true ||
-      data?.is_verified ===
-        true;
-
-    return {
-      verified,
-      data,
-    };
-  }
-
-  /* =======================================================
-     POLL VERIFICATION STATUS
-  ======================================================= */
-
-  async function pollVerificationStatus(
-    deployedAddress: Address
-  ) {
-    setVerificationStatus(
-      "checking"
-    );
-
-    for (
-      let attempt = 1;
-      attempt <=
-      VERIFICATION_MAX_ATTEMPTS;
-      attempt++
-    ) {
-      try {
-        const result =
-          await getVerificationStatus(
-            deployedAddress
-          );
-
-        if (result.verified) {
-          setVerificationStatus(
-            "verified"
-          );
-
-          return true;
-        }
-      } catch (err) {
-        console.warn(
-          `Verification status check ${attempt} failed:`,
-          err
-        );
-      }
-
-      if (
-        attempt <
-        VERIFICATION_MAX_ATTEMPTS
-      ) {
-        await new Promise(
-          (resolve) =>
-            setTimeout(
-              resolve,
-              VERIFICATION_POLL_INTERVAL
-            )
-        );
-      }
-    }
-
-    /*
-     * The request may still be processing.
-     *
-     * Do NOT call it a permanent failure.
-     */
-    setVerificationStatus(
-      "submitted"
-    );
-
-    return false;
-  }
-
-  /* =======================================================
      AUTOMATIC VERIFICATION
   ======================================================= */
 
@@ -558,10 +462,13 @@ export default function DeployPage() {
 
       setVerificationError("");
 
-      /* ---------------------------------------------------
-         ENCODE EXACT CONSTRUCTOR ARGUMENTS
-      --------------------------------------------------- */
-
+      /*
+       * Encode EXACT constructor arguments.
+       *
+       * IMPORTANT:
+       * The result intentionally has NO 0x prefix.
+       * Blockscout expects raw ABI-encoded hex here.
+       */
       const encodedConstructorArgs =
         encodeAbiParameters(
           [
@@ -582,22 +489,12 @@ export default function DeployPage() {
             },
           ],
           constructorArgs
-        );
+        ).replace(/^0x/, "");
 
       /*
-       * The explorer expects constructor arguments
-       * without 0x.
+       * Load the exact Standard JSON compiler input
+       * generated by compile-token.mjs.
        */
-      const constructorArgsWithoutPrefix =
-        encodedConstructorArgs.replace(
-          /^0x/i,
-          ""
-        );
-
-      /* ---------------------------------------------------
-         LOAD EXACT STANDARD JSON INPUT
-      --------------------------------------------------- */
-
       const standardInputResponse =
         await fetch(
           "/artifacts/IOPnToken-standard-input.json",
@@ -610,86 +507,39 @@ export default function DeployPage() {
         !standardInputResponse.ok
       ) {
         throw new Error(
-          `Could not load Standard JSON Input (${standardInputResponse.status}).`
+          "Could not load IOPnToken-standard-input.json."
         );
       }
 
       const standardInput =
         await standardInputResponse.text();
 
-      if (!standardInput.trim()) {
-        throw new Error(
-          "Standard JSON Input is empty."
-        );
-      }
-
-      /* ---------------------------------------------------
-         GET EXACT COMPILER VERSION
-      --------------------------------------------------- */
-
+      /*
+       * Use the compiler version stored inside
+       * the generated artifact instead of maintaining
+       * a second hardcoded compiler version.
+       */
       const compilerVersion =
-        artifact?.compiler
-          ?.fullVersion ||
-        artifact?.compiler
-          ?.version;
+        artifact?.compiler?.version ||
+        "v0.8.36+commit.8a079791";
 
-      if (!compilerVersion) {
-        throw new Error(
-          "Compiler version is missing from IOPnToken.json."
-        );
-      }
+      const optimizationEnabled =
+        artifact?.optimization?.enabled ??
+        true;
+
+      const optimizationRuns =
+        artifact?.optimization?.runs ??
+        200;
 
       /*
-       * Your compile script stores the version as:
+       * Send ONE JSON request to our server route.
        *
-       * v0.8.36+commit.xxxxxxxx
+       * The server route handles:
        *
-       * Make sure it starts with v.
+       * 1. Waiting for explorer indexing
+       * 2. Verification submission
+       * 3. Returning explorer response
        */
-      const normalizedCompilerVersion =
-        compilerVersion.startsWith(
-          "v"
-        )
-          ? compilerVersion
-          : `v${compilerVersion}`;
-
-      console.log(
-        "===================================="
-      );
-
-      console.log(
-        "AUTOMATIC TOKEN VERIFICATION"
-      );
-
-      console.log(
-        "===================================="
-      );
-
-      console.log(
-        "Contract:",
-        deployedAddress
-      );
-
-      console.log(
-        "Compiler:",
-        normalizedCompilerVersion
-      );
-
-      console.log(
-        "Constructor args bytes:",
-        constructorArgsWithoutPrefix.length /
-          2
-      );
-
-      console.log(
-        "Constructor args:",
-        constructorArgsWithoutPrefix
-      );
-
-      /* ---------------------------------------------------
-         CALL OUR NEXT.JS VERIFICATION API
-      --------------------------------------------------- */
-
       const response =
         await fetch(
           "/api/verify",
@@ -707,11 +557,10 @@ export default function DeployPage() {
               address:
                 deployedAddress,
 
-              compilerVersion:
-                normalizedCompilerVersion,
-
               contractName:
                 CONTRACT_NAME,
+
+              compilerVersion,
 
               licenseType:
                 LICENSE_TYPE,
@@ -719,10 +568,14 @@ export default function DeployPage() {
               standardInput,
 
               constructorArgs:
-                constructorArgsWithoutPrefix,
+                encodedConstructorArgs,
 
               autodetectConstructorArgs:
                 false,
+
+              optimizationEnabled,
+
+              optimizationRuns,
             }),
           }
         );
@@ -730,39 +583,30 @@ export default function DeployPage() {
       const result =
         await response.json();
 
-      console.log(
-        "Verification API response:",
-        result
-      );
-
       if (
         !response.ok ||
-        result?.success !==
-          true
+        !result.success
       ) {
         throw new Error(
           result?.error ||
             result?.message ||
-            result?.explorerResponse
-              ?.message ||
-            "Explorer verification submission failed."
+            "Explorer verification failed."
         );
       }
 
       /*
-       * The explorer accepted the submission.
+       * The request was accepted.
        */
       setVerificationStatus(
         "submitted"
       );
 
       /*
-       * If our API already knows that it is verified,
+       * If the explorer already says verified,
        * immediately show verified.
        */
       if (
-        result?.verified ===
-        true
+        result.verified === true
       ) {
         setVerificationStatus(
           "verified"
@@ -772,7 +616,7 @@ export default function DeployPage() {
       }
 
       /*
-       * Otherwise wait for explorer processing.
+       * Continue checking actual explorer state.
        */
       await pollVerificationStatus(
         deployedAddress
@@ -793,6 +637,82 @@ export default function DeployPage() {
           : "Automatic verification failed."
       );
     }
+  }
+
+  /* =======================================================
+     POLL ACTUAL VERIFICATION STATUS
+  ======================================================= */
+
+  async function pollVerificationStatus(
+    deployedAddress: Address
+  ) {
+    setVerificationStatus(
+      "checking"
+    );
+
+    for (
+      let attempt = 1;
+      attempt <=
+      VERIFICATION_MAX_ATTEMPTS;
+      attempt++
+    ) {
+      try {
+        const response =
+          await fetch(
+            `/api/verify?address=${deployedAddress}`,
+            {
+              cache: "no-store",
+            }
+          );
+
+        if (
+          response.ok
+        ) {
+          const data =
+            await response.json();
+
+          if (
+            data?.verified === true ||
+            data?.isVerified === true ||
+            data?.isFullyVerified ===
+              true
+          ) {
+            setVerificationStatus(
+              "verified"
+            );
+
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "Verification status check failed:",
+          err
+        );
+      }
+
+      if (
+        attempt <
+        VERIFICATION_MAX_ATTEMPTS
+      ) {
+        await new Promise(
+          (resolve) =>
+            setTimeout(
+              resolve,
+              VERIFICATION_POLL_INTERVAL
+            )
+        );
+      }
+    }
+
+    /*
+     * Do not report a false failure.
+     *
+     * The explorer may still be processing.
+     */
+    setVerificationStatus(
+      "submitted"
+    );
   }
 
   /* =======================================================
@@ -856,8 +776,7 @@ export default function DeployPage() {
         Number(decimals);
 
       /*
-       * Convert human-readable supply
-       * into ERC-20 base units.
+       * Convert human supply to base units.
        */
       const initialSupply =
         parseUnits(
@@ -866,7 +785,13 @@ export default function DeployPage() {
         );
 
       /*
-       * EXACT constructor used by IOPnToken.
+       * EXACT constructor:
+       *
+       * string
+       * string
+       * uint256
+       * uint8
+       * address
        */
       const constructorArgs = [
         trimmedName,
@@ -877,7 +802,7 @@ export default function DeployPage() {
       ] as const;
 
       /*
-       * Save exact arguments BEFORE deployment.
+       * Save BEFORE deployment.
        */
       setDeploymentConstructorArgs(
         constructorArgs
@@ -947,10 +872,6 @@ export default function DeployPage() {
 
     setStatus("success");
 
-    /*
-     * Verification MUST use the exact
-     * constructor arguments from deployment.
-     */
     if (
       !deploymentConstructorArgs
     ) {
@@ -959,18 +880,24 @@ export default function DeployPage() {
       );
 
       setVerificationError(
-        "Deployment succeeded, but the exact constructor arguments were not available for verification."
+        "Deployment succeeded, but the exact constructor arguments were unavailable."
       );
 
       return;
     }
 
+    /*
+     * Start automatic verification.
+     *
+     * The verification API will FIRST wait until
+     * the explorer recognizes this address as a
+     * smart contract.
+     */
     verifyContract(
       deployedAddress,
       deploymentConstructorArgs
     );
 
-    // Intentionally reacts to deployment receipt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isConfirmed,
@@ -978,7 +905,7 @@ export default function DeployPage() {
   ]);
 
   /* =======================================================
-     COPY ADDRESS
+     COPY
   ======================================================= */
 
   async function copyAddress() {
@@ -1023,13 +950,41 @@ export default function DeployPage() {
 
             <div>
               <p className="font-bold">
-                Starting automatic verification
+                Preparing automatic verification
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Sending the exact compiler input,
-                compiler version and constructor
-                arguments to the IOPn Explorer.
+                Preparing the exact compiler input and
+                constructor arguments used by this deployment.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (
+      verificationStatus ===
+      "waiting-contract"
+    ) {
+      return (
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
+          <div className="flex items-start gap-3">
+            <Loader2
+              size={20}
+              className="mt-0.5 shrink-0 animate-spin text-cyan-400"
+            />
+
+            <div>
+              <p className="font-bold">
+                Waiting for explorer indexing
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-white/40">
+                Your transaction is confirmed. We are
+                waiting for the IOPn Explorer to recognize
+                the new contract before submitting source
+                verification.
               </p>
             </div>
           </div>
@@ -1055,9 +1010,8 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                The explorer accepted the request.
-                It may still be processing the
-                verification.
+                The explorer accepted the verification
+                request. Waiting for the verification result.
               </p>
             </div>
           </div>
@@ -1083,13 +1037,8 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Waiting for the explorer to confirm
-                that the deployed bytecode is verified.
-              </p>
-
-              <p className="mt-2 text-[10px] text-white/25">
-                This can take a little longer than
-                the deployment transaction.
+                Waiting for the explorer to confirm that
+                the deployed bytecode matches the source.
               </p>
             </div>
           </div>
@@ -1115,8 +1064,8 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Your token source code is now
-                verified on the IOPn Explorer.
+                Your token source code is now verified on
+                the IOPn Explorer.
               </p>
             </div>
           </div>
@@ -1146,9 +1095,9 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-2 text-xs leading-5 text-red-300/50">
-                The token deployment itself was
-                successful. You can open the explorer
-                to inspect the contract.
+                The token deployment itself is still
+                successful. You can inspect the contract on
+                the explorer.
               </p>
             </div>
           </div>
@@ -1185,8 +1134,8 @@ export default function DeployPage() {
               </h1>
 
               <p className="text-sm text-white/45">
-                Create and automatically verify your
-                ERC-20 token on IOPn Testnet
+                Create and verify your ERC-20 token on
+                IOPn Testnet
               </p>
             </div>
           </div>
@@ -1310,7 +1259,6 @@ export default function DeployPage() {
                           12
                         )
                     );
-
                     resetStatus();
                   }}
                   placeholder="TST"
@@ -1341,7 +1289,6 @@ export default function DeployPage() {
                         ""
                       )
                     );
-
                     resetStatus();
                   }}
                   placeholder="1000000"
@@ -1374,7 +1321,6 @@ export default function DeployPage() {
                     setDecimals(
                       e.target.value
                     );
-
                     resetStatus();
                   }}
                   disabled={isDeploying}
@@ -1401,9 +1347,9 @@ export default function DeployPage() {
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-white/40">
-                      Your connected wallet becomes
-                      the initial owner of the deployed
-                      token contract.
+                      Your connected wallet becomes the
+                      initial owner of the deployed token
+                      contract.
                     </p>
                   </div>
                 </div>
@@ -1509,7 +1455,6 @@ export default function DeployPage() {
                             className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-cyan-400"
                           >
                             View transaction
-
                             <ExternalLink
                               size={14}
                             />
@@ -1542,9 +1487,8 @@ export default function DeployPage() {
                           </p>
 
                           <p className="mt-1 text-xs leading-5 text-white/40">
-                            Your ERC-20 token has been
-                            deployed successfully on
-                            IOPn Testnet.
+                            Your ERC-20 token has been deployed
+                            successfully on IOPn Testnet.
                           </p>
                         </div>
                       </div>
@@ -1594,7 +1538,6 @@ export default function DeployPage() {
                             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold text-white/70 transition hover:border-cyan-400/30 hover:text-cyan-400"
                           >
                             View Contract
-
                             <ExternalLink
                               size={13}
                             />
@@ -1611,7 +1554,6 @@ export default function DeployPage() {
                             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold text-white/70 transition hover:border-cyan-400/30 hover:text-cyan-400"
                           >
                             Transaction
-
                             <ExternalLink
                               size={13}
                             />
@@ -1637,10 +1579,10 @@ export default function DeployPage() {
                           </h3>
 
                           <p className="mt-1 text-xs leading-5 text-white/40">
-                            IOPn DEX automatically submits
-                            the exact Solidity source,
-                            compiler settings and constructor
-                            arguments used by this deployment.
+                            IOPn DEX waits for explorer indexing,
+                            then submits the exact Solidity source,
+                            compiler settings and constructor arguments
+                            used by this deployment.
                           </p>
                         </div>
                       </div>
@@ -1653,10 +1595,9 @@ export default function DeployPage() {
                             Compiler
                           </p>
 
-                          <p className="mt-1 text-[11px] font-bold text-white/70">
-                            {artifact?.compiler
-                              ?.fullVersion ||
-                              "Solidity 0.8.36"}
+                          <p className="mt-1 break-all text-[11px] font-bold text-white/70">
+                            {artifact?.compiler?.version ||
+                              "v0.8.36+commit.8a079791"}
                           </p>
                         </div>
 
@@ -1666,7 +1607,10 @@ export default function DeployPage() {
                           </p>
 
                           <p className="mt-1 text-[11px] font-bold text-white/70">
-                            Enabled · 200 runs
+                            Enabled ·{" "}
+                            {artifact?.optimization?.runs ||
+                              200}{" "}
+                            runs
                           </p>
                         </div>
                       </div>
@@ -1697,9 +1641,10 @@ export default function DeployPage() {
                       {verificationStatus ===
                         "submitted" && (
                         <p className="mt-3 text-center text-[10px] leading-4 text-white/25">
-                          The verification request was
-                          accepted. The explorer may take
-                          longer to finish processing it.
+                          Verification has been submitted. If the
+                          explorer takes longer than the automatic
+                          polling window, the contract may still
+                          become verified shortly.
                         </p>
                       )}
                     </div>
@@ -1740,10 +1685,10 @@ export default function DeployPage() {
               </button>
 
               <p className="text-center text-[11px] leading-5 text-white/25">
-                Deployment requires a wallet transaction
-                and network gas. After confirmation,
-                IOPn DEX automatically submits the contract
-                for explorer verification.
+                Deployment requires a wallet transaction and
+                network gas. After confirmation, IOPn DEX waits
+                for explorer indexing before automatically
+                submitting verification.
               </p>
             </div>
           </div>
