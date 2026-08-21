@@ -1,0 +1,16 @@
+node <<'EOF' const fs = require("fs"); const standardInput = 
+fs.readFileSync(
+  "public/artifacts/IOPnToken-standard-input.json", "utf8" ); const 
+request = {
+  address: "0x5666d8Fc37541c29A9307da7847C8E53c6A89a54", 
+  compilerVersion:
+    "v0.8.36+commit.8a079791.Emscripten.clang", contractName: 
+  "IOPnToken", licenseType: "mit", constructorArgs: "", 
+  autodetectConstructorArgs: true, standardInput
+};
+fs.writeFileSync( "test-verification.json", JSON.stringify(request, 
+  null, 2)
+); console.log("Created test-verification.json"); 
+console.log("Standard JSON length:", standardInput.length);
+EOF
+

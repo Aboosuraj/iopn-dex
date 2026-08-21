@@ -1,296 +1,71 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-/* =========================================================
-   CONFIG
-========================================================= */
+const EXPLORER_API = "https://testnet.iopn.tech/api/v2";
 
-const EXPLORER_URL =
-  "https://testnet.iopn.tech";
+const POLL_ATTEMPTS = 20;
+const POLL_DELAY = 3000;
 
-const API_URL =
-  `${EXPLORER_URL}/api/v2`;
+type VerifyBody = {
+  address?: string;
 
-const DEFAULT_LICENSE =
-  "mit";
+  compilerVersion?: string;
+  compiler_version?: string;
 
-const DEFAULT_CONTRACT_NAME =
-  "IOPnToken";
+  contractName?: string;
+  contract_name?: string;
 
-/*
- * The explorer needs time to index a freshly deployed
- * contract before verification can be submitted.
- */
-const CONTRACT_READY_INTERVAL =
-  2000;
+  licenseType?: string;
+  license_type?: string;
 
-const CONTRACT_READY_MAX_ATTEMPTS =
-  20;
+  constructorArgs?: string;
+  constructor_args?: string;
 
-/* =========================================================
-   HELPERS
-========================================================= */
+  standardInput?: string;
+  standard_input?: string;
+};
 
-function isAddress(
-  value: unknown
-): value is string {
+function isAddress(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    /^0x[a-fA-F0-9]{40}$/.test(
-      value.trim()
-    )
+    /^0x[a-fA-F0-9]{40}$/.test(value)
   );
 }
 
-function cleanHex(
-  value: unknown
-): string {
-  if (
-    typeof value !== "string"
-  ) {
-    return "";
-  }
-
-  return value
-    .trim()
-    .replace(
-      /^0x/i,
-      ""
-    )
-    .replace(
-      /\s+/g,
-      ""
-    );
+function sleep(ms: number) {
+  return new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
 }
 
-function extractErrorMessage(
-  value: unknown
-): string {
-  if (!value) {
-    return "Unknown explorer error.";
-  }
-
-  if (
-    typeof value === "string"
-  ) {
-    return value;
-  }
-
-  if (
-    typeof value === "object" &&
-    value !== null
-  ) {
-    const object =
-      value as Record<
-        string,
-        unknown
-      >;
-
-    if (
-      typeof object.message ===
-      "string"
-    ) {
-      return object.message;
-    }
-
-    if (
-      typeof object.error ===
-      "string"
-    ) {
-      return object.error;
-    }
-
-    if (
-      typeof object.result ===
-      "string"
-    ) {
-      return object.result;
-    }
-
-    if (
-      typeof object.detail ===
-      "string"
-    ) {
-      return object.detail;
-    }
-
-    try {
-      return JSON.stringify(
-        value
-      );
-    } catch {
-      return "Unknown explorer error.";
-    }
-  }
-
-  return String(value);
-}
-
-async function readResponse(
-  response: Response
+async function explorerRequest(
+  url: string,
+  options?: RequestInit
 ) {
-  const text =
-    await response.text();
+  const response = await fetch(url, {
+    ...options,
+    cache: "no-store",
+  });
 
-  if (!text) {
-    return null;
-  }
+  const text = await response.text();
+
+  let data: any;
 
   try {
-    return JSON.parse(
-      text
-    );
+    data = JSON.parse(text);
   } catch {
-    return text;
-  }
-}
-
-function explorerVerified(
-  data: unknown
-): boolean {
-  if (
-    !data ||
-    typeof data !== "object"
-  ) {
-    return false;
-  }
-
-  const object =
-    data as Record<
-      string,
-      unknown
-    >;
-
-  return (
-    object.is_verified ===
-      true ||
-    object.is_fully_verified ===
-      true
-  );
-}
-
-/*
- * Blockscout's address endpoint can take a short
- * time to recognize a freshly deployed contract.
- *
- * We specifically wait for:
- *
- * is_contract === true
- *
- * before calling the verification endpoint.
- */
-async function waitForContractRecognition(
-  address: string
-) {
-  let lastData: unknown =
-    null;
-
-  let lastStatus =
-    0;
-
-  for (
-    let attempt = 1;
-    attempt <=
-    CONTRACT_READY_MAX_ATTEMPTS;
-    attempt++
-  ) {
-    try {
-      const response =
-        await fetch(
-          `${API_URL}/addresses/${address}`,
-          {
-            method: "GET",
-
-            headers: {
-              Accept:
-                "application/json",
-            },
-
-            cache: "no-store",
-          }
-        );
-
-      lastStatus =
-        response.status;
-
-      const data =
-        await readResponse(
-          response
-        );
-
-      lastData = data;
-
-      /*
-       * Explorer recognized it.
-       */
-      if (
-        response.ok &&
-        data &&
-        typeof data ===
-          "object"
-      ) {
-        const object =
-          data as Record<
-            string,
-            unknown
-          >;
-
-        if (
-          object.is_contract ===
-          true
-        ) {
-          console.log(
-            "Explorer recognized contract:",
-            {
-              address,
-              attempt,
-            }
-          );
-
-          return {
-            ready: true,
-            data,
-            status:
-              response.status,
-          };
-        }
-      }
-    } catch (error) {
-      console.warn(
-        "Contract recognition check failed:",
-        error
-      );
-    }
-
-    /*
-     * Do not wait after the final attempt.
-     */
-    if (
-      attempt <
-      CONTRACT_READY_MAX_ATTEMPTS
-    ) {
-      await new Promise(
-        (resolve) =>
-          setTimeout(
-            resolve,
-            CONTRACT_READY_INTERVAL
-          )
-      );
-    }
+    data = text;
   }
 
   return {
-    ready: false,
-    data: lastData,
-    status: lastStatus,
+    response,
+    data,
+    text,
   };
 }
 
 /* =========================================================
    GET
-   Check actual verification status
+   Check contract status
 ========================================================= */
 
 export async function GET(
@@ -300,14 +75,9 @@ export async function GET(
     const address =
       request.nextUrl.searchParams.get(
         "address"
-      ) ??
-      request.nextUrl.searchParams.get(
-        "contractAddress"
       );
 
-    if (
-      !isAddress(address)
-    ) {
+    if (!isAddress(address)) {
       return NextResponse.json(
         {
           success: false,
@@ -315,229 +85,184 @@ export async function GET(
           error:
             "A valid contract address is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    const normalizedAddress =
-      address.trim();
-
-    /*
-     * Query the explorer's smart-contract
-     * endpoint.
-     */
-    const response =
-      await fetch(
-        `${API_URL}/smart-contracts/${normalizedAddress}`,
-        {
-          method: "GET",
-
-          headers: {
-            Accept:
-              "application/json",
-          },
-
-          cache: "no-store",
-        }
+    const result =
+      await explorerRequest(
+        `${EXPLORER_API}/smart-contracts/${address}`
       );
 
-    const data =
-      await readResponse(
-        response
-      );
-
-    /*
-     * A newly deployed contract may return
-     * 404 here while the explorer is indexing.
-     *
-     * That is NOT a verification failure.
-     */
-    if (
-      response.status ===
-      404
-    ) {
-      return NextResponse.json({
-        success: true,
-        verified: false,
-        address:
-          normalizedAddress,
-        indexed: false,
-        isVerified: false,
-        isFullyVerified: false,
-        message:
-          "Contract has not been indexed by the explorer yet.",
-        explorerResponse:
-          data,
-      });
-    }
-
-    if (
-      !response.ok
-    ) {
+    if (!result.response.ok) {
       return NextResponse.json(
         {
           success: false,
           verified: false,
-          address:
-            normalizedAddress,
-          explorerStatus:
-            response.status,
+          address,
+          error:
+            result.data?.message ||
+            result.data?.error ||
+            "Unable to query Explorer.",
           explorerResponse:
-            data,
+            result.data,
         },
-        {
-          status:
-            response.status,
-        }
+        { status: 502 }
       );
     }
 
-    const object =
-      data &&
-      typeof data ===
-        "object"
-        ? (
-            data as Record<
-              string,
-              unknown
-            >
-          )
-        : {};
+    const contract =
+      result.data;
 
-    const verified =
-      explorerVerified(
-        data
-      );
+    const isVerified =
+      contract?.is_verified === true;
+
+    const isFullyVerified =
+      contract?.is_fully_verified === true;
+
+    const isPartiallyVerified =
+      contract?.is_partially_verified === true;
+
+    /*
+     * The smart-contract endpoint itself means
+     * the address is indexed as a contract.
+     *
+     * Do not rely on a top-level is_contract field.
+     */
+
+    const isContract = true;
 
     return NextResponse.json({
       success: true,
 
-      verified,
+      verified:
+        isVerified ||
+        isFullyVerified,
 
-      address:
-        normalizedAddress,
+      address,
 
       indexed: true,
 
-      isContract:
-        object.is_contract ??
-        false,
+      isContract,
 
-      isVerified:
-        object.is_verified ??
-        false,
+      isVerified,
 
-      isFullyVerified:
-        object.is_fully_verified ??
-        false,
+      isFullyVerified,
 
-      isPartiallyVerified:
-        object.is_partially_verified ??
-        false,
+      isPartiallyVerified,
 
       name:
-        object.name ??
+        contract?.name ??
         null,
 
       compilerVersion:
-        object.compiler_version ??
+        contract?.compiler_version ??
         null,
 
       evmVersion:
-        object.evm_version ??
+        contract?.evm_version ??
         null,
 
       optimizationEnabled:
-        object.optimization_enabled ??
+        contract?.optimization_enabled ??
         null,
 
       optimizationRuns:
-        object.optimizations_runs ??
-        object.optimization_runs ??
+        contract?.optimization_runs ??
         null,
 
-      verifiedAt:
-        object.verified_at ??
+      constructorArgs:
+        contract?.constructor_args ??
         null,
+
+      decodedConstructorArgs:
+        contract?.decoded_constructor_args ??
+        null,
+
+      sourceAvailable:
+        !!contract?.source_code,
+
+      abiAvailable:
+        Array.isArray(contract?.abi),
 
       explorerResponse:
-        data,
+        contract,
     });
   } catch (error) {
     console.error(
-      "Verification status error:",
+      "GET /api/verify error:",
       error
     );
 
     return NextResponse.json(
       {
         success: false,
-
         verified: false,
-
         error:
           error instanceof Error
             ? error.message
-            : String(error),
+            : "Verification status request failed.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
 
 /* =========================================================
    POST
-   Submit automatic Standard JSON verification
+   Submit verification
 ========================================================= */
 
 export async function POST(
   request: NextRequest
 ) {
   try {
-    /*
-     * The deploy page sends JSON.
-     */
     const body =
-      await request.json();
+      (await request.json()) as VerifyBody;
 
     const address =
-      body?.address ??
-      body?.contractAddress;
+      body.address;
 
-    if (
-      !isAddress(address)
-    ) {
+    const compilerVersion =
+      body.compilerVersion ??
+      body.compiler_version;
+
+    const contractName =
+      body.contractName ??
+      body.contract_name;
+
+    const licenseType =
+      body.licenseType ??
+      body.license_type;
+
+    const constructorArgs =
+      body.constructorArgs ??
+      body.constructor_args;
+
+    const standardInput =
+      body.standardInput ??
+      body.standard_input;
+
+    /* =====================================================
+       BASIC VALIDATION
+    ===================================================== */
+
+    if (!isAddress(address)) {
       return NextResponse.json(
         {
           success: false,
           submitted: false,
           error:
-            "Invalid contract address.",
+            "A valid contract address is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    const normalizedAddress =
-      address.trim();
-
-    /* =====================================================
-       COMPILER
-    ===================================================== */
-
-    const compilerVersion =
-      typeof body?.compilerVersion ===
-      "string"
-        ? body.compilerVersion.trim()
-        : "";
-
-    if (!compilerVersion) {
+    if (
+      !compilerVersion ||
+      typeof compilerVersion !== "string"
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -545,34 +270,44 @@ export async function POST(
           error:
             "Compiler version is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /* =====================================================
-       CONTRACT NAME
-    ===================================================== */
+    if (
+      !contractName ||
+      typeof contractName !== "string"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          submitted: false,
+          error:
+            "Contract name is required.",
+        },
+        { status: 400 }
+      );
+    }
 
-    const contractName =
-      typeof body?.contractName ===
-        "string" &&
-      body.contractName.trim()
-        ? body.contractName.trim()
-        : DEFAULT_CONTRACT_NAME;
+    if (
+      !licenseType ||
+      typeof licenseType !== "string"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          submitted: false,
+          error:
+            "License type is required.",
+        },
+        { status: 400 }
+      );
+    }
 
-    /* =====================================================
-       STANDARD INPUT
-    ===================================================== */
-
-    const standardInput =
-      typeof body?.standardInput ===
-      "string"
-        ? body.standardInput.trim()
-        : "";
-
-    if (!standardInput) {
+    if (
+      typeof standardInput !== "string" ||
+      !standardInput.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -580,83 +315,72 @@ export async function POST(
           error:
             "Standard JSON compiler input is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /*
-     * Make sure the Standard JSON is valid.
-     */
-    let parsedStandardInput:
-      unknown;
+    /* =====================================================
+       VALIDATE STANDARD JSON
+    ===================================================== */
+
+    let parsedStandardInput: any;
 
     try {
       parsedStandardInput =
         JSON.parse(
           standardInput
         );
-    } catch {
+    } catch (error) {
       return NextResponse.json(
         {
           success: false,
           submitted: false,
           error:
-            "standardInput is not valid JSON.",
+            error instanceof Error
+              ? `Invalid Standard JSON: ${error.message}`
+              : "Invalid Standard JSON.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /* =====================================================
-       CONSTRUCTOR
-    ===================================================== */
-
-    const constructorArgs =
-      cleanHex(
-        body?.constructorArgs
-      );
-
     if (
-      constructorArgs &&
-      !/^[a-fA-F0-9]+$/.test(
-        constructorArgs
-      )
+      !parsedStandardInput.language
     ) {
       return NextResponse.json(
         {
           success: false,
           submitted: false,
           error:
-            "constructorArgs must contain only hexadecimal characters.",
+            "Standard JSON is missing language.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /*
-     * Your constructor contains:
-     *
-     * string
-     * string
-     * uint256
-     * uint8
-     * address
-     *
-     * Therefore the encoded constructor data should
-     * be non-empty and have an even number of hex
-     * characters.
-     */
     if (
-      !constructorArgs ||
-      constructorArgs.length %
-        2 !==
-        0
+      !parsedStandardInput.sources ||
+      typeof parsedStandardInput.sources !==
+        "object"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          submitted: false,
+          error:
+            "Standard JSON is missing sources.",
+        },
+        { status: 400 }
+      );
+    }
+
+    /* =====================================================
+       CONSTRUCTOR ARGUMENTS
+    ===================================================== */
+
+    if (
+      typeof constructorArgs !== "string" ||
+      !constructorArgs.trim()
     ) {
       return NextResponse.json(
         {
@@ -665,302 +389,398 @@ export async function POST(
           error:
             "Exact encoded constructor arguments are required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    const autodetectConstructorArgs =
-      body?.autodetectConstructorArgs ===
-      true;
-
-    /* =====================================================
-       LICENSE
-    ===================================================== */
-
-    const licenseType =
-      typeof body?.licenseType ===
-        "string" &&
-      body.licenseType.trim()
-        ? body.licenseType.trim()
-        : DEFAULT_LICENSE;
-
-    /* =====================================================
-       LOG
-    ===================================================== */
-
-    console.log(
-      "Automatic verification requested:",
-      {
-        address:
-          normalizedAddress,
-
-        contractName,
-
-        compilerVersion,
-
-        licenseType,
-
-        constructorArgsBytes:
-          constructorArgs.length /
-          2,
-
-        autodetectConstructorArgs,
-
-        standardInputBytes:
-          Buffer.byteLength(
-            standardInput,
-            "utf8"
-          ),
-      }
-    );
-
-    /* =====================================================
-       WAIT FOR EXPLORER CONTRACT INDEXING
-    ===================================================== */
-
-    console.log(
-      "Waiting for explorer to recognize contract:",
-      normalizedAddress
-    );
-
-    const recognition =
-      await waitForContractRecognition(
-        normalizedAddress
-      );
+    const cleanConstructorArgs =
+      constructorArgs
+        .trim()
+        .replace(/^0x/i, "")
+        .replace(/\s+/g, "");
 
     if (
-      !recognition.ready
+      !/^[0-9a-fA-F]+$/.test(
+        cleanConstructorArgs
+      )
     ) {
       return NextResponse.json(
         {
           success: false,
-
           submitted: false,
-
-          verified: false,
-
-          address:
-            normalizedAddress,
-
           error:
-            "The contract transaction is confirmed, but the IOPn Explorer has not indexed this address as a smart-contract yet. Please try verification again shortly.",
-
-          explorerStatus:
-            recognition.status,
-
-          explorerResponse:
-            recognition.data,
+            "Constructor arguments must contain only hexadecimal characters.",
         },
+        { status: 400 }
+      );
+    }
+
+    if (
+      cleanConstructorArgs.length % 2 !==
+      0
+    ) {
+      return NextResponse.json(
         {
-          status: 409,
-        }
+          success: false,
+          submitted: false,
+          error:
+            "Constructor arguments have an invalid hexadecimal length.",
+        },
+        { status: 400 }
       );
     }
 
     /* =====================================================
-       VERIFICATION ENDPOINT
+       CHECK CURRENT STATUS
     ===================================================== */
 
-    const verificationUrl =
-      `${API_URL}/smart-contracts/${normalizedAddress}/verification/via/standard-input`;
+    try {
+      const current =
+        await explorerRequest(
+          `${EXPLORER_API}/smart-contracts/${address}`
+        );
 
-    /*
-     * Blockscout requires multipart/form-data.
-     *
-     * files[0] contains the Standard JSON input.
-     */
-    const form =
-      new FormData();
+      if (
+        current.response.ok &&
+        current.data?.is_verified === true
+      ) {
+        return NextResponse.json({
+          success: true,
+          submitted: false,
+          verified: true,
+          address,
+          contractName,
+          compilerVersion,
+          message:
+            "Contract is already verified.",
+          explorerResponse:
+            current.data,
+        });
+      }
+    } catch {
+      // Continue with verification.
+    }
 
-    form.append(
-      "compiler_version",
-      compilerVersion
+    /* =====================================================
+       BUILD ETHERSCAN-COMPATIBLE REQUEST
+    ===================================================== */
+
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      "module",
+      "contract"
     );
 
-    form.append(
-      "contract_name",
+    params.set(
+      "action",
+      "verifysourcecode"
+    );
+
+    params.set(
+      "codeformat",
+      "solidity-standard-json-input"
+    );
+
+    params.set(
+      "contractaddress",
+      address
+    );
+
+    params.set(
+      "contractname",
       contractName
     );
 
-    const sourceFile =
-      new File(
-        [
-          standardInput,
-        ],
-        "IOPnToken-standard-input.json",
-        {
-          type:
-            "application/json",
-        }
-      );
-
-    form.append(
-      "files[0]",
-      sourceFile
+    params.set(
+      "compilerversion",
+      compilerVersion
     );
 
-    form.append(
-      "license_type",
+    /*
+     * Standard JSON compiler input.
+     */
+    params.set(
+      "sourceCode",
+      standardInput
+    );
+
+    /*
+     * Optimization information.
+     *
+     * The Standard JSON already contains:
+     *
+     * optimizer.enabled = true
+     * optimizer.runs = 200
+     *
+     * But these fields are useful for Etherscan-style
+     * implementations that still inspect them.
+     */
+    params.set(
+      "optimizationUsed",
+      parsedStandardInput?.settings
+        ?.optimizer?.enabled
+        ? "1"
+        : "0"
+    );
+
+    params.set(
+      "runs",
+      String(
+        parsedStandardInput?.settings
+          ?.optimizer?.runs ??
+          200
+      )
+    );
+
+    /*
+     * ABI-encoded constructor arguments.
+     */
+    params.set(
+      "constructorArguements",
+      cleanConstructorArgs
+    );
+
+    /*
+     * Some Etherscan-compatible implementations
+     * use this correctly spelled variant.
+     */
+    params.set(
+      "constructorArguments",
+      cleanConstructorArgs
+    );
+
+    /*
+     * License.
+     */
+    params.set(
+      "licenseType",
       licenseType
     );
 
-    /*
-     * We use the EXACT constructor data generated
-     * by encodeAbiParameters().
-     */
-    form.append(
-      "constructor_args",
-      constructorArgs
-    );
-
-    /*
-     * Since exact constructor args are supplied,
-     * explicitly disable autodetection.
-     */
-    form.append(
-      "autodetect_constructor_args",
-      autodetectConstructorArgs
-        ? "true"
-        : "false"
-    );
+    const verificationUrl =
+      `${EXPLORER_API}?${params.toString()}`;
 
     console.log(
-      "Submitting verification:",
-      {
-        verificationUrl,
-
-        address:
-          normalizedAddress,
-
-        contractName,
-
-        compilerVersion,
-
-        constructorArgsBytes:
-          constructorArgs.length /
-          2,
-      }
+      "Submitting verification to:",
+      verificationUrl.replace(
+        standardInput,
+        `[STANDARD_JSON_${standardInput.length}_CHARS]`
+      )
     );
 
     /* =====================================================
        SUBMIT
     ===================================================== */
 
-    const explorerResponse =
-      await fetch(
+    const submission =
+      await explorerRequest(
         verificationUrl,
         {
           method: "POST",
 
           headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+
             Accept:
               "application/json",
           },
 
-          body: form,
-
-          cache: "no-store",
+          body:
+            params.toString(),
         }
       );
 
-    const responseData =
-      await readResponse(
-        explorerResponse
-      );
+    console.log(
+      "Verification submission status:",
+      submission.response.status
+    );
+
+    console.log(
+      "Verification submission response:",
+      submission.data
+    );
 
     if (
-      !explorerResponse.ok
+      !submission.response.ok
     ) {
-      console.error(
-        "IOPn Explorer verification rejected:",
-        {
-          status:
-            explorerResponse.status,
-
-          response:
-            responseData,
-        }
-      );
-
       return NextResponse.json(
         {
           success: false,
-
           submitted: false,
-
           verified: false,
-
-          address:
-            normalizedAddress,
-
+          address,
           error:
-            extractErrorMessage(
-              responseData
-            ),
-
-          status:
-            explorerResponse.status,
-
+            submission.data?.message ||
+            submission.data?.result ||
+            submission.data?.error ||
+            `Explorer verification request failed (${submission.response.status}).`,
           explorerResponse:
-            responseData,
+            submission.data,
         },
-        {
-          status:
-            explorerResponse.status,
-        }
+        { status: 502 }
       );
     }
 
+    /*
+     * Etherscan-compatible response normally looks like:
+     *
+     * {
+     *   status: "1",
+     *   message: "OK",
+     *   result: "GUID"
+     * }
+     */
+
+    const submissionResult =
+      submission.data?.result;
+
+    const guid =
+      typeof submissionResult ===
+        "string"
+        ? submissionResult
+        : null;
+
+    /*
+     * If the Explorer directly says the contract
+     * was verified, we're done.
+     */
+
+    if (
+      submission.data?.status === "1" &&
+      typeof guid === "string" &&
+      guid.toLowerCase() ===
+        "already verified"
+    ) {
+      return NextResponse.json({
+        success: true,
+        submitted: true,
+        verified: true,
+        address,
+        contractName,
+        compilerVersion,
+        constructorArgs:
+          cleanConstructorArgs,
+        message:
+          "Contract is already verified.",
+      });
+    }
+
+    if (!guid) {
+      return NextResponse.json({
+        success: true,
+        submitted: true,
+        verified: false,
+        address,
+        contractName,
+        compilerVersion,
+        constructorArgs:
+          cleanConstructorArgs,
+        message:
+          "Verification request was accepted, but the Explorer did not return a verification GUID.",
+        explorerResponse:
+          submission.data,
+      });
+    }
+
     /* =====================================================
-       IMMEDIATE STATUS CHECK
+       POLL VERIFICATION STATUS
     ===================================================== */
 
-    let verified =
-      false;
+    for (
+      let attempt = 1;
+      attempt <= POLL_ATTEMPTS;
+      attempt++
+    ) {
+      await sleep(
+        POLL_DELAY
+      );
 
-    let verificationStatus:
-      unknown = null;
+      const statusUrl =
+        `${EXPLORER_API}?module=contract&action=checkverifystatus&guid=${encodeURIComponent(
+          guid
+        )}`;
 
-    try {
-      const statusResponse =
-        await fetch(
-          `${API_URL}/smart-contracts/${normalizedAddress}`,
-          {
-            method: "GET",
-
-            headers: {
-              Accept:
-                "application/json",
-            },
-
-            cache: "no-store",
-          }
+      const status =
+        await explorerRequest(
+          statusUrl
         );
 
-      verificationStatus =
-        await readResponse(
-          statusResponse
-        );
+      console.log(
+        `Verification status ${attempt}/${POLL_ATTEMPTS}:`,
+        status.data
+      );
+
+      const result =
+        String(
+          status.data?.result ??
+            ""
+        ).toLowerCase();
 
       if (
-        statusResponse.ok
+        result.includes(
+          "pass - verified"
+        ) ||
+        result.includes(
+          "verified successfully"
+        ) ||
+        result === "pass"
       ) {
-        verified =
-          explorerVerified(
-            verificationStatus
-          );
+        return NextResponse.json({
+          success: true,
+          submitted: true,
+          verified: true,
+          address,
+          contractName,
+          compilerVersion,
+          constructorArgs:
+            cleanConstructorArgs,
+          verificationStatus:
+            "verified",
+          attempts:
+            attempt,
+          explorerResponse:
+            status.data,
+        });
       }
-    } catch (statusError) {
-      console.warn(
-        "Immediate verification status check failed:",
-        statusError
-      );
+
+      if (
+        result.includes(
+          "fail"
+        ) ||
+        result.includes(
+          "unable to verify"
+        ) ||
+        result.includes(
+          "unknown uid"
+        )
+      ) {
+        return NextResponse.json({
+          success: true,
+          submitted: true,
+          verified: false,
+          address,
+          contractName,
+          compilerVersion,
+          constructorArgs:
+            cleanConstructorArgs,
+          verificationStatus:
+            "failed",
+          attempts:
+            attempt,
+          error:
+            status.data?.result ||
+            "Explorer could not verify the contract.",
+          explorerResponse:
+            status.data,
+        });
+      }
     }
 
     /* =====================================================
-       SUCCESS
+       STILL PROCESSING
     ===================================================== */
 
     return NextResponse.json({
@@ -968,54 +788,45 @@ export async function POST(
 
       submitted: true,
 
-      verified,
+      verified: false,
 
-      address:
-        normalizedAddress,
+      address,
 
       contractName,
 
       compilerVersion,
 
-      licenseType,
+      constructorArgs:
+        cleanConstructorArgs,
 
-      constructorArgs,
+      verificationStatus:
+        "processing",
 
-      constructorArgsBytes:
-        constructorArgs.length /
-        2,
+      guid,
+
+      message:
+        "Verification was submitted successfully. The Explorer is still processing the request.",
 
       explorerResponse:
-        responseData,
-
-      verificationStatus,
-
-      message: verified
-        ? "Contract is verified."
-        : "Verification request accepted. The explorer may still be processing it.",
+        submission.data,
     });
   } catch (error) {
     console.error(
-      "Automatic contract verification failed:",
+      "POST /api/verify error:",
       error
     );
 
     return NextResponse.json(
       {
         success: false,
-
         submitted: false,
-
         verified: false,
-
         error:
           error instanceof Error
             ? error.message
-            : String(error),
+            : "Verification request failed.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
