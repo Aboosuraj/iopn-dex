@@ -7,12 +7,11 @@ import {
 } from "react";
 
 import {
-  AlertCircle,
   CheckCircle2,
   Copy,
+  Download,
   ExternalLink,
   FileCheck2,
-  Info,
   Loader2,
   Rocket,
   ShieldCheck,
@@ -29,6 +28,7 @@ import {
 
 import {
   encodeAbiParameters,
+  isAddress,
   parseUnits,
   type Abi,
   type Address,
@@ -71,8 +71,9 @@ type DeployStatus =
 type VerificationStatus =
   | "idle"
   | "loading"
-  | "checking"
+  | "waiting-contract"
   | "submitted"
+  | "checking"
   | "verified"
   | "error";
 
@@ -91,8 +92,10 @@ const CONTRACT_NAME =
 const LICENSE_TYPE =
   "mit";
 
-const VERIFICATION_POLL_INTERVAL = 3000;
+const CONTRACT_READY_INTERVAL = 2000;
+const CONTRACT_READY_MAX_ATTEMPTS = 20;
 
+const VERIFICATION_POLL_INTERVAL = 3000;
 const VERIFICATION_MAX_ATTEMPTS = 20;
 
 /* =========================================================
@@ -180,9 +183,14 @@ export default function DeployPage() {
   >();
 
   const [
-    copied,
-    setCopied,
-  ] = useState(false);
+    copiedField,
+    setCopiedField,
+  ] = useState<
+    "address" |
+    "tx" |
+    "constructor" |
+    null
+  >(null);
 
   const [
     deploymentConstructorArgs,
@@ -208,11 +216,6 @@ export default function DeployPage() {
     setVerificationError,
   ] = useState("");
 
-  const [
-    manualVerificationUrl,
-    setManualVerificationUrl,
-  ] = useState("");
-
   /* =======================================================
      LOAD ARTIFACT
   ======================================================= */
@@ -235,7 +238,7 @@ export default function DeployPage() {
 
         if (!response.ok) {
           throw new Error(
-            `Could not load token contract (${response.status}).`
+            `Could not load IOPnToken artifact (${response.status}).`
           );
         }
 
@@ -244,13 +247,13 @@ export default function DeployPage() {
 
         if (!json.abi) {
           throw new Error(
-            "Token artifact does not contain an ABI."
+            "IOPnToken artifact does not contain an ABI."
           );
         }
 
         if (!json.bytecode) {
           throw new Error(
-            "Token artifact does not contain deployment bytecode."
+            "IOPnToken artifact does not contain deployment bytecode."
           );
         }
 
@@ -262,7 +265,7 @@ export default function DeployPage() {
           setArtifactError(
             err instanceof Error
               ? err.message
-              : "Unable to load token contract."
+              : "Unable to load the token contract artifact."
           );
         }
       } finally {
@@ -280,7 +283,7 @@ export default function DeployPage() {
   }, []);
 
   /* =======================================================
-     TRANSACTION RECEIPT
+     WAIT FOR TRANSACTION RECEIPT
   ======================================================= */
 
   const {
@@ -313,10 +316,10 @@ export default function DeployPage() {
   const verificationUrl =
     contractAddress
       ? `${EXPLORER_URL}/address/${contractAddress}?tab=contract`
-      : "";
+      : `${EXPLORER_URL}/verify-contract`;
 
   /* =======================================================
-     STATE
+     DEPLOYING
   ======================================================= */
 
   const isDeploying =
@@ -324,49 +327,17 @@ export default function DeployPage() {
     status === "confirming" ||
     isConfirming;
 
-  const hasDeployment =
-    status === "success" &&
-    !!contractAddress;
-
-  /* =======================================================
-     FORMATTING
-  ======================================================= */
-
-  function formatSupply(value: string) {
-    if (!value) {
-      return "0";
-    }
-
-    return Number(value).toLocaleString();
-  }
-
-  function shortenAddress(
-    value?: string
-  ) {
-    if (!value) {
-      return "";
-    }
-
-    return `${value.slice(
-      0,
-      8
-    )}...${value.slice(-6)}`;
-  }
-
   /* =======================================================
      RESET
   ======================================================= */
 
   function resetStatus() {
-    if (isDeploying) {
-      return;
-    }
-
     setStatus("idle");
     setError("");
     setTxHash(undefined);
     setContractAddress(undefined);
-    setCopied(false);
+
+    setCopiedField(null);
 
     setDeploymentConstructorArgs(
       null
@@ -377,50 +348,6 @@ export default function DeployPage() {
     );
 
     setVerificationError("");
-    setManualVerificationUrl("");
-  }
-
-  /* =======================================================
-     RESET EVERYTHING
-  ======================================================= */
-
-  function createAnotherToken() {
-    setStatus("idle");
-
-    setError("");
-
-    setTxHash(undefined);
-
-    setContractAddress(
-      undefined
-    );
-
-    setCopied(false);
-
-    setDeploymentConstructorArgs(
-      null
-    );
-
-    setVerificationStatus(
-      "idle"
-    );
-
-    setVerificationError("");
-
-    setManualVerificationUrl("");
-
-    setName("");
-    setSymbol("");
-    setSupply("");
-
-    setDecimals(
-      String(DEFAULT_DECIMALS)
-    );
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
   }
 
   /* =======================================================
@@ -428,16 +355,19 @@ export default function DeployPage() {
   ======================================================= */
 
   function validateForm() {
-    if (!isConnected || !address) {
+    if (
+      !isConnected ||
+      !address
+    ) {
       return "Please connect your wallet first.";
     }
 
     if (!walletClient) {
-      return "Your wallet is not ready. Please reconnect your wallet.";
+      return "Wallet client is not ready. Please reconnect your wallet.";
     }
 
     if (!artifact) {
-      return "The token contract is still loading.";
+      return "Token contract artifact is not loaded yet.";
     }
 
     const trimmedName =
@@ -452,8 +382,10 @@ export default function DeployPage() {
       return "Enter a token name.";
     }
 
-    if (trimmedName.length > 100) {
-      return "Token name must be 100 characters or less.";
+    if (
+      trimmedName.length > 100
+    ) {
+      return "Token name is too long.";
     }
 
     if (!trimmedSymbol) {
@@ -465,7 +397,7 @@ export default function DeployPage() {
         trimmedSymbol
       )
     ) {
-      return "Symbol must contain 1–12 letters or numbers.";
+      return "Token symbol must contain 1–12 letters or numbers.";
     }
 
     if (!supply.trim()) {
@@ -477,12 +409,11 @@ export default function DeployPage() {
         supply.trim()
       )
     ) {
-      return "Supply must contain whole numbers only.";
+      return "Initial supply must contain whole numbers only.";
     }
 
     if (
-      BigInt(supply.trim()) <=
-      0n
+      supply.trim() === "0"
     ) {
       return "Initial supply must be greater than zero.";
     }
@@ -500,11 +431,79 @@ export default function DeployPage() {
       return "Decimals must be between 0 and 18.";
     }
 
+    if (
+      !isAddress(address)
+    ) {
+      return "Connected wallet address is invalid.";
+    }
+
     return null;
   }
 
   /* =======================================================
-     VERIFY CONTRACT
+     WAIT FOR EXPLORER CONTRACT
+  ======================================================= */
+
+  async function waitForExplorerContract(
+    deployedAddress: Address
+  ) {
+    setVerificationStatus(
+      "waiting-contract"
+    );
+
+    for (
+      let attempt = 1;
+      attempt <=
+      CONTRACT_READY_MAX_ATTEMPTS;
+      attempt++
+    ) {
+      try {
+        const response =
+          await fetch(
+            `/api/verify?address=${deployedAddress}`,
+            {
+              cache: "no-store",
+            }
+          );
+
+        if (response.ok) {
+          const data =
+            await response.json();
+
+          if (
+            data?.isContract === true ||
+            data?.contract === true ||
+            data?.exists === true
+          ) {
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "Explorer contract check failed:",
+          err
+        );
+      }
+
+      if (
+        attempt <
+        CONTRACT_READY_MAX_ATTEMPTS
+      ) {
+        await new Promise(
+          (resolve) =>
+            setTimeout(
+              resolve,
+              CONTRACT_READY_INTERVAL
+            )
+        );
+      }
+    }
+
+    return false;
+  }
+
+  /* =======================================================
+     AUTOMATIC VERIFICATION
   ======================================================= */
 
   async function verifyContract(
@@ -517,6 +516,17 @@ export default function DeployPage() {
       );
 
       setVerificationError("");
+
+      const explorerReady =
+        await waitForExplorerContract(
+          deployedAddress
+        );
+
+      if (!explorerReady) {
+        throw new Error(
+          "The IOPn Explorer has not indexed the contract yet. You can verify it manually using the Standard JSON file below."
+        );
+      }
 
       const encodedConstructorArgs =
         encodeAbiParameters(
@@ -552,7 +562,7 @@ export default function DeployPage() {
         !standardInputResponse.ok
       ) {
         throw new Error(
-          "Verification source file is unavailable."
+          "Could not load IOPnToken-standard-input.json."
         );
       }
 
@@ -658,12 +668,6 @@ export default function DeployPage() {
           ? err.message
           : "Automatic verification failed."
       );
-
-      if (contractAddress) {
-        setManualVerificationUrl(
-          `${EXPLORER_URL}/address/${contractAddress}?tab=contract`
-        );
-      }
     }
   }
 
@@ -693,14 +697,17 @@ export default function DeployPage() {
             }
           );
 
-        if (response.ok) {
+        if (
+          response.ok
+        ) {
           const data =
             await response.json();
 
           if (
             data?.verified === true ||
             data?.isVerified === true ||
-            data?.isFullyVerified === true
+            data?.isFullyVerified ===
+              true
           ) {
             setVerificationStatus(
               "verified"
@@ -736,29 +743,6 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     MANUAL VERIFICATION
-  ======================================================= */
-
-  function openManualVerification() {
-    if (!contractAddress) {
-      return;
-    }
-
-    const url =
-      `${EXPLORER_URL}/address/${contractAddress}?tab=contract`;
-
-    setManualVerificationUrl(
-      url
-    );
-
-    window.open(
-      url,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  }
-
-  /* =======================================================
      DEPLOY
   ======================================================= */
 
@@ -766,10 +750,6 @@ export default function DeployPage() {
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-
-    if (isDeploying) {
-      return;
-    }
 
     setError("");
     setContractAddress(undefined);
@@ -780,8 +760,6 @@ export default function DeployPage() {
     );
 
     setVerificationError("");
-
-    setManualVerificationUrl("");
 
     setDeploymentConstructorArgs(
       null
@@ -883,7 +861,7 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     RECEIPT EFFECT
+     DEPLOYMENT RECEIPT
   ======================================================= */
 
   useEffect(() => {
@@ -911,7 +889,7 @@ export default function DeployPage() {
       );
 
       setVerificationError(
-        "Deployment succeeded, but the constructor information was unavailable."
+        "Deployment succeeded, but the exact constructor arguments were unavailable."
       );
 
       return;
@@ -929,41 +907,204 @@ export default function DeployPage() {
   ]);
 
   /* =======================================================
-     COPY ADDRESS
+     COPY
   ======================================================= */
 
-  async function copyAddress() {
-    if (!contractAddress) {
-      return;
-    }
-
+  async function copyText(
+    value: string,
+    field:
+      | "address"
+      | "tx"
+      | "constructor"
+  ) {
     try {
       await navigator.clipboard.writeText(
-        contractAddress
+        value
       );
 
-      setCopied(true);
+      setCopiedField(field);
 
       setTimeout(
-        () => setCopied(false),
+        () => {
+          setCopiedField(null);
+        },
         1800
       );
     } catch {
-      setCopied(false);
+      setCopiedField(null);
     }
+  }
+
+  /* =======================================================
+     CONSTRUCTOR ARGUMENTS
+  ======================================================= */
+
+  function getConstructorArgumentsText() {
+    if (
+      !deploymentConstructorArgs
+    ) {
+      return "";
+    }
+
+    const encoded =
+      encodeAbiParameters(
+        [
+          {
+            type: "string",
+          },
+          {
+            type: "string",
+          },
+          {
+            type: "uint256",
+          },
+          {
+            type: "uint8",
+          },
+          {
+            type: "address",
+          },
+        ],
+        deploymentConstructorArgs
+      );
+
+    return encoded.replace(
+      /^0x/,
+      ""
+    );
+  }
+
+  /* =======================================================
+     DOWNLOAD STANDARD JSON
+  ======================================================= */
+
+  function downloadStandardJson() {
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href =
+      "/artifacts/IOPnToken-standard-input.json";
+
+    link.download =
+      "IOPnToken-standard-input.json";
+
+    document.body.appendChild(
+      link
+    );
+
+    link.click();
+
+    link.remove();
+  }
+
+  /* =======================================================
+     DOWNLOAD VERIFICATION INFO
+  ======================================================= */
+
+  function downloadVerificationInfo() {
+    if (
+      !contractAddress
+    ) {
+      return;
+    }
+
+    const constructorArgs =
+      getConstructorArgumentsText();
+
+    const compiler =
+      artifact?.compiler?.version ||
+      "v0.8.36+commit.8a079791";
+
+    const optimizationRuns =
+      artifact?.optimization?.runs ||
+      200;
+
+    const content = `IOPn Token Manual Verification Information
+
+Contract Name:
+${CONTRACT_NAME}
+
+Contract Address:
+${contractAddress}
+
+Transaction Hash:
+${txHash || "Unavailable"}
+
+Compiler:
+${compiler}
+
+Optimization:
+Enabled
+
+Optimization Runs:
+${optimizationRuns}
+
+License:
+MIT
+
+Constructor Arguments:
+${constructorArgs}
+
+Standard JSON Input:
+IOPnToken-standard-input.json
+
+Explorer:
+${contractUrl}
+
+Verification Page:
+${verificationUrl}
+`;
+
+    const blob =
+      new Blob(
+        [content],
+        {
+          type:
+            "text/plain;charset=utf-8",
+        }
+      );
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href = url;
+
+    link.download =
+      `${CONTRACT_NAME}-verification-info.txt`;
+
+    document.body.appendChild(
+      link
+    );
+
+    link.click();
+
+    link.remove();
+
+    URL.revokeObjectURL(
+      url
+    );
   }
 
   /* =======================================================
      VERIFICATION UI
   ======================================================= */
 
-  function renderVerification() {
+  function renderVerificationStatus() {
     if (
       verificationStatus ===
       "loading"
     ) {
       return (
-        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.05] p-4">
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <Loader2
               size={20}
@@ -972,13 +1113,12 @@ export default function DeployPage() {
 
             <div>
               <p className="font-bold">
-                Preparing verification
+                Preparing automatic verification
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                We are preparing the exact source,
-                compiler settings and constructor information
-                used for your deployment.
+                Preparing the exact compiler input and
+                constructor arguments used by this deployment.
               </p>
             </div>
           </div>
@@ -988,10 +1128,10 @@ export default function DeployPage() {
 
     if (
       verificationStatus ===
-      "checking"
+      "waiting-contract"
     ) {
       return (
-        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.05] p-4">
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <Loader2
               size={20}
@@ -1000,13 +1140,13 @@ export default function DeployPage() {
 
             <div>
               <p className="font-bold">
-                Checking verification
+                Waiting for explorer indexing
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Your contract has been submitted to the
-                explorer. We are waiting for the explorer
-                to finish processing it.
+                Your transaction is confirmed. We are
+                waiting for the IOPn Explorer to recognize
+                the new contract.
               </p>
             </div>
           </div>
@@ -1019,36 +1159,50 @@ export default function DeployPage() {
       "submitted"
     ) {
       return (
-        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.05] p-4">
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
           <div className="flex items-start gap-3">
             <Loader2
               size={20}
               className="mt-0.5 shrink-0 animate-spin text-cyan-400"
             />
 
-            <div className="min-w-0">
+            <div>
               <p className="font-bold">
                 Verification submitted
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
                 The explorer accepted the verification
-                request. It may take a little longer to display
-                the verified source.
+                request. It may take a little longer to
+                display the verified source.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (
+      verificationStatus ===
+      "checking"
+    ) {
+      return (
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
+          <div className="flex items-start gap-3">
+            <Loader2
+              size={20}
+              className="mt-0.5 shrink-0 animate-spin text-cyan-400"
+            />
+
+            <div>
+              <p className="font-bold">
+                Checking verification status
               </p>
 
-              <button
-                type="button"
-                onClick={
-                  openManualVerification
-                }
-                className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-cyan-400"
-              >
-                Check manually
-                <ExternalLink
-                  size={13}
-                />
-              </button>
+              <p className="mt-1 text-xs leading-5 text-white/40">
+                Waiting for the explorer to confirm that
+                the deployed bytecode matches the source.
+              </p>
             </div>
           </div>
         </div>
@@ -1073,7 +1227,7 @@ export default function DeployPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-white/40">
-                Your token source code is verified on
+                Your token source code is now verified on
                 the IOPn Explorer.
               </p>
             </div>
@@ -1087,45 +1241,26 @@ export default function DeployPage() {
       "error"
     ) {
       return (
-        <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] p-4">
+        <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle
+            <XCircle
               size={20}
-              className="mt-0.5 shrink-0 text-amber-400"
+              className="mt-0.5 shrink-0 text-red-400"
             />
 
-            <div className="min-w-0 flex-1">
-              <p className="font-bold text-amber-300">
+            <div className="min-w-0">
+              <p className="font-bold text-red-300">
                 Automatic verification needs attention
               </p>
 
-              <p className="mt-1 break-words text-xs leading-5 text-white/40">
+              <p className="mt-1 break-words text-xs leading-5 text-red-300/70">
                 {verificationError}
               </p>
 
-              <p className="mt-2 text-xs leading-5 text-white/30">
-                Your token deployment was successful.
-                You can open the contract and verify it
-                manually if necessary.
+              <p className="mt-2 text-xs leading-5 text-red-300/50">
+                Your token deployment itself was successful.
+                You can use the manual verification tools below.
               </p>
-
-              <button
-                type="button"
-                onClick={
-                  openManualVerification
-                }
-                className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-amber-400 px-4 text-xs font-black text-black transition hover:bg-amber-300"
-              >
-                <FileCheck2
-                  size={15}
-                />
-
-                Verify Manually
-
-                <ExternalLink
-                  size={13}
-                />
-              </button>
             </div>
           </div>
         </div>
@@ -1146,112 +1281,73 @@ export default function DeployPage() {
         {/* HEADER */}
 
         <div className="mb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
               <Rocket
                 size={24}
                 className="text-cyan-400"
+                strokeWidth={2.2}
               />
             </div>
 
             <div>
               <h1 className="text-2xl font-black tracking-tight">
-                Create Token
+                Deploy Token
               </h1>
 
-              <p className="mt-1 text-sm text-white/40">
-                Create your own ERC-20 token on IOPn
-                Testnet
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* STEP INDICATOR */}
-
-        <div className="mb-5 grid grid-cols-3 gap-2">
-          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] p-2.5 text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider text-cyan-400">
-              01
-            </p>
-
-            <p className="mt-1 text-[10px] font-bold text-white/50">
-              Information
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.025] p-2.5 text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider text-white/30">
-              02
-            </p>
-
-            <p className="mt-1 text-[10px] font-bold text-white/30">
-              Deploy
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.025] p-2.5 text-center">
-            <p className="text-[10px] font-black uppercase tracking-wider text-white/30">
-              03
-            </p>
-
-            <p className="mt-1 text-[10px] font-bold text-white/30">
-              Verify
-            </p>
-          </div>
-        </div>
-
-        {/* NETWORK */}
-
-        <div className="mb-5 flex items-center justify-between rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.035] px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]" />
-
-            <div>
-              <p className="text-xs font-black">
+              <p className="text-sm text-white/45">
+                Create and verify your ERC-20 token on
                 IOPn Testnet
               </p>
-
-              <p className="text-[10px] text-white/30">
-                Ready for deployment
-              </p>
             </div>
           </div>
 
-          <span className="text-[10px] font-bold text-emerald-400">
-            Chain {chainId}
-          </span>
+          {/* NETWORK */}
+
+          <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 backdrop-blur-xl">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
+                Network
+              </p>
+
+              <p className="mt-1 text-sm font-bold">
+                IOPn Testnet
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]" />
+
+              <span className="text-xs font-bold text-emerald-400">
+                Chain {chainId}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* WALLET */}
 
-        <div className="mb-5 rounded-[26px] border border-white/[0.08] bg-white/[0.035] p-5 backdrop-blur-xl">
+        <div className="mb-5 rounded-[26px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_20px_70px_rgba(0,0,0,.3)] backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-400">
-              <Wallet size={21} />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-400">
+              <Wallet size={22} />
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
-                Your Wallet
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
+                Deployment Wallet
               </p>
 
               {isConnected &&
               address ? (
-                <>
-                  <p className="mt-1 text-sm font-bold">
-                    {shortenAddress(
-                      address
-                    )}
-                  </p>
-
-                  <p className="mt-0.5 text-[10px] text-emerald-400">
-                    Connected
-                  </p>
-                </>
+                <p className="mt-1 truncate font-bold">
+                  {address.slice(0, 8)}
+                  ...
+                  {address.slice(-6)}
+                </p>
               ) : (
-                <p className="mt-1 text-sm font-bold text-red-400">
-                  Connect wallet to continue
+                <p className="mt-1 text-sm font-semibold text-red-400">
+                  Wallet not connected
                 </p>
               )}
             </div>
@@ -1259,7 +1355,7 @@ export default function DeployPage() {
             {isConnected && (
               <CheckCircle2
                 size={20}
-                className="text-emerald-400"
+                className="shrink-0 text-emerald-400"
               />
             )}
           </div>
@@ -1267,713 +1363,812 @@ export default function DeployPage() {
 
         {/* FORM */}
 
-        {!hasDeployment && (
-          <form
-            onSubmit={
-              handleDeploy
-            }
-          >
-            <section className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_25px_80px_rgba(0,0,0,.35)] backdrop-blur-xl">
+        <form onSubmit={handleDeploy}>
+          <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_25px_80px_rgba(0,0,0,.35)] backdrop-blur-xl">
 
-              <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-cyan-400/[0.06] blur-3xl" />
+            <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-cyan-400/[0.06] blur-3xl" />
 
-              <div className="relative">
+            <div className="relative space-y-5">
 
-                {/* INTRO */}
+              {/* NAME */}
 
-                <div className="mb-6">
-                  <h2 className="text-lg font-black">
-                    Token Information
-                  </h2>
+              <div>
+                <label
+                  htmlFor="token-name"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
+                >
+                  Token Name
+                </label>
 
-                  <p className="mt-1 text-xs leading-5 text-white/35">
-                    Choose the name, symbol and supply
-                    for your new token.
-                  </p>
-                </div>
+                <input
+                  id="token-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(
+                      e.target.value
+                    );
+                    resetStatus();
+                  }}
+                  placeholder="My Token"
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
+                />
+              </div>
 
-                {/* NAME */}
+              {/* SYMBOL */}
 
-                <div className="mb-5">
-                  <label
-                    htmlFor="token-name"
-                    className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-white/45"
-                  >
-                    Token Name
-                  </label>
+              <div>
+                <label
+                  htmlFor="token-symbol"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
+                >
+                  Token Symbol
+                </label>
 
-                  <input
-                    id="token-name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(
-                        e.target.value
-                      );
-                      resetStatus();
-                    }}
-                    placeholder="My Token"
-                    disabled={
-                      isDeploying
-                    }
-                    className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10 disabled:opacity-50"
-                  />
-
-                  <p className="mt-2 text-[11px] text-white/25">
-                    Example: IOPn Community Token
-                  </p>
-                </div>
-
-                {/* SYMBOL */}
-
-                <div className="mb-5">
-                  <label
-                    htmlFor="token-symbol"
-                    className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-white/45"
-                  >
-                    Token Symbol
-                  </label>
-
-                  <input
-                    id="token-symbol"
-                    type="text"
-                    value={symbol}
-                    onChange={(e) => {
-                      setSymbol(
-                        e.target.value
-                          .toUpperCase()
-                          .replace(
-                            /[^A-Z0-9]/g,
-                            ""
-                          )
-                          .slice(
-                            0,
-                            12
-                          )
-                      );
-
-                      resetStatus();
-                    }}
-                    placeholder="ICT"
-                    disabled={
-                      isDeploying
-                    }
-                    className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-black uppercase tracking-wide text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10 disabled:opacity-50"
-                  />
-
-                  <p className="mt-2 text-[11px] text-white/25">
-                    1–12 letters or numbers
-                  </p>
-                </div>
-
-                {/* SUPPLY */}
-
-                <div className="mb-5">
-                  <label
-                    htmlFor="initial-supply"
-                    className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-white/45"
-                  >
-                    Initial Supply
-                  </label>
-
-                  <input
-                    id="initial-supply"
-                    type="text"
-                    inputMode="numeric"
-                    value={supply}
-                    onChange={(e) => {
-                      setSupply(
-                        e.target.value.replace(
-                          /[^0-9]/g,
+                <input
+                  id="token-symbol"
+                  type="text"
+                  value={symbol}
+                  onChange={(e) => {
+                    setSymbol(
+                      e.target.value
+                        .toUpperCase()
+                        .replace(
+                          /[^A-Z0-9]/g,
                           ""
                         )
-                      );
+                        .slice(
+                          0,
+                          12
+                        )
+                    );
+                    resetStatus();
+                  }}
+                  placeholder="TST"
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold uppercase text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
+                />
+              </div>
 
-                      resetStatus();
-                    }}
-                    placeholder="1000000"
-                    disabled={
-                      isDeploying
-                    }
-                    className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-bold text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10 disabled:opacity-50"
-                  />
+              {/* SUPPLY */}
 
-                  {supply && (
-                    <p className="mt-2 text-[11px] font-semibold text-cyan-400/70">
-                      Total supply:{" "}
-                      {formatSupply(
-                        supply
-                      )}{" "}
-                      {symbol ||
-                        "tokens"}
-                    </p>
-                  )}
-                </div>
-
-                {/* DECIMALS */}
-
-                <div className="mb-5">
-                  <label
-                    htmlFor="token-decimals"
-                    className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-white/45"
-                  >
-                    Decimals
-                  </label>
-
-                  <input
-                    id="token-decimals"
-                    type="number"
-                    min="0"
-                    max="18"
-                    value={decimals}
-                    onChange={(e) => {
-                      setDecimals(
-                        e.target.value
-                      );
-
-                      resetStatus();
-                    }}
-                    disabled={
-                      isDeploying
-                    }
-                    className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-bold text-white outline-none transition focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10 disabled:opacity-50"
-                  />
-
-                  <div className="mt-2 flex items-start gap-2">
-                    <Info
-                      size={13}
-                      className="mt-0.5 shrink-0 text-white/25"
-                    />
-
-                    <p className="text-[11px] leading-4 text-white/25">
-                      18 is the standard setting used
-                      by most ERC-20 tokens.
-                    </p>
-                  </div>
-                </div>
-
-                {/* PREVIEW */}
-
-                {(name ||
-                  symbol ||
-                  supply) && (
-                  <div className="mb-5 rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.025] p-4">
-                    <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400/60">
-                      Token Preview
-                    </p>
-
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 text-sm font-black text-black">
-                        {symbol
-                          ? symbol.slice(
-                              0,
-                              3
-                            )
-                          : "TKN"}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black">
-                          {name ||
-                            "Your Token"}
-                        </p>
-
-                        <p className="mt-0.5 text-xs text-white/35">
-                          {symbol ||
-                            "TKN"}{" "}
-                          ·{" "}
-                          {supply
-                            ? formatSupply(
-                                supply
-                              )
-                            : "0"}{" "}
-                          supply
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* SECURITY */}
-
-                <div className="mb-5 rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.025] p-4">
-                  <div className="flex items-start gap-3">
-                    <ShieldCheck
-                      size={20}
-                      className="mt-0.5 shrink-0 text-emerald-400"
-                    />
-
-                    <div>
-                      <p className="text-sm font-bold">
-                        Non-custodial deployment
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-white/35">
-                        Your wallet signs the transaction.
-                        IOPn DEX never receives your private key.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ARTIFACT */}
-
-                {artifactLoading && (
-                  <div className="mb-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm text-white/50">
-                    <Loader2
-                      size={18}
-                      className="animate-spin text-cyan-400"
-                    />
-
-                    Preparing deployment...
-                  </div>
-                )}
-
-                {artifactError && (
-                  <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-400/[0.05] p-4">
-                    <div className="flex gap-3">
-                      <XCircle
-                        size={19}
-                        className="mt-0.5 shrink-0 text-red-400"
-                      />
-
-                      <div>
-                        <p className="text-sm font-bold text-red-300">
-                          Deployment unavailable
-                        </p>
-
-                        <p className="mt-1 text-xs leading-5 text-red-300/70">
-                          {artifactError}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ERROR */}
-
-                {status ===
-                  "error" &&
-                  error && (
-                    <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-400/[0.05] p-4">
-                      <div className="flex gap-3">
-                        <AlertCircle
-                          size={19}
-                          className="mt-0.5 shrink-0 text-red-400"
-                        />
-
-                        <div>
-                          <p className="text-sm font-bold text-red-300">
-                            Something went wrong
-                          </p>
-
-                          <p className="mt-1 break-words text-xs leading-5 text-red-300/70">
-                            {error}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                {/* CONFIRMING */}
-
-                {status ===
-                  "confirming" &&
-                  txHash && (
-                    <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.05] p-4">
-                      <div className="flex items-start gap-3">
-                        <Loader2
-                          size={20}
-                          className="mt-0.5 shrink-0 animate-spin text-cyan-400"
-                        />
-
-                        <div className="min-w-0">
-                          <p className="font-bold">
-                            Confirming deployment
-                          </p>
-
-                          <p className="mt-1 text-xs leading-5 text-white/35">
-                            Confirm the transaction in your
-                            wallet. Do not close this page.
-                          </p>
-
-                          <p className="mt-2 break-all font-mono text-[10px] text-white/20">
-                            {txHash}
-                          </p>
-
-                          {transactionUrl && (
-                            <a
-                              href={
-                                transactionUrl
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-cyan-400"
-                            >
-                              View transaction
-                              <ExternalLink
-                                size={13}
-                              />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                {/* DEPLOY BUTTON */}
-
-                <button
-                  type="submit"
-                  disabled={
-                    isDeploying ||
-                    artifactLoading ||
-                    !artifact ||
-                    !isConnected
-                  }
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-sm font-black text-[#020617] shadow-[0_10px_35px_rgba(34,211,238,.18)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              <div>
+                <label
+                  htmlFor="initial-supply"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
                 >
-                  {isDeploying ? (
-                    <>
-                      <Loader2
-                        size={19}
-                        className="animate-spin"
-                      />
+                  Initial Supply
+                </label>
 
-                      {status ===
-                      "loading"
-                        ? "Preparing..."
-                        : "Confirm in Wallet"}
-                    </>
-                  ) : (
-                    <>
-                      <Rocket
-                        size={19}
-                      />
+                <input
+                  id="initial-supply"
+                  type="text"
+                  inputMode="numeric"
+                  value={supply}
+                  onChange={(e) => {
+                    setSupply(
+                      e.target.value.replace(
+                        /[^0-9]/g,
+                        ""
+                      )
+                    );
+                    resetStatus();
+                  }}
+                  placeholder="1000000"
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
+                />
 
-                      Deploy Token
-                    </>
-                  )}
-                </button>
-
-                <p className="mt-3 text-center text-[10px] leading-4 text-white/25">
-                  You will review and confirm the
-                  transaction in your wallet before the
-                  token is created.
+                <p className="mt-2 text-xs text-white/30">
+                  Example: 1,000,000 tokens
                 </p>
               </div>
-            </section>
-          </form>
-        )}
 
-        {/* SUCCESS */}
+              {/* DECIMALS */}
 
-        {hasDeployment &&
-          contractAddress && (
-            <section className="overflow-hidden rounded-[28px] border border-emerald-400/20 bg-emerald-400/[0.035] shadow-[0_25px_80px_rgba(0,0,0,.35)]">
+              <div>
+                <label
+                  htmlFor="token-decimals"
+                  className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-white/45"
+                >
+                  Decimals
+                </label>
 
-              {/* SUCCESS HEADER */}
+                <input
+                  id="token-decimals"
+                  type="number"
+                  min="0"
+                  max="18"
+                  value={decimals}
+                  onChange={(e) => {
+                    setDecimals(
+                      e.target.value
+                    );
+                    resetStatus();
+                  }}
+                  disabled={isDeploying}
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-[#070b16] px-4 text-base font-semibold text-white outline-none transition focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
+                />
 
-              <div className="border-b border-white/[0.07] p-5">
+                <p className="mt-2 text-xs text-white/30">
+                  Standard ERC-20 setting: 18
+                </p>
+              </div>
+
+              {/* SECURITY */}
+
+              <div className="rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.035] p-4">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10">
-                    <CheckCircle2
-                      size={25}
-                      className="text-emerald-400"
-                    />
-                  </div>
+                  <ShieldCheck
+                    size={20}
+                    className="mt-0.5 shrink-0 text-cyan-400"
+                  />
 
                   <div>
-                    <p className="text-lg font-black text-emerald-300">
-                      Token Created!
+                    <p className="text-sm font-bold">
+                      Secure token deployment
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-white/40">
-                      Your token is now deployed on
-                      IOPn Testnet.
+                      Your connected wallet becomes the
+                      initial owner of the deployed token
+                      contract.
                     </p>
                   </div>
-                </div>
-
-                {/* TOKEN SUMMARY */}
-
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[10px] text-white/25">
-                      Token
-                    </p>
-
-                    <p className="mt-1 truncate text-xs font-black">
-                      {name}
-                    </p>
-
-                    <p className="mt-0.5 text-[10px] text-cyan-400">
-                      {symbol}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[10px] text-white/25">
-                      Supply
-                    </p>
-
-                    <p className="mt-1 truncate text-xs font-black">
-                      {formatSupply(
-                        supply
-                      )}
-                    </p>
-
-                    <p className="mt-0.5 text-[10px] text-white/30">
-                      {decimals} decimals
-                    </p>
-                  </div>
-                </div>
-
-                {/* ADDRESS */}
-
-                <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-white/25">
-                    Contract Address
-                  </p>
-
-                  <div className="flex items-center gap-2">
-                    <p className="min-w-0 flex-1 break-all font-mono text-[11px] font-bold text-white/75">
-                      {contractAddress}
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={
-                        copyAddress
-                      }
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-white/60 transition hover:text-cyan-400"
-                    >
-                      {copied ? (
-                        <CheckCircle2
-                          size={15}
-                          className="text-emerald-400"
-                        />
-                      ) : (
-                        <Copy
-                          size={15}
-                        />
-                      )}
-                    </button>
-                  </div>
-
-                  {copied && (
-                    <p className="mt-2 text-[10px] font-bold text-emerald-400">
-                      Contract address copied
-                    </p>
-                  )}
-                </div>
-
-                {/* LINKS */}
-
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {contractUrl && (
-                    <a
-                      href={
-                        contractUrl
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] text-xs font-bold text-white/60 transition hover:border-cyan-400/30 hover:text-cyan-400"
-                    >
-                      Contract
-                      <ExternalLink
-                        size={13}
-                      />
-                    </a>
-                  )}
-
-                  {transactionUrl && (
-                    <a
-                      href={
-                        transactionUrl
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] text-xs font-bold text-white/60 transition hover:border-cyan-400/30 hover:text-cyan-400"
-                    >
-                      Transaction
-                      <ExternalLink
-                        size={13}
-                      />
-                    </a>
-                  )}
                 </div>
               </div>
 
-              {/* VERIFICATION */}
+              {/* ARTIFACT LOADING */}
 
-              <div className="p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10">
-                    <FileCheck2
-                      size={20}
-                      className="text-cyan-400"
+              {artifactLoading && (
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm text-white/50">
+                  <Loader2
+                    size={18}
+                    className="animate-spin text-cyan-400"
+                  />
+
+                  Loading token contract...
+                </div>
+              )}
+
+              {/* ARTIFACT ERROR */}
+
+              {artifactError && (
+                <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4 text-sm text-red-300">
+                  <div className="flex gap-3">
+                    <XCircle
+                      size={19}
+                      className="mt-0.5 shrink-0"
                     />
-                  </div>
 
-                  <div>
-                    <h3 className="font-black">
-                      Contract Verification
-                    </h3>
+                    <div>
+                      <p className="font-bold">
+                        Contract artifact unavailable
+                      </p>
 
-                    <p className="mt-1 text-xs leading-5 text-white/35">
-                      We automatically submit your source
-                      code for verification.
-                    </p>
-                  </div>
-                </div>
-
-                {/* VERIFICATION DETAILS */}
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[10px] text-white/25">
-                      Compiler
-                    </p>
-
-                    <p className="mt-1 break-all text-[10px] font-bold text-white/60">
-                      {artifact?.compiler?.version ||
-                        "Solidity 0.8.36"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[10px] text-white/25">
-                      Optimization
-                    </p>
-
-                    <p className="mt-1 text-[10px] font-bold text-white/60">
-                      {artifact?.optimization?.enabled ??
-                      true
-                        ? "Enabled"
-                        : "Disabled"}
-                    </p>
+                      <p className="mt-1 text-xs leading-5 text-red-300/70">
+                        {artifactError}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {renderVerification()}
+              {/* DEPLOYMENT ERROR */}
 
-                {/* MANUAL VERIFICATION */}
+              {status ===
+                "error" &&
+                error && (
+                  <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.06] p-4 text-sm text-red-300">
+                    <div className="flex gap-3">
+                      <XCircle
+                        size={19}
+                        className="mt-0.5 shrink-0"
+                      />
 
-                <button
-                  type="button"
-                  onClick={
-                    openManualVerification
-                  }
-                  className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] text-sm font-black text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-400/[0.1]"
-                >
-                  <FileCheck2
-                    size={17}
-                  />
+                      <div className="min-w-0">
+                        <p className="font-bold">
+                          Deployment failed
+                        </p>
 
-                  Open Verification Page
+                        <p className="mt-1 break-words text-xs leading-5 text-red-300/70">
+                          {error}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-                  <ExternalLink
-                    size={14}
-                  />
-                </button>
+              {/* CONFIRMATION */}
 
-                <p className="mt-2 text-center text-[10px] leading-4 text-white/20">
-                  If automatic verification is still
-                  processing, you can check the contract
-                  manually from the explorer.
-                </p>
+              {status ===
+                "confirming" &&
+                txHash && (
+                  <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4">
+                    <div className="flex items-start gap-3">
+                      <Loader2
+                        size={20}
+                        className="mt-0.5 animate-spin text-cyan-400"
+                      />
 
-                {/* CREATE ANOTHER */}
+                      <div className="min-w-0">
+                        <p className="font-bold">
+                          Waiting for confirmation
+                        </p>
 
-                <button
-                  type="button"
-                  onClick={
-                    createAnotherToken
-                  }
-                  className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-sm font-black text-black transition hover:brightness-110 active:scale-[0.98]"
-                >
-                  <Rocket
-                    size={17}
-                  />
+                        <p className="mt-1 break-all text-xs text-white/40">
+                          {txHash}
+                        </p>
 
-                  Create Another Token
-                </button>
-              </div>
-            </section>
-          )}
+                        <a
+                          href={
+                            transactionUrl
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-cyan-400"
+                        >
+                          View transaction
+                          <ExternalLink
+                            size={14}
+                          />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-        {/* HELP */}
+              {/* SUCCESS */}
 
-        <div className="mt-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+              {status ===
+                "success" &&
+                contractAddress && (
+                  <div className="overflow-hidden rounded-[24px] border border-emerald-400/20 bg-emerald-400/[0.045]">
+
+                    {/* DEPLOYED */}
+
+                    <div className="p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10">
+                          <CheckCircle2
+                            size={21}
+                            className="text-emerald-400"
+                          />
+                        </div>
+
+                        <div>
+                          <p className="font-black text-emerald-300">
+                            Token deployed successfully
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-white/40">
+                            Your ERC-20 token is now deployed on
+                            IOPn Testnet.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* ADDRESS */}
+
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-white/30">
+                          Contract Address
+                        </p>
+
+                        <div className="flex items-center gap-2">
+                          <p className="min-w-0 flex-1 break-all text-xs font-bold text-white/80">
+                            {contractAddress}
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyText(
+                                contractAddress,
+                                "address"
+                              )
+                            }
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-white/60 transition hover:text-cyan-400"
+                          >
+                            {copiedField ===
+                            "address" ? (
+                              <CheckCircle2
+                                size={15}
+                                className="text-emerald-400"
+                              />
+                            ) : (
+                              <Copy
+                                size={15}
+                              />
+                            )}
+                          </button>
+                        </div>
+
+                        {copiedField ===
+                          "address" && (
+                          <p className="mt-2 text-[11px] font-bold text-emerald-400">
+                            Address copied
+                          </p>
+                        )}
+                      </div>
+
+                      {/* LINKS */}
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <a
+                          href={
+                            contractUrl
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold text-white/70 transition hover:border-cyan-400/30 hover:text-cyan-400"
+                        >
+                          View Contract
+                          <ExternalLink
+                            size={13}
+                          />
+                        </a>
+
+                        <a
+                          href={
+                            transactionUrl
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-bold text-white/70 transition hover:border-cyan-400/30 hover:text-cyan-400"
+                        >
+                          Transaction
+                          <ExternalLink
+                            size={13}
+                          />
+                        </a>
+                      </div>
+
+                      {/* CONSTRUCTOR */}
+
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/30">
+                              Constructor Arguments
+                            </p>
+
+                            <p className="mt-1 text-[10px] text-white/25">
+                              ABI-encoded values used during deployment
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyText(
+                                getConstructorArgumentsText(),
+                                "constructor"
+                              )
+                            }
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-white/60 hover:text-cyan-400"
+                          >
+                            {copiedField ===
+                            "constructor" ? (
+                              <CheckCircle2
+                                size={15}
+                                className="text-emerald-400"
+                              />
+                            ) : (
+                              <Copy
+                                size={15}
+                              />
+                            )}
+                          </button>
+                        </div>
+
+                        <p className="mt-3 max-h-24 overflow-auto break-all rounded-xl bg-black/30 p-3 font-mono text-[9px] leading-4 text-white/40">
+                          {getConstructorArgumentsText()}
+                        </p>
+
+                        {copiedField ===
+                          "constructor" && (
+                          <p className="mt-2 text-[11px] font-bold text-emerald-400">
+                            Constructor arguments copied
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* AUTOMATIC VERIFICATION */}
+
+                    <div className="border-t border-white/[0.07] bg-white/[0.02] p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10">
+                          <FileCheck2
+                            size={20}
+                            className="text-cyan-400"
+                          />
+                        </div>
+
+                        <div>
+                          <h3 className="font-black">
+                            Automatic Verification
+                          </h3>
+
+                          <p className="mt-1 text-xs leading-5 text-white/40">
+                            IOPn DEX automatically submits the exact
+                            compiler input and constructor arguments
+                            used by this deployment.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] text-white/30">
+                            Compiler
+                          </p>
+
+                          <p className="mt-1 break-all text-[11px] font-bold text-white/70">
+                            {artifact?.compiler?.version ||
+                              "v0.8.36+commit.8a079791"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] text-white/30">
+                            Optimization
+                          </p>
+
+                          <p className="mt-1 text-[11px] font-bold text-white/70">
+                            Enabled ·{" "}
+                            {artifact?.optimization?.runs ||
+                              200}{" "}
+                            runs
+                          </p>
+                        </div>
+                      </div>
+
+                      {renderVerificationStatus()}
+                    </div>
+
+                    {/* MANUAL VERIFICATION */}
+
+                    <div className="border-t border-white/[0.07] bg-[#060a14] p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-400/10">
+                          <FileCheck2
+                            size={20}
+                            className="text-violet-400"
+                          />
+                        </div>
+
+                        <div>
+                          <h3 className="font-black">
+                            Manual Verification
+                          </h3>
+
+                          <p className="mt-1 text-xs leading-5 text-white/40">
+                            If automatic verification does not finish,
+                            verify your contract manually using the
+                            exact Standard JSON Input used during
+                            deployment.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* QUICK INFO */}
+
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                          <span className="text-xs text-white/40">
+                            Compiler
+                          </span>
+
+                          <span className="text-xs font-bold text-white/75">
+                            {artifact?.compiler?.version ||
+                              "v0.8.36+commit.8a079791"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                          <span className="text-xs text-white/40">
+                            Optimization
+                          </span>
+
+                          <span className="text-xs font-bold text-white/75">
+                            Enabled ·{" "}
+                            {artifact?.optimization?.runs ||
+                              200}{" "}
+                            runs
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                          <span className="text-xs text-white/40">
+                            License
+                          </span>
+
+                          <span className="text-xs font-bold uppercase text-white/75">
+                            MIT
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* STANDARD JSON */}
+
+                      <div className="mt-4 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.04] p-4">
+                        <div className="flex items-start gap-3">
+                          <Download
+                            size={20}
+                            className="mt-0.5 shrink-0 text-cyan-400"
+                          />
+
+                          <div className="min-w-0">
+                            <p className="font-bold">
+                              Standard JSON Input
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-white/40">
+                              This is the exact compiler input generated
+                              for your token deployment. Upload this
+                              file to the IOPn Explorer verification page.
+                            </p>
+
+                            <code className="mt-3 block truncate rounded-xl bg-black/30 px-3 py-2 text-[10px] text-cyan-300/70">
+                              IOPnToken-standard-input.json
+                            </code>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={
+                            downloadStandardJson
+                          }
+                          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 text-sm font-black text-black transition hover:bg-cyan-300 active:scale-[0.98]"
+                        >
+                          <Download
+                            size={17}
+                          />
+
+                          Download Standard JSON
+                        </button>
+                      </div>
+
+                      {/* VERIFICATION INFO */}
+
+                      <button
+                        type="button"
+                        onClick={
+                          downloadVerificationInfo
+                        }
+                        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-bold text-white/70 transition hover:border-cyan-400/30 hover:text-cyan-300"
+                      >
+                        <Download
+                          size={17}
+                        />
+
+                        Download Verification Info
+                      </button>
+
+                      {/* STEPS */}
+
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                        <p className="text-xs font-black uppercase tracking-[0.16em] text-white/35">
+                          Manual Verification Steps
+                        </p>
+
+                        <div className="mt-4 space-y-4">
+
+                          <div className="flex gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-xs font-black text-cyan-400">
+                              1
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-bold">
+                                Open the contract
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-white/35">
+                                Open your deployed contract on
+                                the IOPn Explorer.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-xs font-black text-cyan-400">
+                              2
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-bold">
+                                Select Verify & Publish
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-white/35">
+                                Select the contract verification
+                                option.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-xs font-black text-cyan-400">
+                              3
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-bold">
+                                Choose Standard JSON
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-white/35">
+                                Select{" "}
+                                <span className="font-bold text-white/60">
+                                  Solidity (Standard JSON input)
+                                </span>
+                                .
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-xs font-black text-cyan-400">
+                              4
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-bold">
+                                Select compiler
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-white/35">
+                                Use{" "}
+                                <span className="font-bold text-white/60">
+                                  {artifact?.compiler?.version ||
+                                    "v0.8.36+commit.8a079791"}
+                                </span>
+                                .
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-xs font-black text-cyan-400">
+                              5
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-bold">
+                                Upload the JSON file
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-white/35">
+                                Upload the downloaded{" "}
+                                <span className="font-bold text-white/60">
+                                  IOPnToken-standard-input.json
+                                </span>{" "}
+                                file.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-xs font-black text-cyan-400">
+                              6
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-bold">
+                                Submit verification
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-white/35">
+                                Confirm MIT license and submit
+                                the verification request.
+                              </p>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* EXPLORER BUTTON */}
+
+                      <a
+                        href={
+                          verificationUrl
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-4 flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-400 to-cyan-400 text-sm font-black text-[#020617] shadow-[0_10px_35px_rgba(34,211,238,.12)] transition hover:brightness-110 active:scale-[0.98]"
+                      >
+                        <FileCheck2
+                          size={18}
+                        />
+
+                        Verify on IOPn Explorer
+
+                        <ExternalLink
+                          size={15}
+                        />
+                      </a>
+
+                      <p className="mt-3 text-center text-[10px] leading-4 text-white/25">
+                        Your deployed contract address, compiler
+                        settings and Standard JSON file must match
+                        the original deployment.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+              {/* DEPLOY BUTTON */}
+
+              <button
+                type="submit"
+                disabled={
+                  isDeploying ||
+                  artifactLoading ||
+                  !artifact ||
+                  !isConnected
+                }
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 text-sm font-black text-[#020617] shadow-[0_10px_35px_rgba(34,211,238,.18)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isDeploying ? (
+                  <>
+                    <Loader2
+                      size={19}
+                      className="animate-spin"
+                    />
+
+                    {status ===
+                    "loading"
+                      ? "Preparing Deployment..."
+                      : "Confirming Deployment..."}
+                  </>
+                ) : (
+                  <>
+                    <Rocket
+                      size={19}
+                    />
+
+                    Deploy Token
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-[11px] leading-5 text-white/25">
+                Deployment requires a wallet transaction and
+                network gas. After confirmation, IOPn DEX
+                automatically attempts verification.
+              </p>
+            </div>
+          </div>
+        </form>
+
+        {/* FOOTER */}
+
+        <div className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
           <div className="flex items-start gap-3">
-            <Info
+            <ShieldCheck
               size={18}
-              className="mt-0.5 shrink-0 text-cyan-400/60"
+              className="mt-0.5 shrink-0 text-white/30"
             />
 
             <div>
-              <p className="text-xs font-bold text-white/55">
-                How it works
+              <p className="text-xs font-bold text-white/60">
+                About verification
               </p>
 
-              <div className="mt-2 space-y-1.5 text-[10px] leading-4 text-white/25">
-                <p>
-                  <span className="font-bold text-white/40">
-                    1.
-                  </span>{" "}
-                  Enter your token information.
-                </p>
-
-                <p>
-                  <span className="font-bold text-white/40">
-                    2.
-                  </span>{" "}
-                  Click Deploy Token and confirm the
-                  transaction in your wallet.
-                </p>
-
-                <p>
-                  <span className="font-bold text-white/40">
-                    3.
-                  </span>{" "}
-                  Your token contract is created on IOPn.
-                </p>
-
-                <p>
-                  <span className="font-bold text-white/40">
-                    4.
-                  </span>{" "}
-                  IOPn DEX automatically submits the
-                  contract for verification.
-                </p>
-
-                <p>
-                  <span className="font-bold text-white/40">
-                    5.
-                  </span>{" "}
-                  If automatic verification takes longer,
-                  you can open the explorer manually.
-                </p>
-              </div>
+              <p className="mt-1 text-[11px] leading-5 text-white/30">
+                Verification publishes the source code,
+                ABI, compiler settings and constructor
+                information associated with your deployed
+                bytecode. It does not modify the deployed
+                contract or its permissions.
+              </p>
             </div>
-          </div>
-        </div>
-
-        {/* SECURITY FOOTER */}
-
-        <div className="mt-3 rounded-2xl border border-white/[0.05] bg-white/[0.015] p-4">
-          <div className="flex items-start gap-3">
-            <ShieldCheck
-              size={17}
-              className="mt-0.5 shrink-0 text-white/25"
-            />
-
-            <p className="text-[10px] leading-4 text-white/20">
-              Your wallet controls the deployment
-              transaction. IOPn DEX does not receive or
-              store your private key.
-            </p>
           </div>
         </div>
 
