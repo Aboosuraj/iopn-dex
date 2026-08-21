@@ -34,7 +34,7 @@ const optimizerRuns = 200;
  * matching the deployment environment unless the IOPn explorer
  * specifically requires another target.
  */
-const evmVersion = "osaka";
+const evmVersion = undefined;
 
 console.log("");
 console.log("🔨 Compiling IOPnToken...");
@@ -95,8 +95,6 @@ const compilerInput = {
       enabled: optimizerEnabled,
       runs: optimizerRuns,
     },
-
-    evmVersion,
 
     outputSelection: {
       "*": {

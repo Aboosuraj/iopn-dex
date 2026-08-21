@@ -1,26 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const EXPLORER_URL =
-  "https://testnet.iopn.tech";
+const EXPLORER_URL = "https://testnet.iopn.tech";
+const API_URL = `${EXPLORER_URL}/api/v2`;
 
-const API_URL =
-  `${EXPLORER_URL}/api/v2`;
+const DEFAULT_LICENSE = "mit";
+const DEFAULT_CONTRACT_NAME = "IOPnToken";
 
-const DEFAULT_LICENSE =
-  "mit";
-
-function isAddress(
-  value: unknown
-): value is string {
+function isAddress(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    /^0x[a-fA-F0-9]{40}$/.test(value)
+    /^0x[a-fA-F0-9]{40}$/.test(value.trim())
   );
 }
 
-function cleanHex(
-  value: unknown
-): string {
+function cleanHex(value: unknown): string {
   if (typeof value !== "string") {
     return "";
   }
@@ -31,9 +24,7 @@ function cleanHex(
     .replace(/\s+/g, "");
 }
 
-function extractErrorMessage(
-  value: unknown
-): string {
+function extractErrorMessage(value: unknown): string {
   if (!value) {
     return "Unknown explorer error.";
   }
@@ -42,29 +33,23 @@ function extractErrorMessage(
     return value;
   }
 
-  if (
-    typeof value === "object" &&
-    value !== null
-  ) {
-    const object =
-      value as Record<string, unknown>;
+  if (typeof value === "object" && value !== null) {
+    const object = value as Record<string, unknown>;
 
-    if (
-      typeof object.message === "string"
-    ) {
+    if (typeof object.message === "string") {
       return object.message;
     }
 
-    if (
-      typeof object.error === "string"
-    ) {
+    if (typeof object.error === "string") {
       return object.error;
     }
 
-    if (
-      typeof object.result === "string"
-    ) {
+    if (typeof object.result === "string") {
       return object.result;
+    }
+
+    if (typeof object.detail === "string") {
+      return object.detail;
     }
 
     try {
@@ -77,94 +62,96 @@ function extractErrorMessage(
   return String(value);
 }
 
+async function readResponse(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function explorerVerified(data: unknown): boolean {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  const object = data as Record<string, unknown>;
+
+  return (
+    object.is_verified === true ||
+    object.is_fully_verified === true
+  );
+}
+
 /*
  * GET
  *
- * Check verification status for a contract.
+ * Check verification status.
  *
  * /api/verify?address=0x...
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   try {
     const address =
-      request.nextUrl.searchParams.get(
-        "address"
-      );
+      request.nextUrl.searchParams.get("address") ??
+      request.nextUrl.searchParams.get("contractAddress");
 
     if (!isAddress(address)) {
       return NextResponse.json(
         {
           success: false,
           verified: false,
-          error:
-            "A valid contract address is required.",
+          error: "A valid contract address is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    const response =
-      await fetch(
-        `${API_URL}/smart-contracts/${address}`,
-        {
-          method: "GET",
-          headers: {
-            Accept:
-              "application/json",
-          },
+    const normalizedAddress = address.trim();
 
-          cache: "no-store",
-        }
-      );
+    const response = await fetch(
+      `${API_URL}/smart-contracts/${normalizedAddress}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }
+    );
 
-    const text =
-      await response.text();
-
-    let data: unknown = null;
-
-    try {
-      data = text
-        ? JSON.parse(text)
-        : null;
-    } catch {
-      data = text;
-    }
+    const data = await readResponse(response);
 
     if (!response.ok) {
       return NextResponse.json(
         {
           success: false,
           verified: false,
-          explorerStatus:
-            response.status,
+          address: normalizedAddress,
+          explorerStatus: response.status,
           explorerResponse: data,
         },
-        {
-          status: response.status,
-        }
+        { status: response.status }
       );
     }
 
     const object =
-      data &&
-      typeof data === "object"
+      data && typeof data === "object"
         ? (data as Record<string, unknown>)
         : {};
 
-    const verified =
-      object.is_verified === true ||
-      object.is_fully_verified === true;
+    const verified = explorerVerified(data);
 
     return NextResponse.json({
       success: true,
-
       verified,
-
-      address,
+      address: normalizedAddress,
 
       isVerified:
         object.is_verified ?? false,
@@ -173,35 +160,33 @@ export async function GET(
         object.is_fully_verified ?? false,
 
       isPartiallyVerified:
-        object.is_partially_verified ??
-        false,
+        object.is_partially_verified ?? false,
 
       name:
         object.name ?? null,
 
       compilerVersion:
-        object.compiler_version ??
-        null,
+        object.compiler_version ?? null,
 
       evmVersion:
-        object.evm_version ??
-        null,
+        object.evm_version ?? null,
 
       optimizationEnabled:
-        object.optimization_enabled ??
-        null,
+        object.optimization_enabled ?? null,
 
       optimizationRuns:
         object.optimizations_runs ??
+        object.optimization_runs ??
         null,
 
       verifiedAt:
-        object.verified_at ??
-        null,
+        object.verified_at ?? null,
 
       explorerResponse: data,
     });
   } catch (error) {
+    console.error("Verification status error:", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -211,9 +196,7 @@ export async function GET(
             ? error.message
             : String(error),
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
@@ -222,223 +205,260 @@ export async function GET(
  * POST
  *
  * Submit Standard JSON Input verification.
+ *
+ * Accepts both:
+ *
+ * address
+ *
+ * and:
+ *
+ * contractAddress
+ *
+ * This keeps the API compatible with the deployment page.
  */
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   try {
-    const body =
-      await request.json();
+    const body = await request.json();
 
+    /*
+     * Accept BOTH names.
+     */
     const address =
-      body?.address;
-
-    const compilerVersion =
-      body?.compilerVersion;
-
-    const contractName =
-      body?.contractName ||
-      "IOPnToken";
-
-    const standardInput =
-      body?.standardInput;
-
-    const constructorArgs =
-      cleanHex(
-        body?.constructorArgs
-      );
-
-    const autodetectConstructorArgs =
-      body?.autodetectConstructorArgs !==
-      false;
-
-    const licenseType =
-      body?.licenseType ||
-      DEFAULT_LICENSE;
+      body?.address ??
+      body?.contractAddress;
 
     if (!isAddress(address)) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Invalid contract address.",
+          submitted: false,
+          error: "Invalid contract address.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    if (
-      typeof compilerVersion !==
-        "string" ||
-      !compilerVersion.trim()
-    ) {
+    const normalizedAddress = address.trim();
+
+    const compilerVersion =
+      typeof body?.compilerVersion === "string"
+        ? body.compilerVersion.trim()
+        : "";
+
+    if (!compilerVersion) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Compiler version is required.",
+          submitted: false,
+          error: "Compiler version is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    if (
-      typeof standardInput !==
-        "string" ||
-      !standardInput.trim()
-    ) {
+    const contractName =
+      typeof body?.contractName === "string" &&
+      body.contractName.trim()
+        ? body.contractName.trim()
+        : DEFAULT_CONTRACT_NAME;
+
+    const standardInput =
+      typeof body?.standardInput === "string"
+        ? body.standardInput.trim()
+        : "";
+
+    if (!standardInput) {
       return NextResponse.json(
         {
           success: false,
+          submitted: false,
           error:
             "Standard JSON compiler input is required.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     /*
-     * Validate Standard JSON before sending it.
+     * Make sure the Standard JSON is actually valid.
      */
+    let parsedStandardInput: unknown;
+
     try {
-      JSON.parse(
-        standardInput
-      );
+      parsedStandardInput =
+        JSON.parse(standardInput);
     } catch {
       return NextResponse.json(
         {
           success: false,
+          submitted: false,
           error:
             "standardInput is not valid JSON.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     /*
-     * Modern Blockscout API:
+     * Verify the important compiler settings.
      *
-     * POST
-     * /api/v2/smart-contracts/{address}
-     * /verification/via/standard-input
+     * We don't modify the user's Standard JSON.
+     * We only report what it contains.
      */
-    const verificationUrl =
-      `${API_URL}/smart-contracts/${address}/verification/via/standard-input`;
+    const settings =
+      parsedStandardInput &&
+      typeof parsedStandardInput === "object"
+        ? (
+            parsedStandardInput as Record<
+              string,
+              unknown
+            >
+          ).settings
+        : null;
 
-    const formData =
-      new FormData();
-
-    formData.append(
-      "compiler_version",
-      compilerVersion.trim()
+    const constructorArgs = cleanHex(
+      body?.constructorArgs
     );
 
-    formData.append(
+    const autodetectConstructorArgs =
+      body?.autodetectConstructorArgs !== false;
+
+    const licenseType =
+      typeof body?.licenseType === "string" &&
+      body.licenseType.trim()
+        ? body.licenseType.trim()
+        : DEFAULT_LICENSE;
+
+    /*
+     * Blockscout / IOPn Explorer endpoint.
+     */
+    const verificationUrl =
+      `${API_URL}/smart-contracts/${normalizedAddress}/verification/via/standard-input`;
+
+    const form = new FormData();
+
+    form.append(
+      "compiler_version",
+      compilerVersion
+    );
+
+    form.append(
       "contract_name",
-      contractName.trim()
+      contractName
     );
 
     /*
-     * Blockscout expects the Standard JSON
-     * input as files[0].
+     * Standard JSON Input must be sent
+     * as files[0].
      */
-    const sourceFile =
-      new File(
-        [
-          standardInput,
-        ],
-        "IOPnToken-standard-input.json",
-        {
-          type:
-            "application/json",
-        }
-      );
+    const sourceFile = new File(
+      [
+        standardInput,
+      ],
+      "IOPnToken-standard-input.json",
+      {
+        type: "application/json",
+      }
+    );
 
-    formData.append(
+    form.append(
       "files[0]",
       sourceFile
     );
 
-    formData.append(
-      "autodetect_constructor_args",
-      autodetectConstructorArgs
-        ? "true"
-        : "false"
-    );
-
-    /*
-     * Only send constructor_args when
-     * we actually have them.
-     *
-     * This is important because an empty
-     * constructor argument string must not
-     * be confused with real constructor data.
-     */
-    if (constructorArgs) {
-      formData.append(
-        "constructor_args",
-        constructorArgs
-      );
-    }
-
-    formData.append(
+    form.append(
       "license_type",
       licenseType
     );
 
-    const explorerResponse =
-      await fetch(
+    /*
+     * Constructor handling.
+     *
+     * If exact constructor arguments are supplied,
+     * use them.
+     *
+     * Otherwise allow explorer autodetection.
+     */
+    if (constructorArgs) {
+      form.append(
+        "constructor_args",
+        constructorArgs
+      );
+
+      form.append(
+        "autodetect_constructor_args",
+        "false"
+      );
+    } else {
+      form.append(
+        "autodetect_constructor_args",
+        autodetectConstructorArgs
+          ? "true"
+          : "false"
+      );
+    }
+
+    console.log(
+      "Submitting automatic verification:",
+      {
+        address: normalizedAddress,
+        contractName,
+        compilerVersion,
+        licenseType,
+        constructorArgsBytes:
+          constructorArgs.length / 2,
+        autodetectConstructorArgs:
+          constructorArgs
+            ? false
+            : autodetectConstructorArgs,
         verificationUrl,
+        evmVersion:
+          settings &&
+          typeof settings === "object"
+            ? (
+                settings as Record<
+                  string,
+                  unknown
+                >
+              ).evmVersion
+            : undefined,
+      }
+    );
+
+    const explorerResponse = await fetch(
+      verificationUrl,
+      {
+        method: "POST",
+
+        headers: {
+          Accept: "application/json",
+        },
+
+        body: form,
+
+        cache: "no-store",
+      }
+    );
+
+    const responseData =
+      await readResponse(
+        explorerResponse
+      );
+
+    if (!explorerResponse.ok) {
+      console.error(
+        "IOPn Explorer verification rejected:",
         {
-          method: "POST",
-
-          headers: {
-            Accept:
-              "application/json",
-          },
-
-          body: formData,
-
-          cache: "no-store",
+          status:
+            explorerResponse.status,
+          response:
+            responseData,
         }
       );
 
-    const responseText =
-      await explorerResponse.text();
-
-    let responseData: unknown =
-      null;
-
-    try {
-      responseData =
-        responseText
-          ? JSON.parse(responseText)
-          : null;
-    } catch {
-      responseData =
-        responseText;
-    }
-
-    /*
-     * Blockscout's modern endpoint can
-     * return 200/204 after accepting the
-     * verification request.
-     */
-    if (
-      !explorerResponse.ok
-    ) {
       return NextResponse.json(
         {
           success: false,
-
           submitted: false,
 
           error:
@@ -460,62 +480,62 @@ export async function POST(
     }
 
     /*
-     * Immediately check current verification
-     * status. It may still be processing.
+     * The explorer accepting the submission does NOT
+     * necessarily mean the contract is already verified.
      */
     let verified = false;
+    let verificationStatus: unknown = null;
 
     try {
       const statusResponse =
         await fetch(
-          `${API_URL}/smart-contracts/${address}`,
+          `${API_URL}/smart-contracts/${normalizedAddress}`,
           {
             method: "GET",
-
             headers: {
               Accept:
                 "application/json",
             },
-
             cache: "no-store",
           }
         );
 
-      if (
-        statusResponse.ok
-      ) {
-        const statusData =
-          await statusResponse.json();
+      verificationStatus =
+        await readResponse(
+          statusResponse
+        );
 
+      if (statusResponse.ok) {
         verified =
-          statusData?.is_verified ===
-            true ||
-          statusData?.is_fully_verified ===
-            true;
+          explorerVerified(
+            verificationStatus
+          );
       }
-    } catch {
-      /*
-       * Submission itself succeeded.
-       * Status checking can be retried
-       * by the frontend.
-       */
+    } catch (statusError) {
+      console.warn(
+        "Could not immediately check verification status:",
+        statusError
+      );
     }
 
     return NextResponse.json({
       success: true,
-
       submitted: true,
-
       verified,
 
-      address,
+      address:
+        normalizedAddress,
 
       contractName,
 
-      compilerVersion:
-        compilerVersion.trim(),
+      compilerVersion,
 
-      autodetectConstructorArgs,
+      licenseType,
+
+      autodetectConstructorArgs:
+        constructorArgs
+          ? false
+          : autodetectConstructorArgs,
 
       constructorArgs:
         constructorArgs || null,
@@ -523,15 +543,21 @@ export async function POST(
       explorerResponse:
         responseData,
 
+      verificationStatus,
+
       message: verified
         ? "Contract is verified."
         : "Verification request accepted. The explorer may still be processing it.",
     });
   } catch (error) {
+    console.error(
+      "Automatic contract verification failed:",
+      error
+    );
+
     return NextResponse.json(
       {
         success: false,
-
         submitted: false,
 
         error:
@@ -539,9 +565,7 @@ export async function POST(
             ? error.message
             : String(error),
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

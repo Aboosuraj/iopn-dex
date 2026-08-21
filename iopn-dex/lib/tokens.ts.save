@@ -1,12 +1,17 @@
-export type Token = {
+X
+^Xexport type Token = {
   name: string;
   symbol: string;
   address: `0x${string}`;
   decimals: number;
   native: boolean;
+
   logo: string;
+
   price: number;
+
   change24h: number;
+
   verified: boolean;
 };
 
@@ -80,66 +85,6 @@ export const TOKENS: Token[] = [
     logo: "/tokens/idex.png",
     price: 0.12,
     change24h: -1.2,
-    verified: true,
-  },
-
-  {
-    name: "1st",
-    symbol: "1st",
-    address: "0xA2Be03f79998BE590584BC08eFD9B1163878854B",
-    decimals: 18,
-    native: false,
-    logo: "/tokens/1st.png",
-    price: 0,
-    change24h: 0,
-    verified: true,
-  },
-
-  {
-    name: "JIMI",
-    symbol: "JIMI",
-    address: "0x09Dd91fe3E9e8FCD35F26127ef89Ed4540dD08B8",
-    decimals: 18,
-    native: false,
-    logo: "/tokens/jimi.png",
-    price: 0,
-    change24h: 0,
-    verified: true,
-  },
-
-  {
-    name: "cooper",
-    symbol: "cooper",
-    address: "0x506CD1b456c895952ba2F3dc3AD4431D3C81E2b4",
-    decimals: 18,
-    native: false,
-    logo: "/tokens/cooper.png",
-    price: 0,
-    change24h: 0,
-    verified: true,
-  },
-
-  {
-    name: "MEMER",
-    symbol: "MEMER",
-    address: "0x3929c1E9A74FA21674A8Fa620C373651035A12Bc",
-    decimals: 18,
-    native: false,
-    logo: "/tokens/memer.png",
-    price: 0,
-    change24h: 0,
-    verified: true,
-  },
-
-  {
-    name: "meme",
-    symbol: "meme",
-    address: "0x3bcefaA87bEbcCeb926b6D6524a1f52df2181Dcc",
-    decimals: 18,
-    native: false,
-    logo: "/tokens/meme.png",
-    price: 0,
-    change24h: 0,
     verified: true,
   },
 ];
