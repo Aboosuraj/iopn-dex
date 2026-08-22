@@ -16,7 +16,6 @@ import {
 
 import {
   FACTORY_ADDRESS,
-  OPN_ADDRESS,
   WOPN_ADDRESS,
 } from "@/lib/router";
 
@@ -411,14 +410,17 @@ async function discoverFactoryTokens(): Promise<Token[]> {
 
     /*
      * Read metadata from discovered ERC20s.
+     *
+     * Some contracts may fail metadata calls,
+     * therefore each result can be Token or null.
      */
-    const discovered =
+    const discovered: Array<Token | null> =
       await Promise.all(
 
         Array.from(
           tokenAddresses
         ).map(
-          async (address) => {
+          async (address): Promise<Token | null> => {
 
             try {
 
@@ -496,7 +498,7 @@ async function discoverFactoryTokens(): Promise<Token[]> {
                 verified:
                   false,
 
-              } satisfies Token;
+              };
 
             } catch (
               error
@@ -518,12 +520,22 @@ async function discoverFactoryTokens(): Promise<Token[]> {
       );
 
 
-    return discovered.filter(
-      (
-        token
-      ): token is Token =>
-        token !== null
-    );
+    /*
+     * Remove failed/null metadata results.
+     *
+     * Explicitly build a Token[] so TypeScript
+     * cannot infer the result as (Token | null)[].
+     */
+    const validTokens: Token[] =
+      discovered.filter(
+        (
+          token
+        ): token is Token =>
+          token !== null
+      );
+
+
+    return validTokens;
 
   } catch (
     error

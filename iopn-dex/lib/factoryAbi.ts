@@ -1,5 +1,4 @@
 export const FACTORY_ABI = [
-
   {
     type: "function",
     name: "allPairsLength",
@@ -50,4 +49,25 @@ export const FACTORY_ABI = [
     ],
   },
 
+  {
+    type: "function",
+    name: "createPair",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "tokenA",
+        type: "address",
+      },
+      {
+        name: "tokenB",
+        type: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "pair",
+        type: "address",
+      },
+    ],
+  },
 ] as const;

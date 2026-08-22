@@ -7,7 +7,7 @@ import {
   usePublicClient,
   useWalletClient,
 } from "wagmi";
-import { encodeAbiParameters } from "viem";
+import { encodeAbiParameters, parseEther } from "viem";
 import {
   Check,
   ExternalLink,
@@ -25,6 +25,50 @@ import {
 ========================================================= */
 
 const EXPLORER_URL = "https://testnet.iopn.tech";
+
+/*
+ * AUTOMATIC LIQUIDITY ALLOCATION
+ *
+ * 20% of the newly deployed token supply is reserved
+ * for the initial liquidity pool.
+ *
+ * IMPORTANT:
+ * The token side is calculated automatically.
+ *
+ * The OPN side must also be supplied by the deployer.
+ *
+ * Change this value to the amount of OPN you want to
+ * contribute to every automatic initial pool.
+ *
+ * Example:
+ *
+ * "1"   = 1 OPN
+ * "5"   = 5 OPN
+ * "10"  = 10 OPN
+ */
+const INITIAL_LIQUIDITY_OPN = "1";
+
+/*
+ * Percentage of the newly deployed token supply
+ * automatically allocated to the first liquidity pool.
+ */
+const LIQUIDITY_TOKEN_PERCENT = 20n;
+
+/* =========================================================
+   DEX CONFIG
+========================================================= */
+
+const ROUTER_ADDRESS =
+  "0xB489bce5c9c9364da2D1D1Bc5CE4274F63141885" as `0x${string}`;
+
+const FACTORY_ADDRESS =
+  "0x8860242B65611dfd077aEe26C3C7920813dF9208" as `0x${string}`;
+
+const WOPN_ADDRESS =
+  "0xBc022C9dEb5AF250A526321d16Ef52E39b4DBD84" as `0x${string}`;
+
+const OPN_ADDRESS =
+  "0xA463ce9F738E0B4035D8d036B902D0efADb24d20" as `0x${string}`;
 
 /* =========================================================
    TYPES
@@ -50,6 +94,152 @@ type VerificationResponse = {
   message?: string;
   error?: string;
 };
+
+/* =========================================================
+   ERC20 ABI
+========================================================= */
+
+const ERC20_LIQUIDITY_ABI = [
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "spender",
+        type: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [
+      {
+        name: "account",
+        type: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+      },
+    ],
+  },
+] as const;
+
+/* =========================================================
+   FACTORY ABI
+========================================================= */
+
+const FACTORY_ABI = [
+  {
+    type: "function",
+    name: "getPair",
+    stateMutability: "view",
+    inputs: [
+      {
+        name: "tokenA",
+        type: "address",
+      },
+      {
+        name: "tokenB",
+        type: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "pair",
+        type: "address",
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "createPair",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "tokenA",
+        type: "address",
+      },
+      {
+        name: "tokenB",
+        type: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "pair",
+        type: "address",
+      },
+    ],
+  },
+] as const;
+
+/* =========================================================
+   ROUTER ABI
+========================================================= */
+
+const ROUTER_LIQUIDITY_ABI = [
+  {
+    type: "function",
+    name: "addLiquidityOPN",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "token",
+        type: "address",
+      },
+      {
+        name: "amountTokenDesired",
+        type: "uint256",
+      },
+      {
+        name: "amountTokenMin",
+        type: "uint256",
+      },
+      {
+        name: "amountOPNMin",
+        type: "uint256",
+      },
+      {
+        name: "to",
+        type: "address",
+      },
+      {
+        name: "deadline",
+        type: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "amountToken",
+        type: "uint256",
+      },
+      {
+        name: "amountOPN",
+        type: "uint256",
+      },
+      {
+        name: "liquidity",
+        type: "uint256",
+      },
+    ],
+  },
+] as const;
 
 /* =========================================================
    COMPONENT
@@ -91,6 +281,16 @@ export default function DeployPage() {
     useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
+
+  /* =======================================================
+     LIQUIDITY STATE
+  ======================================================= */
+
+  const [liquidityPairAddress, setLiquidityPairAddress] =
+    useState("");
+
+  const [liquidityTransactionHash, setLiquidityTransactionHash] =
+    useState("");
 
   /* =======================================================
      LOAD ARTIFACT
@@ -295,6 +495,294 @@ export default function DeployPage() {
   }
 
   /* =======================================================
+     AUTOMATIC LIQUIDITY
+  ======================================================= */
+
+  async function createAutomaticLiquidity(
+    tokenAddress: `0x${string}`,
+    totalSupply: bigint
+  ) {
+    if (!address) {
+      throw new Error(
+        "Wallet address is unavailable for liquidity creation."
+      );
+    }
+
+    if (!walletClient) {
+      throw new Error(
+        "Wallet client is unavailable for liquidity creation."
+      );
+    }
+
+    if (!publicClient) {
+      throw new Error(
+        "Blockchain client is unavailable for liquidity creation."
+      );
+    }
+
+    /*
+     * 20% of the deployed token supply.
+     *
+     * Example:
+     *
+     * Supply = 1,000,000,000
+     *
+     * Liquidity allocation =
+     *
+     * 200,000,000 tokens
+     */
+    const liquidityTokenAmount =
+      (totalSupply *
+        LIQUIDITY_TOKEN_PERCENT) /
+      100n;
+
+    if (liquidityTokenAmount <= 0n) {
+      throw new Error(
+        "The calculated liquidity token allocation is zero."
+      );
+    }
+
+    /*
+     * OPN side of the pool.
+     *
+     * This is deliberately explicit instead of spending
+     * the user's entire wallet balance.
+     */
+    const liquidityOPNAmount =
+      parseEther(
+        INITIAL_LIQUIDITY_OPN
+      );
+
+    if (liquidityOPNAmount <= 0n) {
+      throw new Error(
+        "Initial OPN liquidity amount must be greater than zero."
+      );
+    }
+
+    /*
+     * Check wallet OPN balance before asking for approval.
+     */
+    const nativeBalance =
+      await publicClient.getBalance({
+        address,
+      });
+
+    if (
+      nativeBalance <
+      liquidityOPNAmount
+    ) {
+      throw new Error(
+        `Insufficient OPN balance for automatic liquidity. Required ${INITIAL_LIQUIDITY_OPN} OPN.`
+      );
+    }
+
+    /*
+     * Make sure the newly deployed token actually
+     * contains the expected allocation.
+     */
+    const tokenBalance =
+      await publicClient.readContract({
+        address: tokenAddress,
+        abi: ERC20_LIQUIDITY_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      });
+
+    if (
+      tokenBalance <
+      liquidityTokenAmount
+    ) {
+      throw new Error(
+        "The deployer wallet does not contain enough newly deployed tokens for the 20% liquidity allocation."
+      );
+    }
+
+    /* =====================================================
+       STEP A — CHECK / CREATE PAIR
+    ===================================================== */
+
+    setState("indexing");
+
+    setMessage(
+      "Preparing the automatic OPN liquidity pool..."
+    );
+
+    let pairAddress =
+      await publicClient.readContract({
+        address: FACTORY_ADDRESS,
+        abi: FACTORY_ABI,
+        functionName: "getPair",
+        args: [
+          tokenAddress,
+          WOPN_ADDRESS,
+        ],
+      });
+
+    /*
+     * Viem returns the zero address when the pair does
+     * not exist.
+     */
+    if (
+      pairAddress ===
+      "0x0000000000000000000000000000000000000000"
+    ) {
+      setMessage(
+        "Creating the new OPN liquidity pair..."
+      );
+
+      const createPairHash =
+        await walletClient.writeContract({
+          address: FACTORY_ADDRESS,
+          abi: FACTORY_ABI,
+          functionName: "createPair",
+          args: [
+            tokenAddress,
+            WOPN_ADDRESS,
+          ],
+          account: address,
+          chain: walletClient.chain,
+        });
+
+      await publicClient.waitForTransactionReceipt(
+        {
+          hash: createPairHash,
+        }
+      );
+
+      /*
+       * Read the pair again after the transaction.
+       */
+      pairAddress =
+        await publicClient.readContract({
+          address: FACTORY_ADDRESS,
+          abi: FACTORY_ABI,
+          functionName: "getPair",
+          args: [
+            tokenAddress,
+            WOPN_ADDRESS,
+          ],
+        });
+    }
+
+    if (
+      pairAddress ===
+      "0x0000000000000000000000000000000000000000"
+    ) {
+      throw new Error(
+        "The liquidity pair could not be created."
+      );
+    }
+
+    setLiquidityPairAddress(
+      pairAddress
+    );
+
+    /* =====================================================
+       STEP B — APPROVE ROUTER
+    ===================================================== */
+
+    setMessage(
+      "Approving 20% of your token supply for the liquidity pool..."
+    );
+
+    const approvalHash =
+      await walletClient.writeContract({
+        address: tokenAddress,
+        abi: ERC20_LIQUIDITY_ABI,
+        functionName: "approve",
+        args: [
+          ROUTER_ADDRESS,
+          liquidityTokenAmount,
+        ],
+        account: address,
+        chain: walletClient.chain,
+      });
+
+    await publicClient.waitForTransactionReceipt(
+      {
+        hash: approvalHash,
+      }
+    );
+
+    /* =====================================================
+       STEP C — ADD OPN LIQUIDITY
+    ===================================================== */
+
+    setState("deploying");
+
+    setMessage(
+      `Adding ${LIQUIDITY_TOKEN_PERCENT.toString()}% of your token supply and ${INITIAL_LIQUIDITY_OPN} OPN to the initial liquidity pool...`
+    );
+
+    /*
+     * 1% slippage protection.
+     *
+     * amountTokenMin = 99% of desired token amount
+     * amountOPNMin   = 99% of desired OPN amount
+     */
+    const amountTokenMin =
+      (liquidityTokenAmount *
+        99n) /
+      100n;
+
+    const amountOPNMin =
+      (liquidityOPNAmount *
+        99n) /
+      100n;
+
+    /*
+     * Five-minute deadline.
+     */
+    const deadline =
+      BigInt(
+        Math.floor(
+          Date.now() / 1000
+        ) + 300
+      );
+
+    const liquidityHash =
+      await walletClient.writeContract({
+        address: ROUTER_ADDRESS,
+        abi: ROUTER_LIQUIDITY_ABI,
+        functionName: "addLiquidityOPN",
+        args: [
+          tokenAddress,
+          liquidityTokenAmount,
+          amountTokenMin,
+          amountOPNMin,
+          address,
+          deadline,
+        ],
+        value: liquidityOPNAmount,
+        account: address,
+        chain: walletClient.chain,
+      });
+
+    setLiquidityTransactionHash(
+      liquidityHash
+    );
+
+    await publicClient.waitForTransactionReceipt(
+      {
+        hash: liquidityHash,
+      }
+    );
+
+    setMessage(
+      `✓ Initial liquidity pool created successfully. ${LIQUIDITY_TOKEN_PERCENT.toString()}% of the token supply was allocated to liquidity.`
+    );
+
+    return {
+      pairAddress,
+      liquidityHash,
+      tokenAmount:
+        liquidityTokenAmount,
+      opnAmount:
+        liquidityOPNAmount,
+    };
+  }
+
+  /* =======================================================
      AUTOMATIC VERIFICATION
   ======================================================= */
 
@@ -435,6 +923,8 @@ export default function DeployPage() {
     setTransactionHash("");
     setVerificationId(null);
     setCopied(false);
+    setLiquidityPairAddress("");
+    setLiquidityTransactionHash("");
 
     /* =====================================================
        WALLET
@@ -518,17 +1008,6 @@ export default function DeployPage() {
 
     /* =====================================================
        EXACT SUPPLY
-
-       IMPORTANT:
-
-       We DO NOT use parseUnits().
-
-       1,000,000,000 entered by the user
-       becomes exactly:
-
-       1000000000
-
-       on-chain.
     ===================================================== */
 
     let totalSupply: bigint;
@@ -655,11 +1134,20 @@ export default function DeployPage() {
       setState("deployed");
 
       setMessage(
-        "Token deployed successfully. Checking the IOPn Explorer..."
+        "Token deployed successfully. Preparing automatic liquidity..."
       );
 
       /* =================================================
-         STEP 4 — INDEXING
+         STEP 4 — AUTOMATIC LIQUIDITY
+      ================================================= */
+
+      await createAutomaticLiquidity(
+        deployedAddress,
+        totalSupply
+      );
+
+      /* =================================================
+         STEP 5 — INDEXING
       ================================================= */
 
       const explorerState =
@@ -673,14 +1161,14 @@ export default function DeployPage() {
         setState("verified");
 
         setMessage(
-          "✓ Explorer confirms that this contract is verified."
+          "✓ Token deployed, liquidity created, and Explorer confirms that this contract is verified."
         );
 
         return;
       }
 
       /* =================================================
-         STEP 5 — VERIFICATION
+         STEP 6 — VERIFICATION
       ================================================= */
 
       await verifyContract(
@@ -748,6 +1236,11 @@ export default function DeployPage() {
   const explorerTransactionUrl =
     transactionHash
       ? `${EXPLORER_URL}/tx/${transactionHash}`
+      : "";
+
+  const explorerLiquidityTransactionUrl =
+    liquidityTransactionHash
+      ? `${EXPLORER_URL}/tx/${liquidityTransactionHash}`
       : "";
 
   /* =======================================================
@@ -1260,6 +1753,64 @@ export default function DeployPage() {
                     View transaction
                     <ExternalLink size={13} />
                   </a>
+
+                </div>
+              )}
+
+              {/* LIQUIDITY */}
+
+              {liquidityPairAddress && (
+                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
+
+                  <div className="flex items-start gap-3">
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-cyan-300">
+
+                      <Rocket size={17} />
+
+                    </div>
+
+                    <div>
+
+                      <p className="font-semibold text-cyan-300">
+                        Initial Liquidity Created
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-cyan-400/60">
+                        20% of the token supply was
+                        automatically allocated to the
+                        initial OPN liquidity pool.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  <div className="mt-4">
+
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+                      Pair address
+                    </p>
+
+                    <p className="mt-1 break-all font-mono text-[11px] leading-5 text-zinc-500">
+                      {liquidityPairAddress}
+                    </p>
+
+                  </div>
+
+                  {liquidityTransactionHash && (
+                    <a
+                      href={
+                        explorerLiquidityTransactionUrl
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-cyan-300 transition hover:text-cyan-200"
+                    >
+                      View liquidity transaction
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
 
                 </div>
               )}
