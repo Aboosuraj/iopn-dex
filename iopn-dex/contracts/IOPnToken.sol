@@ -53,18 +53,29 @@ contract IOPnToken {
         symbol = tokenSymbol;
         decimals = tokenDecimals;
 
-        uint256 supply =
-            initialSupply *
-            (10 ** uint256(tokenDecimals));
+        /*
+         * IMPORTANT:
+         *
+         * initialSupply is now used EXACTLY as entered.
+         *
+         * Example:
+         * 1,000,000,000
+         *
+         * becomes:
+         * totalSupply = 1,000,000,000
+         *
+         * There is NO:
+         * initialSupply * 10 ** decimals
+         */
 
-        totalSupply = supply;
+        totalSupply = initialSupply;
 
-        balanceOf[initialOwner] = supply;
+        balanceOf[initialOwner] = initialSupply;
 
         emit Transfer(
             address(0),
             initialOwner,
-            supply
+            initialSupply
         );
     }
 

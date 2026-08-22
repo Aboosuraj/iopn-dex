@@ -7,10 +7,7 @@ import {
   usePublicClient,
   useWalletClient,
 } from "wagmi";
-import {
-  encodeAbiParameters,
-  parseUnits,
-} from "viem";
+import { encodeAbiParameters } from "viem";
 import {
   Check,
   ExternalLink,
@@ -68,25 +65,22 @@ export default function DeployPage() {
   /* =======================================================
      FORM
 
-     IMPORTANT:
-     All fields intentionally start EMPTY.
+     Name / Symbol / Supply remain EMPTY.
+
+     Decimals automatically starts at 18.
   ======================================================= */
 
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [supply, setSupply] = useState("");
-  const [decimals, setDecimals] = useState("");
+  const [decimals, setDecimals] = useState("18");
 
   /* =======================================================
      DEPLOYMENT STATE
   ======================================================= */
 
-  const [contractAddress, setContractAddress] =
-    useState("");
-
-  const [transactionHash, setTransactionHash] =
-    useState("");
-
+  const [contractAddress, setContractAddress] = useState("");
+  const [transactionHash, setTransactionHash] = useState("");
   const [state, setState] =
     useState<DeploymentState>("idle");
 
@@ -131,7 +125,7 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     LOAD EXACT STANDARD JSON
+     LOAD STANDARD JSON
   ======================================================= */
 
   async function loadStandardInput() {
@@ -144,7 +138,7 @@ export default function DeployPage() {
 
     if (!response.ok) {
       throw new Error(
-        "Unable to load IOPnToken-standard-input.json."
+        "Unable to load IOPnToken standard input."
       );
     }
 
@@ -167,8 +161,6 @@ export default function DeployPage() {
 
   /* =======================================================
      EXPLORER CHECK
-
-     Explorer is the ONLY source of truth for verification.
   ======================================================= */
 
   async function checkExplorer(
@@ -203,7 +195,7 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     WAIT FOR EXPLORER INDEXING
+     WAIT FOR INDEXING
   ======================================================= */
 
   async function waitForIndexing(
@@ -270,23 +262,23 @@ export default function DeployPage() {
       encodeAbiParameters(
         [
           {
-            name: "name",
+            name: "tokenName",
             type: "string",
           },
           {
-            name: "symbol",
+            name: "tokenSymbol",
             type: "string",
           },
           {
-            name: "totalSupply",
+            name: "initialSupply",
             type: "uint256",
           },
           {
-            name: "decimals",
+            name: "tokenDecimals",
             type: "uint8",
           },
           {
-            name: "owner",
+            name: "initialOwner",
             type: "address",
           },
         ],
@@ -329,48 +321,44 @@ export default function DeployPage() {
         address!
       );
 
+    const form = new FormData();
+
+    form.append(
+      "address",
+      contract
+    );
+
+    form.append(
+      "compiler_version",
+      "v0.8.36+commit.8a079791"
+    );
+
+    form.append(
+      "contract_name",
+      "IOPnToken"
+    );
+
+    form.append(
+      "license_type",
+      "mit"
+    );
+
+    form.append(
+      "constructor_args",
+      constructorArgs
+    );
+
+    form.append(
+      "standard_input",
+      standardInput
+    );
+
     const response = await fetch(
       "/api/markets/verify-token",
       {
         method: "POST",
-
         cache: "no-store",
-
-        body: (() => {
-          const form = new FormData();
-
-          form.append(
-            "address",
-            contract
-          );
-
-          form.append(
-            "compiler_version",
-            "v0.8.36+commit.8a079791"
-          );
-
-          form.append(
-            "contract_name",
-            "IOPnToken"
-          );
-
-          form.append(
-            "license_type",
-            "mit"
-          );
-
-          form.append(
-            "constructor_args",
-            constructorArgs
-          );
-
-          form.append(
-            "standard_input",
-            standardInput
-          );
-
-          return form;
-        })(),
+        body: form,
       }
     );
 
@@ -382,11 +370,6 @@ export default function DeployPage() {
         data.verificationId
       );
     }
-
-    /*
-     * NEVER trust the verification POST response.
-     * Ask the actual Explorer.
-     */
 
     const immediate =
       await checkExplorer(contract);
@@ -400,10 +383,6 @@ export default function DeployPage() {
 
       return true;
     }
-
-    /*
-     * Poll Explorer until verification is confirmed.
-     */
 
     for (
       let attempt = 1;
@@ -435,10 +414,6 @@ export default function DeployPage() {
       }
     }
 
-    /*
-     * Explorer never confirmed it.
-     */
-
     setState("deployed");
 
     setMessage(
@@ -462,7 +437,7 @@ export default function DeployPage() {
     setCopied(false);
 
     /* =====================================================
-       WALLET VALIDATION
+       WALLET
     ===================================================== */
 
     if (!isConnected) {
@@ -494,7 +469,7 @@ export default function DeployPage() {
     }
 
     /* =====================================================
-       FORM VALIDATION
+       VALIDATION
     ===================================================== */
 
     if (!name.trim()) {
@@ -517,14 +492,6 @@ export default function DeployPage() {
       );
       return;
     }
-
-    /*
-     * IMPORTANT:
-     * Do not allow an empty decimals field.
-     *
-     * Number("") returns 0, so we explicitly
-     * check the string before converting it.
-     */
 
     if (!decimals.trim()) {
       setError(
@@ -549,16 +516,48 @@ export default function DeployPage() {
       return;
     }
 
+    /* =====================================================
+       EXACT SUPPLY
+
+       IMPORTANT:
+
+       We DO NOT use parseUnits().
+
+       1,000,000,000 entered by the user
+       becomes exactly:
+
+       1000000000
+
+       on-chain.
+    ===================================================== */
+
     let totalSupply: bigint;
 
     try {
-      totalSupply = parseUnits(
-        supply.trim(),
-        decimalsNumber
-      );
-    } catch {
+      const cleanSupply =
+        supply
+          .trim()
+          .replace(/,/g, "");
+
+      if (!/^\d+$/.test(cleanSupply)) {
+        throw new Error(
+          "Supply must contain whole numbers only."
+        );
+      }
+
+      totalSupply =
+        BigInt(cleanSupply);
+
+      if (totalSupply <= 0n) {
+        throw new Error(
+          "Supply must be greater than zero."
+        );
+      }
+    } catch (err) {
       setError(
-        "Invalid token supply."
+        err instanceof Error
+          ? err.message
+          : "Invalid token supply."
       );
       return;
     }
@@ -597,8 +596,14 @@ export default function DeployPage() {
             args: [
               name.trim(),
               symbol.trim(),
+
+              /*
+               * EXACT USER SUPPLY
+               */
               totalSupply,
+
               decimalsNumber,
+
               address,
             ],
           }
@@ -631,7 +636,7 @@ export default function DeployPage() {
       }
 
       /* =================================================
-         STEP 3 — CONTRACT ADDRESS
+         STEP 3 — ADDRESS
       ================================================= */
 
       const deployedAddress =
@@ -662,10 +667,6 @@ export default function DeployPage() {
           deployedAddress
         );
 
-      /*
-       * Explorer already verified it.
-       */
-
       if (
         explorerState.verified
       ) {
@@ -678,20 +679,8 @@ export default function DeployPage() {
         return;
       }
 
-      /*
-       * Continue with automatic verification.
-       */
-
-      if (
-        !explorerState.indexed
-      ) {
-        setMessage(
-          "Explorer has not indexed the contract yet. Preparing verification..."
-        );
-      }
-
       /* =================================================
-         STEP 5 — AUTOMATIC VERIFICATION
+         STEP 5 — VERIFICATION
       ================================================= */
 
       await verifyContract(
@@ -718,7 +707,7 @@ export default function DeployPage() {
   }
 
   /* =======================================================
-     COPY ADDRESS
+     COPY
   ======================================================= */
 
   async function copyAddress() {
@@ -768,9 +757,7 @@ export default function DeployPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05070b] text-white">
 
-      {/* =================================================
-          BACKGROUND
-      ================================================= */}
+      {/* BACKGROUND */}
 
       <div className="pointer-events-none absolute inset-0">
 
@@ -785,22 +772,15 @@ export default function DeployPage() {
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
-            backgroundSize:
-              "42px 42px",
+            backgroundSize: "42px 42px",
           }}
         />
 
       </div>
 
-      {/* =================================================
-          CONTENT
-      ================================================= */}
-
       <div className="relative mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
 
-        {/* =================================================
-            TOP NAV
-        ================================================= */}
+        {/* NAV */}
 
         <div className="mb-10 flex items-center justify-between">
 
@@ -809,7 +789,6 @@ export default function DeployPage() {
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-400 transition hover:border-cyan-400/30 hover:bg-white/[0.06] hover:text-white"
           >
             <ArrowLeft size={15} />
-
             Dashboard
           </Link>
 
@@ -825,9 +804,7 @@ export default function DeployPage() {
 
         </div>
 
-        {/* =================================================
-            HERO
-        ================================================= */}
+        {/* HERO */}
 
         <section className="mb-8 text-center">
 
@@ -841,19 +818,19 @@ export default function DeployPage() {
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+
             Create Tokens
 
             <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
               with Fun on OPN Chain
             </span>
+
           </h1>
 
           <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-zinc-400 sm:text-base">
             Launch your own token on the OPN
             Chain testnet in seconds. Deploy
-            directly from your wallet and let
-            the IOPn Explorer confirm the
-            contract verification.
+            directly from your wallet.
           </p>
 
           <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -874,13 +851,9 @@ export default function DeployPage() {
 
         </section>
 
-        {/* =================================================
-            MAIN CARD
-        ================================================= */}
+        {/* MAIN CARD */}
 
         <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.025] shadow-2xl shadow-black/40 backdrop-blur-xl">
-
-          {/* CARD HEADER */}
 
           <div className="border-b border-white/10 px-5 py-5 sm:px-7">
 
@@ -909,8 +882,6 @@ export default function DeployPage() {
 
           </div>
 
-          {/* FORM */}
-
           <div className="space-y-5 p-5 sm:p-7">
 
             {/* NAME */}
@@ -924,9 +895,7 @@ export default function DeployPage() {
               <input
                 value={name}
                 onChange={(event) =>
-                  setName(
-                    event.target.value
-                  )
+                  setName(event.target.value)
                 }
                 disabled={isBusy}
                 placeholder="e.g. My Token"
@@ -948,7 +917,7 @@ export default function DeployPage() {
                 value={symbol}
                 onChange={(event) =>
                   setSymbol(
-                    event.target.value
+                    event.target.value.toUpperCase()
                   )
                 }
                 disabled={isBusy}
@@ -973,20 +942,24 @@ export default function DeployPage() {
 
                 <input
                   value={supply}
-                  onChange={(event) =>
-                    setSupply(
-                      event.target.value
-                    )
-                  }
+                  onChange={(event) => {
+                    const value =
+                      event.target.value.replace(
+                        /[^\d,]/g,
+                        ""
+                      );
+
+                    setSupply(value);
+                  }}
                   disabled={isBusy}
-                  inputMode="decimal"
-                  placeholder="e.g. 1000000"
+                  inputMode="numeric"
+                  placeholder="e.g. 1000000000"
                   autoComplete="off"
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
                 />
 
                 <p className="mt-2 text-xs text-zinc-600">
-                  Enter the initial token supply
+                  Enter the exact token supply
                 </p>
 
               </div>
@@ -1001,25 +974,59 @@ export default function DeployPage() {
 
                 <input
                   value={decimals}
-                  onChange={(event) =>
-                    setDecimals(
-                      event.target.value
-                    )
-                  }
+                  onChange={(event) => {
+                    const value =
+                      event.target.value.replace(
+                        /\D/g,
+                        ""
+                      );
+
+                    setDecimals(value);
+                  }}
                   disabled={isBusy}
                   inputMode="numeric"
-                  placeholder="e.g. 18"
                   autoComplete="off"
-                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  min={0}
+                  max={18}
+                  className="w-full rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] px-4 py-3.5 text-sm font-semibold text-cyan-300 outline-none transition focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
                 />
 
                 <p className="mt-2 text-xs text-zinc-600">
-                  Choose a value from 0 to 18
+                  Default: 18 • Maximum: 18
                 </p>
 
               </div>
 
             </div>
+
+            {/* SUPPLY PREVIEW */}
+
+            {supply.trim() && (
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+
+                <div className="flex items-center justify-between gap-4">
+
+                  <span className="text-xs text-zinc-500">
+                    On-chain total supply
+                  </span>
+
+                  <span className="font-mono text-sm font-semibold text-cyan-300">
+                    {supply.replace(
+                      /,/g,
+                      ""
+                    )}
+                  </span>
+
+                </div>
+
+                <p className="mt-2 text-[11px] leading-5 text-zinc-600">
+                  This value is deployed exactly as
+                  entered. No automatic 10^18
+                  multiplication is applied.
+                </p>
+
+              </div>
+            )}
 
             {/* DEPLOY BUTTON */}
 
@@ -1042,25 +1049,20 @@ export default function DeployPage() {
                       className="animate-spin"
                     />
 
-                    {state ===
-                    "deploying"
+                    {state === "deploying"
                       ? "Deploying Token..."
-                      : state ===
-                        "indexing"
+                      : state === "indexing"
                       ? "Checking Explorer..."
                       : "Verifying Contract..."}
                   </>
-                ) : state ===
-                  "verified" ? (
+                ) : state === "verified" ? (
                   <>
                     <Check size={18} />
-
                     Verified
                   </>
                 ) : (
                   <>
                     <Rocket size={18} />
-
                     Deploy Token
                   </>
                 )}
@@ -1080,9 +1082,7 @@ export default function DeployPage() {
 
             </div>
 
-            {/* =================================================
-                STATUS
-            ================================================= */}
+            {/* STATUS */}
 
             {message && (
               <div
@@ -1099,8 +1099,7 @@ export default function DeployPage() {
 
                   <div className="mt-0.5 shrink-0">
 
-                    {state ===
-                    "verified" ? (
+                    {state === "verified" ? (
                       <Check
                         size={17}
                         className="text-emerald-400"
@@ -1144,9 +1143,7 @@ export default function DeployPage() {
 
         </section>
 
-        {/* =================================================
-            DEPLOYMENT RESULT
-        ================================================= */}
+        {/* DEPLOYMENT RESULT */}
 
         {contractAddress && (
           <section className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.025] shadow-2xl backdrop-blur-xl">
@@ -1163,8 +1160,7 @@ export default function DeployPage() {
                   }`}
                 >
 
-                  {state ===
-                  "verified" ? (
+                  {state === "verified" ? (
                     <ShieldCheck size={20} />
                   ) : (
                     <Rocket size={20} />
@@ -1231,15 +1227,12 @@ export default function DeployPage() {
                 </p>
 
                 <a
-                  href={
-                    explorerContractUrl
-                  }
+                  href={explorerContractUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-cyan-400 transition hover:text-cyan-300"
                 >
                   View contract on Explorer
-
                   <ExternalLink size={13} />
                 </a>
 
@@ -1259,15 +1252,12 @@ export default function DeployPage() {
                   </p>
 
                   <a
-                    href={
-                      explorerTransactionUrl
-                    }
+                    href={explorerTransactionUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-cyan-400 transition hover:text-cyan-300"
                   >
                     View transaction
-
                     <ExternalLink size={13} />
                   </a>
 
@@ -1293,16 +1283,13 @@ export default function DeployPage() {
                     <div>
 
                       <p className="font-semibold text-emerald-300">
-                        Verified on IOPn
-                        Explorer
+                        Verified on IOPn Explorer
                       </p>
 
                       <p className="mt-1 text-xs leading-5 text-emerald-400/60">
-                        The Explorer has
-                        confirmed the
-                        published source
-                        code for this
-                        contract.
+                        The Explorer has confirmed
+                        the published source code
+                        for this contract.
                       </p>
 
                     </div>
@@ -1310,15 +1297,12 @@ export default function DeployPage() {
                   </div>
 
                   <a
-                    href={
-                      explorerContractUrl
-                    }
+                    href={explorerContractUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-emerald-300 transition hover:text-emerald-200"
                   >
                     Confirm on Explorer
-
                     <ExternalLink size={13} />
                   </a>
 
@@ -1344,11 +1328,9 @@ export default function DeployPage() {
                       </p>
 
                       <p className="mt-1 text-xs leading-5 text-amber-400/60">
-                        This contract is not
-                        shown as verified
-                        unless the IOPn
-                        Explorer confirms
-                        the source code.
+                        The contract is live,
+                        but Explorer verification
+                        has not yet been confirmed.
                       </p>
 
                     </div>
@@ -1356,22 +1338,19 @@ export default function DeployPage() {
                   </div>
 
                   <a
-                    href={
-                      explorerContractUrl
-                    }
+                    href={explorerContractUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-amber-300 transition hover:text-amber-200"
                   >
                     Open Explorer
-
                     <ExternalLink size={13} />
                   </a>
 
                 </div>
               )}
 
-              {/* VERIFICATION REQUEST */}
+              {/* VERIFICATION ID */}
 
               {verificationId && (
                 <div className="border-t border-white/5 pt-4">
@@ -1392,9 +1371,7 @@ export default function DeployPage() {
           </section>
         )}
 
-        {/* =================================================
-            FOOTER
-        ================================================= */}
+        {/* FOOTER */}
 
         <div className="mt-8 text-center">
 
