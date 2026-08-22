@@ -2,22 +2,6 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 
-/*
-|--------------------------------------------------------------------------
-| IOPn Token Deployment Artifact API
-|--------------------------------------------------------------------------
-|
-| This route ONLY provides the compiled IOPnToken artifact to the deploy
-| page.
-|
-| It does NOT:
-| - verify contracts
-| - submit verification
-| - claim a contract is verified
-|
-|--------------------------------------------------------------------------
-*/
-
 const ARTIFACT_PATH = path.join(
   process.cwd(),
   "artifacts",
@@ -30,45 +14,63 @@ const STANDARD_INPUT_PATH = path.join(
   "IOPnToken-standard-input.json"
 );
 
-function json(data: unknown, status = 200) {
+const VERIFICATION_PATH = path.join(
+  process.cwd(),
+  "artifacts",
+  "IOPnToken-verification.json"
+);
+
+function json(
+  data: unknown,
+  status = 200
+) {
   return NextResponse.json(data, {
     status,
     headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate",
     },
   });
 }
 
-/*
-|--------------------------------------------------------------------------
-| GET
-|--------------------------------------------------------------------------
-|
-| GET /api/deploy/artifact
-|
-| Returns:
-| - compiled ABI
-| - bytecode
-| - Standard JSON compiler input
-|
-|--------------------------------------------------------------------------
-*/
-
 export async function GET() {
   try {
-    const [artifactRaw, standardInput] =
-      await Promise.all([
-        fs.readFile(ARTIFACT_PATH, "utf8"),
-        fs.readFile(STANDARD_INPUT_PATH, "utf8"),
-      ]);
+    const [
+      artifactRaw,
+      standardInput,
+      verificationRaw,
+    ] = await Promise.all([
+      fs.readFile(
+        ARTIFACT_PATH,
+        "utf8"
+      ),
 
-    const artifact = JSON.parse(artifactRaw);
+      fs.readFile(
+        STANDARD_INPUT_PATH,
+        "utf8"
+      ),
 
-    if (!artifact?.abi) {
+      fs.readFile(
+        VERIFICATION_PATH,
+        "utf8"
+      ).catch(() => "{}"),
+    ]);
+
+    const artifact =
+      JSON.parse(artifactRaw);
+
+    const verification =
+      JSON.parse(verificationRaw);
+
+    if (
+      !artifact?.abi ||
+      !Array.isArray(artifact.abi)
+    ) {
       return json(
         {
           success: false,
-          error: "IOPnToken ABI is missing from the artifact.",
+          error:
+            "IOPnToken ABI is missing from the artifact.",
         },
         500
       );
@@ -76,22 +78,39 @@ export async function GET() {
 
     if (
       !artifact?.bytecode ||
-      typeof artifact.bytecode !== "string"
+      typeof artifact.bytecode !==
+        "string"
     ) {
       return json(
         {
           success: false,
-          error: "IOPnToken bytecode is missing from the artifact.",
+          error:
+            "IOPnToken bytecode is missing from the artifact.",
+        },
+        500
+      );
+    }
+
+    if (
+      !standardInput.trim()
+    ) {
+      return json(
+        {
+          success: false,
+          error:
+            "IOPnToken Standard JSON input is empty.",
         },
         500
       );
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Return only the information required by the deploy page.
-    |--------------------------------------------------------------------------
-    */
+     * Make sure the Standard JSON is
+     * actually valid JSON.
+     */
+    JSON.parse(
+      standardInput
+    );
 
     return json({
       success: true,
@@ -101,19 +120,22 @@ export async function GET() {
         bytecode: artifact.bytecode,
       },
 
-      /*
-      * This is the exact Standard JSON compiler input that the user can
-      * download and upload directly to the IOPn Explorer.
-      */
       standardInput,
 
       verification: {
-        method: "Solidity (Standard JSON input)",
+        ...verification,
+
+        method:
+          "Solidity (Standard JSON input)",
+
         compilerVersion:
           "v0.8.36+commit.8a079791",
+
         optimizationEnabled: true,
+
         optimizationRuns: 200,
-        license: "MIT",
+
+        license: "mit",
       },
     });
   } catch (error) {

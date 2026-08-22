@@ -12,16 +12,8 @@ import {
   parseUnits,
 } from "viem";
 
-/* =========================================================
-   CONFIG
-========================================================= */
-
 const EXPLORER_URL =
   "https://testnet.iopn.tech";
-
-/* =========================================================
-   TYPES
-========================================================= */
 
 type DeploymentState =
   | "idle"
@@ -32,38 +24,44 @@ type DeploymentState =
   | "verified"
   | "failed";
 
-type ExplorerStatus = {
-  verified: boolean;
-  indexed: boolean;
+type ArtifactResponse = {
+  success?: boolean;
+  artifact?: {
+    abi: any[];
+    bytecode: string;
+  };
+  standardInput?: string;
+  verification?: {
+    compilerVersion?: string;
+    optimizationEnabled?: boolean;
+    optimizationRuns?: number;
+    license?: string;
+  };
+  error?: string;
 };
 
 type VerificationResponse = {
   success?: boolean;
   submitted?: boolean;
   verified?: boolean;
-  explorerConfirmed?: boolean;
+  verificationId?: string;
   message?: string;
-  error?: string;
-  data?: unknown;
+  data?: any;
 };
 
-/* =========================================================
-   COMPONENT
-========================================================= */
-
 export default function DeployPage() {
-  const { address, isConnected } =
-    useAccount();
+  const {
+    address,
+    isConnected,
+  } = useAccount();
 
   const publicClient =
     usePublicClient();
 
-  const { data: walletClient } =
+  const {
+    data: walletClient,
+  } =
     useWalletClient();
-
-  /* =======================================================
-     FORM
-  ======================================================= */
 
   const [name, setName] =
     useState("IOPn Token");
@@ -77,18 +75,20 @@ export default function DeployPage() {
   const [decimals, setDecimals] =
     useState("18");
 
-  /* =======================================================
-     DEPLOYMENT
-  ======================================================= */
+  const [
+    contractAddress,
+    setContractAddress,
+  ] = useState("");
 
-  const [contractAddress, setContractAddress] =
-    useState("");
-
-  const [transactionHash, setTransactionHash] =
-    useState("");
+  const [
+    transactionHash,
+    setTransactionHash,
+  ] = useState("");
 
   const [state, setState] =
-    useState<DeploymentState>("idle");
+    useState<DeploymentState>(
+      "idle"
+    );
 
   const [message, setMessage] =
     useState("");
@@ -96,132 +96,91 @@ export default function DeployPage() {
   const [error, setError] =
     useState("");
 
-  /* =======================================================
-     LOAD ARTIFACT
-  ======================================================= */
+  const [
+    verificationId,
+    setVerificationId,
+  ] = useState<string | null>(
+    null
+  );
+
+  /*
+   * -------------------------------------------------------
+   * LOAD DEPLOYMENT ARTIFACT
+   * -------------------------------------------------------
+   */
 
   async function loadArtifact() {
-    const response = await fetch(
-      "/api/verify?artifact=true",
-      {
-        cache: "no-store",
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        "Unable to load IOPnToken artifact."
+    const response =
+      await fetch(
+        "/api/deploy/artifact",
+        {
+          cache: "no-store",
+        }
       );
-    }
 
     const data =
-      await response.json();
+      (await response.json()) as ArtifactResponse;
 
     if (
-      !data?.success ||
-      !data?.artifact
+      !response.ok ||
+      !data.success ||
+      !data.artifact ||
+      !data.standardInput
     ) {
       throw new Error(
-        "IOPnToken artifact is unavailable."
+        data.error ||
+          "Unable to load IOPnToken deployment artifact."
       );
     }
 
-    return data.artifact;
+    return data;
   }
 
-  /* =======================================================
-     LOAD EXACT STANDARD JSON
-  ======================================================= */
-
-  async function loadStandardInput() {
-    const response = await fetch(
-      "/api/verify?standardInput=true",
-      {
-        cache: "no-store",
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        "Unable to load IOPnToken-standard-input.json."
-      );
-    }
-
-    const data =
-      await response.json();
-
-    if (
-      !data?.success ||
-      typeof data.standardInput !==
-        "string" ||
-      !data.standardInput.trim()
-    ) {
-      throw new Error(
-        "IOPnToken Standard JSON input is unavailable."
-      );
-    }
-
-    /*
-     * Make sure it is valid JSON.
-     */
-
-    JSON.parse(
-      data.standardInput
-    );
-
-    return data.standardInput;
-  }
-
-  /* =======================================================
-     CHECK EXPLORER
-     
-     IMPORTANT:
-     Explorer is the ONLY source of truth.
-  ======================================================= */
+  /*
+   * -------------------------------------------------------
+   * CHECK REAL EXPLORER STATE
+   * -------------------------------------------------------
+   */
 
   async function checkExplorer(
     contract: string
-  ): Promise<ExplorerStatus> {
-    try {
-      const response =
-        await fetch(
-          `/api/verify?address=${encodeURIComponent(
-            contract
-          )}`,
-          {
-            cache: "no-store",
-          }
-        );
+  ) {
+    const response =
+      await fetch(
+        `/api/verify?address=${encodeURIComponent(
+          contract
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
 
-      if (!response.ok) {
-        return {
-          verified: false,
-          indexed: false,
-        };
-      }
-
-      const data =
-        await response.json();
-
-      return {
-        verified:
-          data?.verified === true &&
-          data?.explorerConfirmed === true,
-
-        indexed:
-          data?.indexed === true,
-      };
-    } catch {
+    if (!response.ok) {
       return {
         verified: false,
         indexed: false,
       };
     }
+
+    const data =
+      await response.json();
+
+    return {
+      verified:
+        data.verified === true &&
+        data.explorerConfirmed ===
+          true,
+
+      indexed:
+        data.indexed === true,
+    };
   }
 
-  /* =======================================================
-     WAIT FOR EXPLORER INDEXING
-  ======================================================= */
+  /*
+   * -------------------------------------------------------
+   * WAIT FOR EXPLORER INDEXING
+   * -------------------------------------------------------
+   */
 
   async function waitForIndexing(
     contract: string
@@ -242,23 +201,27 @@ export default function DeployPage() {
           contract
         );
 
-      /*
-       * If already verified, stop.
-       */
-
-      if (result.verified) {
-        return result;
+      if (
+        result.verified
+      ) {
+        return {
+          verified: true,
+          indexed: true,
+        };
       }
 
-      /*
-       * Explorer knows the contract.
-       */
-
-      if (result.indexed) {
-        return result;
+      if (
+        result.indexed
+      ) {
+        return {
+          verified: false,
+          indexed: true,
+        };
       }
 
-      if (attempt < 20) {
+      if (
+        attempt < 20
+      ) {
         await new Promise(
           (resolve) =>
             setTimeout(
@@ -275,9 +238,11 @@ export default function DeployPage() {
     };
   }
 
-  /* =======================================================
-     ENCODE CONSTRUCTOR ARGUMENTS
-  ======================================================= */
+  /*
+   * -------------------------------------------------------
+   * ENCODE CONSTRUCTOR ARGUMENTS
+   * -------------------------------------------------------
+   */
 
   function encodeConstructorArguments(
     tokenName: string,
@@ -322,9 +287,19 @@ export default function DeployPage() {
     return encoded.slice(2);
   }
 
-  /* =======================================================
-     AUTOMATIC VERIFICATION
-  ======================================================= */
+  /*
+   * -------------------------------------------------------
+   * SUBMIT AUTOMATIC VERIFICATION
+   *
+   * IMPORTANT:
+   *
+   * This submits to:
+   *
+   * /api/markets/verify-token
+   *
+   * NOT /api/verify
+   * -------------------------------------------------------
+   */
 
   async function verifyContract(
     contract: string,
@@ -334,20 +309,11 @@ export default function DeployPage() {
     setState("verifying");
 
     setMessage(
-      "Submitting the exact Standard JSON to the IOPn Explorer..."
+      "Submitting Standard JSON verification to the IOPn Explorer..."
     );
 
-    /*
-     * Load the exact Standard JSON.
-     */
-
-    const standardInput =
-      await loadStandardInput();
-
-    /*
-     * Encode the exact constructor arguments
-     * used during deployment.
-     */
+    const artifact =
+      await loadArtifact();
 
     const constructorArgs =
       encodeConstructorArguments(
@@ -357,18 +323,6 @@ export default function DeployPage() {
         tokenDecimals,
         address!
       );
-
-    /*
-     * -------------------------------------------------------
-     * IMPORTANT
-     *
-     * The actual verification endpoint is:
-     *
-     * /api/market/verify-token
-     *
-     * It expects FormData.
-     * -------------------------------------------------------
-     */
 
     const form =
       new FormData();
@@ -394,18 +348,18 @@ export default function DeployPage() {
     );
 
     form.append(
+      "standard_input",
+      artifact.standardInput!
+    );
+
+    form.append(
       "constructor_args",
       constructorArgs
     );
 
-    form.append(
-      "standard_input",
-      standardInput
-    );
-
     const response =
       await fetch(
-        "/api/market/verify-token",
+        "/api/markets/verify-token",
         {
           method: "POST",
           body: form,
@@ -416,44 +370,47 @@ export default function DeployPage() {
     const data =
       (await response.json()) as VerificationResponse;
 
-    /*
-     * Submission failure.
-     */
+    if (
+      data.verificationId
+    ) {
+      setVerificationId(
+        data.verificationId
+      );
+    }
 
-    if (!response.ok) {
+    if (
+      !response.ok ||
+      data.success !== true
+    ) {
       throw new Error(
         data.message ||
-          data.error ||
           "Explorer verification submission failed."
       );
     }
+
+    /*
+     * IMPORTANT:
+     *
+     * Submission success is NOT
+     * verification success.
+     */
 
     setMessage(
       "Verification submitted. Waiting for the IOPn Explorer to confirm the source code..."
     );
 
     /*
-     * -------------------------------------------------------
-     * NEVER TRUST THE SUBMISSION RESPONSE.
-     *
-     * Check Explorer itself.
-     * -------------------------------------------------------
+     * Poll the REAL Explorer.
      */
 
     for (
       let attempt = 1;
-      attempt <= 30;
+      attempt <= 36;
       attempt++
     ) {
-      setState("verifying");
-
       setMessage(
-        `Waiting for Explorer verification... (${attempt}/30)`
+        `Waiting for Explorer verification... (${attempt}/36)`
       );
-
-      /*
-       * Check immediately before waiting.
-       */
 
       const result =
         await checkExplorer(
@@ -461,12 +418,12 @@ export default function DeployPage() {
         );
 
       /*
-       * ONLY THIS CONDITION CAN PRODUCE
-       * THE VERIFIED UI.
+       * ONLY Explorer confirmation
+       * can produce verified.
        */
 
       if (
-        result.verified === true
+        result.verified
       ) {
         setState("verified");
 
@@ -477,25 +434,18 @@ export default function DeployPage() {
         return true;
       }
 
-      /*
-       * Wait 3 seconds.
-       */
-
-      if (attempt < 30) {
-        await new Promise(
-          (resolve) =>
-            setTimeout(
-              resolve,
-              3000
-            )
-        );
-      }
+      await new Promise(
+        (resolve) =>
+          setTimeout(
+            resolve,
+            2500
+          )
+      );
     }
 
     /*
+     * Verification was submitted but
      * Explorer did not confirm it.
-     *
-     * This is NOT verification success.
      */
 
     setState("deployed");
@@ -507,19 +457,18 @@ export default function DeployPage() {
     return false;
   }
 
-  /* =======================================================
-     DEPLOY
-  ======================================================= */
+  /*
+   * -------------------------------------------------------
+   * DEPLOY
+   * -------------------------------------------------------
+   */
 
   async function deploy() {
     setError("");
     setMessage("");
     setContractAddress("");
     setTransactionHash("");
-
-    /*
-     * Wallet checks.
-     */
+    setVerificationId(null);
 
     if (!isConnected) {
       setError(
@@ -548,10 +497,6 @@ export default function DeployPage() {
       );
       return;
     }
-
-    /*
-     * Form validation.
-     */
 
     if (!name.trim()) {
       setError(
@@ -607,36 +552,39 @@ export default function DeployPage() {
 
     try {
       /*
-       * -----------------------------------------------------
-       * STEP 1 — DEPLOY
-       * -----------------------------------------------------
+       * STEP 1
+       *
+       * Load exact compiled artifact.
        */
 
       setState("deploying");
 
       setMessage(
-        "Deploying IOPnToken..."
+        "Loading the exact IOPnToken deployment artifact..."
       );
 
       const artifact =
         await loadArtifact();
 
-      if (
-        !artifact?.abi ||
-        !artifact?.bytecode
-      ) {
-        throw new Error(
-          "IOPnToken artifact is missing ABI or bytecode."
-        );
-      }
+      /*
+       * STEP 2
+       *
+       * Deploy.
+       */
+
+      setMessage(
+        "Deploying IOPnToken..."
+      );
 
       const hash =
         await walletClient.deployContract(
           {
-            abi: artifact.abi,
+            abi:
+              artifact.artifact!.abi,
 
             bytecode:
-              artifact.bytecode as `0x${string}`,
+              artifact.artifact!
+                .bytecode as `0x${string}`,
 
             args: [
               name.trim(),
@@ -657,9 +605,9 @@ export default function DeployPage() {
       );
 
       /*
-       * -----------------------------------------------------
-       * STEP 2 — RECEIPT
-       * -----------------------------------------------------
+       * STEP 3
+       *
+       * Wait for receipt.
        */
 
       const receipt =
@@ -679,15 +627,17 @@ export default function DeployPage() {
       }
 
       /*
-       * -----------------------------------------------------
-       * STEP 3 — ACTUAL CONTRACT ADDRESS
-       * -----------------------------------------------------
+       * STEP 4
+       *
+       * Get actual contract address.
        */
 
       const deployedAddress =
         receipt.contractAddress;
 
-      if (!deployedAddress) {
+      if (
+        !deployedAddress
+      ) {
         throw new Error(
           "Deployment succeeded but no contract address was returned."
         );
@@ -700,13 +650,13 @@ export default function DeployPage() {
       setState("deployed");
 
       setMessage(
-        "Contract deployed successfully. Checking the IOPn Explorer..."
+        "Contract deployed successfully. Checking IOPn Explorer..."
       );
 
       /*
-       * -----------------------------------------------------
-       * STEP 4 — CHECK EXPLORER
-       * -----------------------------------------------------
+       * STEP 5
+       *
+       * Check Explorer.
        */
 
       const explorerState =
@@ -715,8 +665,7 @@ export default function DeployPage() {
         );
 
       /*
-       * If Explorer already says verified,
-       * show verified.
+       * Explorer already verified.
        */
 
       if (
@@ -732,9 +681,12 @@ export default function DeployPage() {
       }
 
       /*
-       * -----------------------------------------------------
-       * STEP 5 — AUTOMATIC VERIFICATION
-       * -----------------------------------------------------
+       * STEP 6
+       *
+       * Submit automatic verification.
+       *
+       * Even if Explorer hasn't indexed
+       * yet, we can submit the request.
        */
 
       await verifyContract(
@@ -760,43 +712,31 @@ export default function DeployPage() {
     }
   }
 
-  /* =======================================================
-     UI STATE
-  ======================================================= */
-
   const isBusy =
     state === "deploying" ||
     state === "indexing" ||
     state === "verifying";
 
-  /* =======================================================
-     UI
-  ======================================================= */
-
   return (
     <main className="min-h-screen bg-black px-4 py-10 text-white">
       <div className="mx-auto w-full max-w-xl">
 
-        {/* HEADER */}
-
         <div className="mb-8">
-          <p className="mb-2 text-sm font-medium text-cyan-400">
-            IOPn Testnet
+          <p className="mb-2 text-sm font-semibold text-cyan-400">
+            OPN CHAIN
           </p>
 
           <h1 className="text-3xl font-bold tracking-tight">
-            Create Token
+            Create Your Token. Have Fun on OPN.
           </h1>
 
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Create your token with fun on the
-            OPN chain. Deploy your own
-            IOPnToken directly from your
-            connected wallet.
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Create and deploy your own token
+            on the OPN Chain testnet. Choose
+            a name, symbol, supply and decimals,
+            then deploy directly from your wallet.
           </p>
         </div>
-
-        {/* FORM */}
 
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
 
@@ -812,7 +752,7 @@ export default function DeployPage() {
               )
             }
             disabled={isBusy}
-            className="mb-5 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none transition focus:border-cyan-500 disabled:opacity-50"
+            className="mb-5 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
             placeholder="IOPn Token"
           />
 
@@ -828,7 +768,7 @@ export default function DeployPage() {
               )
             }
             disabled={isBusy}
-            className="mb-5 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none transition focus:border-cyan-500 disabled:opacity-50"
+            className="mb-5 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
             placeholder="IOPN"
           />
 
@@ -845,7 +785,7 @@ export default function DeployPage() {
             }
             disabled={isBusy}
             inputMode="decimal"
-            className="mb-5 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none transition focus:border-cyan-500 disabled:opacity-50"
+            className="mb-5 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
             placeholder="1000000"
           />
 
@@ -862,7 +802,7 @@ export default function DeployPage() {
             }
             disabled={isBusy}
             inputMode="numeric"
-            className="mb-6 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none transition focus:border-cyan-500 disabled:opacity-50"
+            className="mb-6 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
             placeholder="18"
           />
 
@@ -875,13 +815,17 @@ export default function DeployPage() {
             }
             className="w-full rounded-xl bg-white px-5 py-3.5 font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {state === "deploying"
+            {state ===
+            "deploying"
               ? "Deploying..."
-              : state === "indexing"
+              : state ===
+                "indexing"
               ? "Checking Explorer..."
-              : state === "verifying"
+              : state ===
+                "verifying"
               ? "Verifying..."
-              : state === "verified"
+              : state ===
+                "verified"
               ? "Verified"
               : "Create Token"}
           </button>
@@ -892,15 +836,11 @@ export default function DeployPage() {
             </p>
           )}
 
-          {/* MESSAGE */}
-
           {message && (
             <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-300">
               {message}
             </div>
           )}
-
-          {/* ERROR */}
 
           {error && (
             <div className="mt-5 rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-300">
@@ -908,11 +848,8 @@ export default function DeployPage() {
             </div>
           )}
 
-          {/* CONTRACT */}
-
           {contractAddress && (
             <div className="mt-6 rounded-xl border border-zinc-800 bg-black p-4">
-
               <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">
                 Contract Address
               </p>
@@ -927,16 +864,13 @@ export default function DeployPage() {
                 rel="noopener noreferrer"
                 className="mt-4 inline-flex text-sm font-medium text-cyan-400 hover:text-cyan-300"
               >
-                View contract on Explorer →
+                View contract on IOPn Explorer →
               </a>
             </div>
           )}
 
-          {/* TRANSACTION */}
-
           {transactionHash && (
             <div className="mt-4 rounded-xl border border-zinc-800 bg-black p-4">
-
               <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">
                 Deployment Transaction
               </p>
@@ -956,56 +890,58 @@ export default function DeployPage() {
             </div>
           )}
 
-          {/* VERIFIED */}
+          {verificationId && (
+            <div className="mt-4 rounded-xl border border-zinc-800 bg-black p-4">
+              <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">
+                Verification Request
+              </p>
+
+              <p className="break-all font-mono text-xs text-zinc-500">
+                {verificationId}
+              </p>
+
+              <p className="mt-3 text-xs text-zinc-500">
+                Submission does not mean verified.
+                The IOPn Explorer must confirm the
+                source code.
+              </p>
+            </div>
+          )}
 
           {state === "verified" &&
             contractAddress && (
               <div className="mt-6 rounded-xl border border-emerald-800 bg-emerald-950/30 p-5">
+                <p className="font-semibold text-emerald-300">
+                  ✓ Verified on IOPn Explorer
+                </p>
 
-                <div className="flex items-center gap-3">
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-black">
-                    ✓
-                  </div>
-
-                  <div>
-                    <p className="font-semibold text-emerald-300">
-                      Verified on IOPn Explorer
-                    </p>
-
-                    <p className="mt-1 text-xs text-emerald-400/70">
-                      Confirmed directly by the Explorer.
-                    </p>
-                  </div>
-
-                </div>
+                <p className="mt-2 text-sm text-emerald-400/70">
+                  Explorer-confirmed source code
+                  verification.
+                </p>
 
                 <a
                   href={`${EXPLORER_URL}/address/${contractAddress}?tab=contract`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-4 block text-sm font-medium text-emerald-300 hover:text-emerald-200"
+                  className="mt-4 inline-block text-sm font-medium text-emerald-300 hover:text-emerald-200"
                 >
                   Confirm on Explorer →
                 </a>
               </div>
             )}
 
-          {/* NOT VERIFIED */}
-
           {contractAddress &&
             state === "deployed" && (
               <div className="mt-6 rounded-xl border border-yellow-800 bg-yellow-950/20 p-5">
-
                 <p className="font-semibold text-yellow-300">
                   Contract deployed — not verified
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-yellow-400/70">
-                  The contract is deployed, but
-                  the IOPn Explorer has not
-                  confirmed source-code
-                  verification yet.
+                  The contract exists on OPN Chain,
+                  but the Explorer has not confirmed
+                  source-code verification.
                 </p>
 
                 <a
@@ -1019,20 +955,14 @@ export default function DeployPage() {
               </div>
             )}
 
-          {/* FAILED */}
-
           {state === "failed" && (
             <div className="mt-6 rounded-xl border border-red-800 bg-red-950/20 p-5">
-
               <p className="font-semibold text-red-300">
                 Deployment failed
               </p>
-
             </div>
           )}
         </div>
-
-        {/* BACK */}
 
         <div className="mt-6 text-center">
           <Link

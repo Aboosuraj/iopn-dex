@@ -1,48 +1,171 @@
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
+
+const EXPLORER_URL = (
+  process.env.IOPN_EXPLORER_URL ||
+  "https://testnet.iopn.tech"
+).replace(/\/+$/, "");
 
 const EXPLORER_API =
-  "https://testnet.iopn.tech/api/v2";
+  `${EXPLORER_URL}/api/v2`;
 
-export async function POST(request: NextRequest) {
+function json(
+  data: unknown,
+  status = 200
+) {
+  return NextResponse.json(
+    data,
+    {
+      status,
+      headers: {
+        "Cache-Control":
+          "no-store, no-cache, must-revalidate",
+      },
+    }
+  );
+}
+
+function validAddress(
+  address: string
+) {
+  return /^0x[a-fA-F0-9]{40}$/.test(
+    address
+  );
+}
+
+export async function POST(
+  request: NextRequest
+) {
   try {
-    const incoming = await request.formData();
+    const incoming =
+      await request.formData();
 
-    const address = incoming.get("address");
+    const address =
+      incoming.get("address");
+
     const compilerVersion =
-      incoming.get("compiler_version");
+      incoming.get(
+        "compiler_version"
+      );
+
     const contractName =
-      incoming.get("contract_name");
+      incoming.get(
+        "contract_name"
+      );
+
     const licenseType =
-      incoming.get("license_type");
+      incoming.get(
+        "license_type"
+      );
+
     const constructorArgs =
-      incoming.get("constructor_args");
+      incoming.get(
+        "constructor_args"
+      );
+
     const standardInput =
-      incoming.get("standard_input");
+      incoming.get(
+        "standard_input"
+      );
 
     if (
-      typeof address !== "string" ||
-      typeof compilerVersion !== "string" ||
-      typeof contractName !== "string" ||
-      typeof licenseType !== "string" ||
-      typeof standardInput !== "string"
+      typeof address !==
+        "string" ||
+      !validAddress(address)
     ) {
-      return NextResponse.json(
+      return json(
         {
           success: false,
           message:
-            "Missing verification parameters.",
+            "A valid contract address is required.",
         },
-        { status: 400 }
+        400
+      );
+    }
+
+    if (
+      typeof compilerVersion !==
+        "string" ||
+      !compilerVersion
+    ) {
+      return json(
+        {
+          success: false,
+          message:
+            "Compiler version is required.",
+        },
+        400
+      );
+    }
+
+    if (
+      typeof contractName !==
+        "string" ||
+      !contractName
+    ) {
+      return json(
+        {
+          success: false,
+          message:
+            "Contract name is required.",
+        },
+        400
+      );
+    }
+
+    if (
+      typeof licenseType !==
+        "string" ||
+      !licenseType
+    ) {
+      return json(
+        {
+          success: false,
+          message:
+            "License type is required.",
+        },
+        400
+      );
+    }
+
+    if (
+      typeof standardInput !==
+        "string" ||
+      !standardInput.trim()
+    ) {
+      return json(
+        {
+          success: false,
+          message:
+            "Standard JSON compiler input is required.",
+        },
+        400
       );
     }
 
     /*
-     * -------------------------------------------------------
-     * BUILD EXPLORER FORM
-     * -------------------------------------------------------
+     * Validate the Standard JSON before
+     * sending it to the Explorer.
      */
+    try {
+      JSON.parse(
+        standardInput
+      );
+    } catch {
+      return json(
+        {
+          success: false,
+          message:
+            "The Standard JSON compiler input is invalid.",
+        },
+        400
+      );
+    }
 
-    const form = new FormData();
+    const form =
+      new FormData();
 
     form.append(
       "compiler_version",
@@ -54,42 +177,40 @@ export async function POST(request: NextRequest) {
       contractName
     );
 
-    form.append(
-      "license_type",
-      licenseType
-    );
-
-    /*
-     * IOPn Explorer expects Standard JSON
-     * as files[0].
-     */
-
-    const standardInputFile = new File(
-      [standardInput],
-      "IOPnToken-standard-input.json",
-      {
-        type: "application/json",
-      }
-    );
+    const standardInputFile =
+      new File(
+        [standardInput],
+        "IOPnToken-standard-input.json",
+        {
+          type:
+            "application/json",
+        }
+      );
 
     form.append(
       "files[0]",
       standardInputFile
     );
 
-    /*
-     * -------------------------------------------------------
-     * CONSTRUCTOR ARGUMENTS
-     * -------------------------------------------------------
-     */
+    form.append(
+      "license_type",
+      licenseType
+    );
 
+    /*
+     * Constructor arguments must NOT include 0x.
+     */
     if (
-      typeof constructorArgs === "string" &&
-      constructorArgs.trim().length > 0
+      typeof constructorArgs ===
+        "string" &&
+      constructorArgs.length > 0
     ) {
       form.append(
         "constructor_args",
-        constructorArgs.replace(/^0x/, "")
+        constructorArgs.replace(
+          /^0x/,
+          ""
+        )
       );
 
       form.append(
@@ -103,88 +224,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /*
-     * -------------------------------------------------------
-     * SUBMIT TO IOPN EXPLORER
-     * -------------------------------------------------------
-     */
+    const response =
+      await fetch(
+        `${EXPLORER_API}/smart-contracts/${address}/verification/via/standard-input`,
+        {
+          method: "POST",
+          body: form,
+          cache: "no-store",
+        }
+      );
 
-    const explorerResponse = await fetch(
-      `${EXPLORER_API}/smart-contracts/${address}/verification/via/standard-input`,
-      {
-        method: "POST",
-        body: form,
-        cache: "no-store",
-      }
-    );
+    const text =
+      await response.text();
 
-    const responseText =
-      await explorerResponse.text();
-
-    let explorerData: unknown;
+    let data: unknown;
 
     try {
-      explorerData =
-        JSON.parse(responseText);
+      data =
+        JSON.parse(text);
     } catch {
-      explorerData = {
-        message: responseText,
+      data = {
+        message: text,
       };
     }
 
-    /*
-     * -------------------------------------------------------
-     * EXPLORER ERROR
-     * -------------------------------------------------------
-     */
-
-    if (!explorerResponse.ok) {
-      return NextResponse.json(
+    if (
+      !response.ok
+    ) {
+      return json(
         {
           success: false,
           submitted: false,
-          verified: false,
-          explorerConfirmed: false,
           status:
-            explorerResponse.status,
-          data: explorerData,
+            response.status,
+          data,
         },
-        {
-          status:
-            explorerResponse.status,
-        }
+        response.status
       );
     }
 
     /*
-     * -------------------------------------------------------
-     * SUCCESSFULLY SUBMITTED
-     *
      * IMPORTANT:
      *
-     * Submission is NOT verification.
-     *
-     * The deploy page must check the Explorer separately
-     * before displaying "Verified".
-     * -------------------------------------------------------
+     * Successful submission does NOT mean
+     * verified.
      */
-
-    return NextResponse.json({
+    return json({
       success: true,
       submitted: true,
       verified: false,
       explorerConfirmed: false,
-      data: explorerData,
+      data,
       message:
-        "Verification submitted to the IOPn Explorer. Waiting for Explorer confirmation.",
+        "Verification request submitted to the IOPn Explorer. Waiting for Explorer confirmation.",
     });
   } catch (error) {
     console.error(
-      "IOPn automatic verification error:",
+      "Automatic contract verification failed:",
       error
     );
 
-    return NextResponse.json(
+    return json(
       {
         success: false,
         submitted: false,
@@ -195,7 +295,7 @@ export async function POST(request: NextRequest) {
             ? error.message
             : "Automatic verification failed.",
       },
-      { status: 500 }
+      500
     );
   }
 }
