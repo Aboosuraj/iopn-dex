@@ -8,11 +8,16 @@ export async function POST(request: NextRequest) {
     const incoming = await request.formData();
 
     const address = incoming.get("address");
-    const compilerVersion = incoming.get("compiler_version");
-    const contractName = incoming.get("contract_name");
-    const licenseType = incoming.get("license_type");
-    const constructorArgs = incoming.get("constructor_args");
-    const standardInput = incoming.get("standard_input");
+    const compilerVersion =
+      incoming.get("compiler_version");
+    const contractName =
+      incoming.get("contract_name");
+    const licenseType =
+      incoming.get("license_type");
+    const constructorArgs =
+      incoming.get("constructor_args");
+    const standardInput =
+      incoming.get("standard_input");
 
     if (
       typeof address !== "string" ||
@@ -24,11 +29,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Missing verification parameters.",
+          message:
+            "Missing verification parameters.",
         },
         { status: 400 }
       );
     }
+
+    /*
+     * -------------------------------------------------------
+     * BUILD EXPLORER FORM
+     * -------------------------------------------------------
+     */
 
     const form = new FormData();
 
@@ -42,10 +54,16 @@ export async function POST(request: NextRequest) {
       contractName
     );
 
+    form.append(
+      "license_type",
+      licenseType
+    );
+
     /*
-     * IOPn Explorer accepts the Standard JSON Input
+     * IOPn Explorer expects Standard JSON
      * as files[0].
      */
+
     const standardInputFile = new File(
       [standardInput],
       "IOPnToken-standard-input.json",
@@ -59,18 +77,15 @@ export async function POST(request: NextRequest) {
       standardInputFile
     );
 
-    form.append(
-      "license_type",
-      licenseType
-    );
-
     /*
-     * Passing the exact constructor arguments makes
-     * verification more reliable.
+     * -------------------------------------------------------
+     * CONSTRUCTOR ARGUMENTS
+     * -------------------------------------------------------
      */
+
     if (
       typeof constructorArgs === "string" &&
-      constructorArgs.length > 0
+      constructorArgs.trim().length > 0
     ) {
       form.append(
         "constructor_args",
@@ -88,7 +103,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(
+    /*
+     * -------------------------------------------------------
+     * SUBMIT TO IOPN EXPLORER
+     * -------------------------------------------------------
+     */
+
+    const explorerResponse = await fetch(
       `${EXPLORER_API}/smart-contracts/${address}/verification/via/standard-input`,
       {
         method: "POST",
@@ -97,42 +118,78 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    const text = await response.text();
+    const responseText =
+      await explorerResponse.text();
 
-    let data: unknown;
+    let explorerData: unknown;
 
     try {
-      data = JSON.parse(text);
+      explorerData =
+        JSON.parse(responseText);
     } catch {
-      data = {
-        message: text,
+      explorerData = {
+        message: responseText,
       };
     }
 
-    if (!response.ok) {
+    /*
+     * -------------------------------------------------------
+     * EXPLORER ERROR
+     * -------------------------------------------------------
+     */
+
+    if (!explorerResponse.ok) {
       return NextResponse.json(
         {
           success: false,
-          status: response.status,
-          data,
+          submitted: false,
+          verified: false,
+          explorerConfirmed: false,
+          status:
+            explorerResponse.status,
+          data: explorerData,
         },
-        { status: response.status }
+        {
+          status:
+            explorerResponse.status,
+        }
       );
     }
 
+    /*
+     * -------------------------------------------------------
+     * SUCCESSFULLY SUBMITTED
+     *
+     * IMPORTANT:
+     *
+     * Submission is NOT verification.
+     *
+     * The deploy page must check the Explorer separately
+     * before displaying "Verified".
+     * -------------------------------------------------------
+     */
+
     return NextResponse.json({
       success: true,
-      data,
+      submitted: true,
+      verified: false,
+      explorerConfirmed: false,
+      data: explorerData,
+      message:
+        "Verification submitted to the IOPn Explorer. Waiting for Explorer confirmation.",
     });
   } catch (error) {
     console.error(
-      "Automatic contract verification failed:",
+      "IOPn automatic verification error:",
       error
     );
 
     return NextResponse.json(
       {
         success: false,
+        submitted: false,
+        verified: false,
+        explorerConfirmed: false,
         message:
           error instanceof Error
             ? error.message
