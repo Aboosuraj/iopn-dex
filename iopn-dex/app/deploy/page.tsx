@@ -32,19 +32,9 @@ const EXPLORER_URL = "https://testnet.iopn.tech";
  * 20% of the newly deployed token supply is reserved
  * for the initial liquidity pool.
  *
- * IMPORTANT:
  * The token side is calculated automatically.
  *
- * The OPN side must also be supplied by the deployer.
- *
- * Change this value to the amount of OPN you want to
- * contribute to every automatic initial pool.
- *
- * Example:
- *
- * "1"   = 1 OPN
- * "5"   = 5 OPN
- * "10"  = 10 OPN
+ * The OPN side is supplied by the deployer.
  */
 const INITIAL_LIQUIDITY_OPN = "1";
 
@@ -80,6 +70,7 @@ type DeploymentState =
   | "deployed"
   | "indexing"
   | "verifying"
+  | "liquidity"
   | "verified"
   | "failed";
 
@@ -254,10 +245,6 @@ export default function DeployPage() {
 
   /* =======================================================
      FORM
-
-     Name / Symbol / Supply remain EMPTY.
-
-     Decimals automatically starts at 18.
   ======================================================= */
 
   const [name, setName] = useState("");
@@ -271,6 +258,7 @@ export default function DeployPage() {
 
   const [contractAddress, setContractAddress] = useState("");
   const [transactionHash, setTransactionHash] = useState("");
+
   const [state, setState] =
     useState<DeploymentState>("idle");
 
@@ -415,6 +403,10 @@ export default function DeployPage() {
       const result =
         await checkExplorer(contract);
 
+      /*
+       * If Explorer somehow reports the contract as
+       * already verified, we can continue directly.
+       */
       if (result.verified) {
         return {
           verified: true,
@@ -423,6 +415,10 @@ export default function DeployPage() {
       }
 
       if (result.indexed) {
+        setMessage(
+          "✓ Contract indexed by IOPn Explorer. Preparing automatic verification..."
+        );
+
         return {
           verified: false,
           indexed: true,
@@ -496,6 +492,11 @@ export default function DeployPage() {
 
   /* =======================================================
      AUTOMATIC LIQUIDITY
+     
+     IMPORTANT:
+     
+     This function is ONLY called after verification
+     has already been confirmed.
   ======================================================= */
 
   async function createAutomaticLiquidity(
@@ -521,15 +522,19 @@ export default function DeployPage() {
     }
 
     /*
+     * IMPORTANT:
+     *
+     * This function is reached only after Explorer
+     * verification has been confirmed.
+     */
+    setState("liquidity");
+
+    setMessage(
+      "✓ Contract verification confirmed. Preparing the automatic OPN liquidity pool..."
+    );
+
+    /*
      * 20% of the deployed token supply.
-     *
-     * Example:
-     *
-     * Supply = 1,000,000,000
-     *
-     * Liquidity allocation =
-     *
-     * 200,000,000 tokens
      */
     const liquidityTokenAmount =
       (totalSupply *
@@ -544,9 +549,6 @@ export default function DeployPage() {
 
     /*
      * OPN side of the pool.
-     *
-     * This is deliberately explicit instead of spending
-     * the user's entire wallet balance.
      */
     const liquidityOPNAmount =
       parseEther(
@@ -560,7 +562,7 @@ export default function DeployPage() {
     }
 
     /*
-     * Check wallet OPN balance before asking for approval.
+     * Check wallet OPN balance.
      */
     const nativeBalance =
       await publicClient.getBalance({
@@ -577,8 +579,7 @@ export default function DeployPage() {
     }
 
     /*
-     * Make sure the newly deployed token actually
-     * contains the expected allocation.
+     * Check newly deployed token balance.
      */
     const tokenBalance =
       await publicClient.readContract({
@@ -601,10 +602,8 @@ export default function DeployPage() {
        STEP A — CHECK / CREATE PAIR
     ===================================================== */
 
-    setState("indexing");
-
     setMessage(
-      "Preparing the automatic OPN liquidity pool..."
+      "Verification confirmed. Preparing the automatic OPN liquidity pool..."
     );
 
     let pairAddress =
@@ -619,15 +618,15 @@ export default function DeployPage() {
       });
 
     /*
-     * Viem returns the zero address when the pair does
-     * not exist.
+     * Viem returns zero address when the pair
+     * does not exist.
      */
     if (
       pairAddress ===
       "0x0000000000000000000000000000000000000000"
     ) {
       setMessage(
-        "Creating the new OPN liquidity pair..."
+        "Verification confirmed. Creating the new OPN liquidity pair..."
       );
 
       const createPairHash =
@@ -650,7 +649,7 @@ export default function DeployPage() {
       );
 
       /*
-       * Read the pair again after the transaction.
+       * Read pair again after creation.
        */
       pairAddress =
         await publicClient.readContract({
@@ -682,7 +681,7 @@ export default function DeployPage() {
     ===================================================== */
 
     setMessage(
-      "Approving 20% of your token supply for the liquidity pool..."
+      "Approving 20% of your token supply for the verified token's liquidity pool..."
     );
 
     const approvalHash =
@@ -708,17 +707,12 @@ export default function DeployPage() {
        STEP C — ADD OPN LIQUIDITY
     ===================================================== */
 
-    setState("deploying");
-
     setMessage(
-      `Adding ${LIQUIDITY_TOKEN_PERCENT.toString()}% of your token supply and ${INITIAL_LIQUIDITY_OPN} OPN to the initial liquidity pool...`
+      `Adding ${LIQUIDITY_TOKEN_PERCENT.toString()}% of the verified token supply and ${INITIAL_LIQUIDITY_OPN} OPN to the initial liquidity pool...`
     );
 
     /*
      * 1% slippage protection.
-     *
-     * amountTokenMin = 99% of desired token amount
-     * amountOPNMin   = 99% of desired OPN amount
      */
     const amountTokenMin =
       (liquidityTokenAmount *
@@ -769,7 +763,7 @@ export default function DeployPage() {
     );
 
     setMessage(
-      `✓ Initial liquidity pool created successfully. ${LIQUIDITY_TOKEN_PERCENT.toString()}% of the token supply was allocated to liquidity.`
+      `✓ Verified token liquidity created successfully. ${LIQUIDITY_TOKEN_PERCENT.toString()}% of the token supply was allocated to the initial OPN liquidity pool.`
     );
 
     return {
@@ -859,6 +853,9 @@ export default function DeployPage() {
       );
     }
 
+    /*
+     * Check immediately after submission.
+     */
     const immediate =
       await checkExplorer(contract);
 
@@ -872,6 +869,12 @@ export default function DeployPage() {
       return true;
     }
 
+    /*
+     * Wait for actual Explorer confirmation.
+     *
+     * We do NOT consider submission itself to mean
+     * verification succeeded.
+     */
     for (
       let attempt = 1;
       attempt <= 30;
@@ -880,7 +883,7 @@ export default function DeployPage() {
       setState("verifying");
 
       setMessage(
-        `Waiting for Explorer verification... (${attempt}/30)`
+        `Waiting for Explorer verification confirmation... (${attempt}/30)`
       );
 
       await new Promise(
@@ -891,22 +894,34 @@ export default function DeployPage() {
       const result =
         await checkExplorer(contract);
 
+      /*
+       * Only this condition allows liquidity
+       * creation to continue.
+       */
       if (result.verified) {
         setState("verified");
 
         setMessage(
-          "✓ Verified on IOPn Explorer."
+          "✓ Verified on IOPn Explorer. Verification confirmed. Preparing automatic liquidity..."
         );
 
         return true;
       }
     }
 
+    /*
+     * Verification was not confirmed.
+     *
+     * IMPORTANT:
+     *
+     * Return false so deploy() stops before
+     * automatic liquidity.
+     */
     setState("deployed");
 
     setMessage(
       data.message ||
-        "Verification was submitted, but the Explorer has not confirmed the source code as verified."
+        "Verification was submitted, but the Explorer has not confirmed the source code as verified. Automatic liquidity was not created."
     );
 
     return false;
@@ -1134,11 +1149,72 @@ export default function DeployPage() {
       setState("deployed");
 
       setMessage(
-        "Token deployed successfully. Preparing automatic liquidity..."
+        "Token deployed successfully. Waiting for Explorer indexing before automatic verification..."
       );
 
       /* =================================================
-         STEP 4 — AUTOMATIC LIQUIDITY
+         STEP 4 — EXPLORER INDEXING
+      ================================================= */
+
+      const explorerState =
+        await waitForIndexing(
+          deployedAddress
+        );
+
+      /*
+       * If the contract was somehow already verified,
+       * skip the verification submission and proceed.
+       */
+      let verified =
+        explorerState.verified;
+
+      /* =================================================
+         STEP 5 — AUTOMATIC VERIFICATION
+      ================================================= */
+
+      if (!verified) {
+        verified =
+          await verifyContract(
+            deployedAddress,
+            totalSupply,
+            decimalsNumber
+          );
+      }
+
+      /* =================================================
+         IMPORTANT SAFETY CHECK
+         
+         Liquidity MUST NOT happen unless the Explorer
+         has confirmed verification.
+      ================================================= */
+
+      if (!verified) {
+        throw new Error(
+          "Token deployment succeeded, but Explorer verification was not confirmed. Automatic liquidity was NOT created."
+        );
+      }
+
+      /* =================================================
+         STEP 6 — VERIFIED
+      ================================================= */
+
+      setState("verified");
+
+      setMessage(
+        "✓ Contract verified on IOPn Explorer. Verification confirmed. Starting automatic liquidity..."
+      );
+
+      /*
+       * Small UI pause so the user can clearly see
+       * the verification stage before liquidity starts.
+       */
+      await new Promise(
+        (resolve) =>
+          setTimeout(resolve, 1000)
+      );
+
+      /* =================================================
+         STEP 7 — AUTOMATIC LIQUIDITY
       ================================================= */
 
       await createAutomaticLiquidity(
@@ -1147,34 +1223,13 @@ export default function DeployPage() {
       );
 
       /* =================================================
-         STEP 5 — INDEXING
+         STEP 8 — COMPLETE
       ================================================= */
 
-      const explorerState =
-        await waitForIndexing(
-          deployedAddress
-        );
+      setState("verified");
 
-      if (
-        explorerState.verified
-      ) {
-        setState("verified");
-
-        setMessage(
-          "✓ Token deployed, liquidity created, and Explorer confirms that this contract is verified."
-        );
-
-        return;
-      }
-
-      /* =================================================
-         STEP 6 — VERIFICATION
-      ================================================= */
-
-      await verifyContract(
-        deployedAddress,
-        totalSupply,
-        decimalsNumber
+      setMessage(
+        `✓ Token deployed, verified on IOPn Explorer, and initial liquidity pool created successfully. ${LIQUIDITY_TOKEN_PERCENT.toString()}% of the token supply was allocated to liquidity.`
       );
     } catch (err) {
       console.error(
@@ -1226,7 +1281,8 @@ export default function DeployPage() {
   const isBusy =
     state === "deploying" ||
     state === "indexing" ||
-    state === "verifying";
+    state === "verifying" ||
+    state === "liquidity";
 
   const explorerContractUrl =
     contractAddress
@@ -1546,12 +1602,14 @@ export default function DeployPage() {
                       ? "Deploying Token..."
                       : state === "indexing"
                       ? "Checking Explorer..."
-                      : "Verifying Contract..."}
+                      : state === "verifying"
+                      ? "Verifying Contract..."
+                      : "Adding Initial Liquidity..."}
                   </>
                 ) : state === "verified" ? (
                   <>
                     <Check size={18} />
-                    Verified
+                    Verified & Liquidity Created
                   </>
                 ) : (
                   <>
@@ -1584,6 +1642,8 @@ export default function DeployPage() {
                     ? "border-emerald-400/20 bg-emerald-400/[0.06]"
                     : state === "failed"
                     ? "border-red-400/20 bg-red-400/[0.05]"
+                    : state === "liquidity"
+                    ? "border-blue-400/20 bg-blue-400/[0.05]"
                     : "border-cyan-400/10 bg-cyan-400/[0.03]"
                 }`}
               >
@@ -1596,6 +1656,11 @@ export default function DeployPage() {
                       <Check
                         size={17}
                         className="text-emerald-400"
+                      />
+                    ) : state === "liquidity" ? (
+                      <Loader2
+                        size={17}
+                        className="animate-spin text-blue-400"
                       />
                     ) : isBusy ? (
                       <Loader2
@@ -1649,12 +1714,19 @@ export default function DeployPage() {
                   className={`flex h-10 w-10 items-center justify-center rounded-xl ${
                     state === "verified"
                       ? "bg-emerald-400/10 text-emerald-400"
+                      : state === "liquidity"
+                      ? "bg-blue-400/10 text-blue-400"
                       : "bg-blue-400/10 text-blue-400"
                   }`}
                 >
 
                   {state === "verified" ? (
                     <ShieldCheck size={20} />
+                  ) : state === "liquidity" ? (
+                    <Loader2
+                      size={20}
+                      className="animate-spin"
+                    />
                   ) : (
                     <Rocket size={20} />
                   )}
@@ -1664,15 +1736,23 @@ export default function DeployPage() {
                 <div>
 
                   <h2 className="font-semibold">
+
                     {state === "verified"
-                      ? "Token Verified"
+                      ? "Token Verified & Liquidity Created"
+                      : state === "liquidity"
+                      ? "Verified — Creating Liquidity"
                       : "Token Deployed"}
+
                   </h2>
 
                   <p className="mt-0.5 text-xs text-zinc-500">
+
                     {state === "verified"
-                      ? "Confirmed by the IOPn Explorer"
+                      ? "Verified by the IOPn Explorer and added to the liquidity pool"
+                      : state === "liquidity"
+                      ? "Explorer verification confirmed"
                       : "Your contract is live on OPN Chain"}
+
                   </p>
 
                 </div>
@@ -1777,9 +1857,13 @@ export default function DeployPage() {
                       </p>
 
                       <p className="mt-1 text-xs leading-5 text-cyan-400/60">
-                        20% of the token supply was
-                        automatically allocated to the
-                        initial OPN liquidity pool.
+                        The contract was verified on
+                        the IOPn Explorer before
+                        liquidity creation.{" "}
+                        {LIQUIDITY_TOKEN_PERCENT.toString()}%
+                        of the token supply was
+                        automatically allocated to
+                        the initial OPN liquidity pool.
                       </p>
 
                     </div>
@@ -1838,9 +1922,10 @@ export default function DeployPage() {
                       </p>
 
                       <p className="mt-1 text-xs leading-5 text-emerald-400/60">
-                        The Explorer has confirmed
-                        the published source code
-                        for this contract.
+                        The Explorer confirmed the
+                        published source code before
+                        the automatic liquidity pool
+                        was created.
                       </p>
 
                     </div>
@@ -1882,6 +1967,8 @@ export default function DeployPage() {
                         The contract is live,
                         but Explorer verification
                         has not yet been confirmed.
+                        Automatic liquidity has
+                        not been created.
                       </p>
 
                     </div>
