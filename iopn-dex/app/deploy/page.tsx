@@ -67,12 +67,15 @@ export default function DeployPage() {
 
   /* =======================================================
      FORM
+
+     IMPORTANT:
+     All fields intentionally start EMPTY.
   ======================================================= */
 
-  const [name, setName] = useState("IOPn Token");
-  const [symbol, setSymbol] = useState("IOPN");
-  const [supply, setSupply] = useState("1000000");
-  const [decimals, setDecimals] = useState("18");
+  const [name, setName] = useState("");
+  const [symbol, setSymbol] = useState("");
+  const [supply, setSupply] = useState("");
+  const [decimals, setDecimals] = useState("");
 
   /* =======================================================
      DEPLOYMENT STATE
@@ -149,8 +152,7 @@ export default function DeployPage() {
 
     if (
       !data?.success ||
-      typeof data.standardInput !==
-        "string" ||
+      typeof data.standardInput !== "string" ||
       !data.standardInput.trim()
     ) {
       throw new Error(
@@ -459,6 +461,10 @@ export default function DeployPage() {
     setVerificationId(null);
     setCopied(false);
 
+    /* =====================================================
+       WALLET VALIDATION
+    ===================================================== */
+
     if (!isConnected) {
       setError(
         "Connect your wallet first."
@@ -487,6 +493,10 @@ export default function DeployPage() {
       return;
     }
 
+    /* =====================================================
+       FORM VALIDATION
+    ===================================================== */
+
     if (!name.trim()) {
       setError(
         "Token name is required."
@@ -503,7 +513,22 @@ export default function DeployPage() {
 
     if (!supply.trim()) {
       setError(
-        "Token supply is required."
+        "Total supply is required."
+      );
+      return;
+    }
+
+    /*
+     * IMPORTANT:
+     * Do not allow an empty decimals field.
+     *
+     * Number("") returns 0, so we explicitly
+     * check the string before converting it.
+     */
+
+    if (!decimals.trim()) {
+      setError(
+        "Decimals are required."
       );
       return;
     }
@@ -528,7 +553,7 @@ export default function DeployPage() {
 
     try {
       totalSupply = parseUnits(
-        supply,
+        supply.trim(),
         decimalsNumber
       );
     } catch {
@@ -748,6 +773,7 @@ export default function DeployPage() {
       ================================================= */}
 
       <div className="pointer-events-none absolute inset-0">
+
         <div className="absolute left-1/2 top-[-180px] h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-[120px]" />
 
         <div className="absolute bottom-[-180px] right-[-120px] h-[380px] w-[380px] rounded-full bg-blue-600/10 blur-[120px]" />
@@ -763,6 +789,7 @@ export default function DeployPage() {
               "42px 42px",
           }}
         />
+
       </div>
 
       {/* =================================================
@@ -781,20 +808,21 @@ export default function DeployPage() {
             href="/"
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-400 transition hover:border-cyan-400/30 hover:bg-white/[0.06] hover:text-white"
           >
-            <ArrowLeft
-              size={15}
-            />
+            <ArrowLeft size={15} />
 
             Dashboard
           </Link>
 
           <div className="flex items-center gap-2 rounded-full border border-cyan-400/15 bg-cyan-400/[0.05] px-3 py-1.5">
+
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400" />
 
             <span className="text-xs font-medium text-cyan-300">
               OPN TESTNET
             </span>
+
           </div>
+
         </div>
 
         {/* =================================================
@@ -804,14 +832,17 @@ export default function DeployPage() {
         <section className="mb-8 text-center">
 
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/15 to-blue-500/10 shadow-[0_0_45px_rgba(34,211,238,0.12)]">
+
             <Rocket
               size={28}
               className="text-cyan-300"
             />
+
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
             Create Tokens
+
             <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
               with Fun on OPN Chain
             </span>
@@ -826,6 +857,7 @@ export default function DeployPage() {
           </p>
 
           <div className="mt-5 flex flex-wrap justify-center gap-2">
+
             <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-400">
               ⚡ Fast deployment
             </span>
@@ -837,7 +869,9 @@ export default function DeployPage() {
             <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-400">
               ✓ Explorer verified
             </span>
+
           </div>
+
         </section>
 
         {/* =================================================
@@ -853,12 +887,13 @@ export default function DeployPage() {
             <div className="flex items-center gap-3">
 
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
-                <FileCode2
-                  size={20}
-                />
+
+                <FileCode2 size={20} />
+
               </div>
 
               <div>
+
                 <h2 className="font-semibold">
                   Token Configuration
                 </h2>
@@ -867,8 +902,11 @@ export default function DeployPage() {
                   Define the basic properties
                   of your token
                 </p>
+
               </div>
+
             </div>
+
           </div>
 
           {/* FORM */}
@@ -878,6 +916,7 @@ export default function DeployPage() {
             {/* NAME */}
 
             <div>
+
               <label className="mb-2 block text-sm font-medium text-zinc-300">
                 Token name
               </label>
@@ -891,13 +930,16 @@ export default function DeployPage() {
                 }
                 disabled={isBusy}
                 placeholder="e.g. My Token"
+                autoComplete="off"
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
               />
+
             </div>
 
             {/* SYMBOL */}
 
             <div>
+
               <label className="mb-2 block text-sm font-medium text-zinc-300">
                 Token symbol
               </label>
@@ -911,15 +953,20 @@ export default function DeployPage() {
                 }
                 disabled={isBusy}
                 placeholder="e.g. MTK"
+                autoComplete="off"
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm uppercase text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
               />
+
             </div>
 
             {/* SUPPLY + DECIMALS */}
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
+              {/* SUPPLY */}
+
               <div>
+
                 <label className="mb-2 block text-sm font-medium text-zinc-300">
                   Total supply
                 </label>
@@ -933,16 +980,21 @@ export default function DeployPage() {
                   }
                   disabled={isBusy}
                   inputMode="decimal"
-                  placeholder="1000000"
+                  placeholder="e.g. 1000000"
+                  autoComplete="off"
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
                 />
 
                 <p className="mt-2 text-xs text-zinc-600">
-                  Initial token supply
+                  Enter the initial token supply
                 </p>
+
               </div>
 
+              {/* DECIMALS */}
+
               <div>
+
                 <label className="mb-2 block text-sm font-medium text-zinc-300">
                   Decimals
                 </label>
@@ -956,14 +1008,17 @@ export default function DeployPage() {
                   }
                   disabled={isBusy}
                   inputMode="numeric"
-                  placeholder="18"
+                  placeholder="e.g. 18"
+                  autoComplete="off"
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
                 />
 
                 <p className="mt-2 text-xs text-zinc-600">
-                  Usually 18 decimals
+                  Choose a value from 0 to 18
                 </p>
+
               </div>
+
             </div>
 
             {/* DEPLOY BUTTON */}
@@ -998,33 +1053,31 @@ export default function DeployPage() {
                 ) : state ===
                   "verified" ? (
                   <>
-                    <Check
-                      size={18}
-                    />
+                    <Check size={18} />
 
                     Verified
                   </>
                 ) : (
                   <>
-                    <Rocket
-                      size={18}
-                    />
+                    <Rocket size={18} />
 
                     Deploy Token
                   </>
                 )}
+
               </button>
 
               {!isConnected && (
                 <div className="mt-3 flex items-center justify-center gap-2 text-xs text-amber-400">
-                  <Wallet
-                    size={14}
-                  />
+
+                  <Wallet size={14} />
 
                   Connect your wallet
                   to deploy
+
                 </div>
               )}
+
             </div>
 
             {/* =================================================
@@ -1036,15 +1089,16 @@ export default function DeployPage() {
                 className={`rounded-xl border p-4 ${
                   state === "verified"
                     ? "border-emerald-400/20 bg-emerald-400/[0.06]"
-                    : state ===
-                        "failed"
+                    : state === "failed"
                     ? "border-red-400/20 bg-red-400/[0.05]"
                     : "border-cyan-400/10 bg-cyan-400/[0.03]"
                 }`}
               >
+
                 <div className="flex items-start gap-3">
 
                   <div className="mt-0.5 shrink-0">
+
                     {state ===
                     "verified" ? (
                       <Check
@@ -1062,12 +1116,15 @@ export default function DeployPage() {
                         className="text-cyan-400"
                       />
                     )}
+
                   </div>
 
                   <p className="text-sm leading-6 text-zinc-300">
                     {message}
                   </p>
+
                 </div>
+
               </div>
             )}
 
@@ -1075,12 +1132,16 @@ export default function DeployPage() {
 
             {error && (
               <div className="rounded-xl border border-red-400/20 bg-red-400/[0.05] p-4">
+
                 <p className="text-sm leading-6 text-red-300">
                   {error}
                 </p>
+
               </div>
             )}
+
           </div>
+
         </section>
 
         {/* =================================================
@@ -1101,35 +1162,34 @@ export default function DeployPage() {
                       : "bg-blue-400/10 text-blue-400"
                   }`}
                 >
+
                   {state ===
                   "verified" ? (
-                    <ShieldCheck
-                      size={20}
-                    />
+                    <ShieldCheck size={20} />
                   ) : (
-                    <Rocket
-                      size={20}
-                    />
+                    <Rocket size={20} />
                   )}
+
                 </div>
 
                 <div>
+
                   <h2 className="font-semibold">
-                    {state ===
-                    "verified"
+                    {state === "verified"
                       ? "Token Verified"
                       : "Token Deployed"}
                   </h2>
 
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    {state ===
-                    "verified"
+                    {state === "verified"
                       ? "Confirmed by the IOPn Explorer"
                       : "Your contract is live on OPN Chain"}
                   </p>
+
                 </div>
 
               </div>
+
             </div>
 
             <div className="space-y-4 p-5 sm:p-7">
@@ -1149,21 +1209,19 @@ export default function DeployPage() {
                     onClick={copyAddress}
                     className="inline-flex items-center gap-1.5 text-xs text-zinc-500 transition hover:text-cyan-400"
                   >
+
                     {copied ? (
                       <>
-                        <Check
-                          size={13}
-                        />
+                        <Check size={13} />
                         Copied
                       </>
                     ) : (
                       <>
-                        <Copy
-                          size={13}
-                        />
+                        <Copy size={13} />
                         Copy
                       </>
                     )}
+
                   </button>
 
                 </div>
@@ -1182,10 +1240,9 @@ export default function DeployPage() {
                 >
                   View contract on Explorer
 
-                  <ExternalLink
-                    size={13}
-                  />
+                  <ExternalLink size={13} />
                 </a>
+
               </div>
 
               {/* TRANSACTION */}
@@ -1211,29 +1268,30 @@ export default function DeployPage() {
                   >
                     View transaction
 
-                    <ExternalLink
-                      size={13}
-                    />
+                    <ExternalLink size={13} />
                   </a>
+
                 </div>
               )}
 
               {/* VERIFIED */}
 
-              {state ===
-                "verified" && (
+              {state === "verified" && (
                 <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.05] p-4">
 
                   <div className="flex items-start gap-3">
 
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-black">
+
                       <Check
                         size={18}
                         strokeWidth={3}
                       />
+
                     </div>
 
                     <div>
+
                       <p className="font-semibold text-emerald-300">
                         Verified on IOPn
                         Explorer
@@ -1246,6 +1304,7 @@ export default function DeployPage() {
                         code for this
                         contract.
                       </p>
+
                     </div>
 
                   </div>
@@ -1260,17 +1319,15 @@ export default function DeployPage() {
                   >
                     Confirm on Explorer
 
-                    <ExternalLink
-                      size={13}
-                    />
+                    <ExternalLink size={13} />
                   </a>
+
                 </div>
               )}
 
               {/* NOT VERIFIED */}
 
-              {state ===
-                "deployed" && (
+              {state === "deployed" && (
                 <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.04] p-4">
 
                   <div className="flex items-start gap-3">
@@ -1280,6 +1337,7 @@ export default function DeployPage() {
                     </div>
 
                     <div>
+
                       <p className="font-semibold text-amber-300">
                         Deployed — awaiting
                         Explorer verification
@@ -1292,6 +1350,7 @@ export default function DeployPage() {
                         Explorer confirms
                         the source code.
                       </p>
+
                     </div>
 
                   </div>
@@ -1306,10 +1365,9 @@ export default function DeployPage() {
                   >
                     Open Explorer
 
-                    <ExternalLink
-                      size={13}
-                    />
+                    <ExternalLink size={13} />
                   </a>
+
                 </div>
               )}
 
@@ -1317,6 +1375,7 @@ export default function DeployPage() {
 
               {verificationId && (
                 <div className="border-t border-white/5 pt-4">
+
                   <p className="text-[10px] uppercase tracking-wider text-zinc-700">
                     Verification request ID
                   </p>
@@ -1324,9 +1383,12 @@ export default function DeployPage() {
                   <p className="mt-1 break-all font-mono text-[11px] text-zinc-600">
                     {verificationId}
                   </p>
+
                 </div>
               )}
+
             </div>
+
           </section>
         )}
 
@@ -1348,6 +1410,7 @@ export default function DeployPage() {
           </Link>
 
         </div>
+
       </div>
     </main>
   );
