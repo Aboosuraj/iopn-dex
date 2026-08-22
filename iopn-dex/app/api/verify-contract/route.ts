@@ -1,4 +1,4 @@
 export {
-  GET,
-  POST,
-} from "../verify/route";
+    GET,
+      POST,
+      } from "../verify/route";
