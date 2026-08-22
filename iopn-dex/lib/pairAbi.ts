@@ -7,8 +7,9 @@ export const PAIR_ABI = [
     inputs: [],
     outputs: [
       {
-        type: "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
   },
 
@@ -19,8 +20,9 @@ export const PAIR_ABI = [
     inputs: [],
     outputs: [
       {
-        type: "address"
-      }
+        name: "",
+        type: "address",
+      },
     ],
   },
 
@@ -32,16 +34,16 @@ export const PAIR_ABI = [
     outputs: [
       {
         name: "reserve0",
-        type: "uint112"
+        type: "uint112",
       },
       {
         name: "reserve1",
-        type: "uint112"
+        type: "uint112",
       },
       {
         name: "blockTimestampLast",
-        type: "uint32"
-      }
+        type: "uint32",
+      },
     ],
   },
 
@@ -52,13 +54,13 @@ export const PAIR_ABI = [
     inputs: [
       {
         name: "owner",
-        type: "address"
-      }
+        type: "address",
+      },
     ],
     outputs: [
       {
-        type: "uint256"
-      }
+        type: "uint256",
+      },
     ],
   },
 
@@ -69,9 +71,9 @@ export const PAIR_ABI = [
     inputs: [],
     outputs: [
       {
-        type: "uint256"
-      }
+        type: "uint256",
+      },
     ],
-  }
+  },
 
 ] as const;

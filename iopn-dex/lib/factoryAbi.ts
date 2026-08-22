@@ -1,55 +1,53 @@
 export const FACTORY_ABI = [
 
   {
-    type:"function",
-    name:"allPairsLength",
-    stateMutability:"view",
-    inputs:[],
-    outputs:[
+    type: "function",
+    name: "allPairsLength",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
       {
-        type:"uint256"
-      }
+        type: "uint256",
+      },
     ],
   },
 
-
   {
-    type:"function",
-    name:"allPairs",
-    stateMutability:"view",
-    inputs:[
+    type: "function",
+    name: "allPairs",
+    stateMutability: "view",
+    inputs: [
       {
-        name:"index",
-        type:"uint256"
-      }
+        name: "index",
+        type: "uint256",
+      },
     ],
-    outputs:[
+    outputs: [
       {
-        type:"address"
-      }
+        type: "address",
+      },
     ],
   },
 
-
   {
-    type:"function",
-    name:"getPair",
-    stateMutability:"view",
-    inputs:[
+    type: "function",
+    name: "getPair",
+    stateMutability: "view",
+    inputs: [
       {
-        name:"tokenA",
-        type:"address"
+        name: "tokenA",
+        type: "address",
       },
       {
-        name:"tokenB",
-        type:"address"
-      }
+        name: "tokenB",
+        type: "address",
+      },
     ],
-    outputs:[
+    outputs: [
       {
-        type:"address"
-      }
+        type: "address",
+      },
     ],
-  }
+  },
 
 ] as const;
