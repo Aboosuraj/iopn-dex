@@ -9,38 +9,43 @@ import {
 } from "wagmi";
 import {
   encodeAbiParameters,
-  parseEther,
+  formatUnits,
+  parseUnits,
 } from "viem";
+import type { Address, Hash } from "viem";
 import {
+  ArrowLeft,
   Check,
+  Copy,
   ExternalLink,
   FileCode2,
   Loader2,
   Rocket,
   ShieldCheck,
   Wallet,
-  ArrowLeft,
-  Copy,
 } from "lucide-react";
 
 /* =========================================================
-   CONFIG
+   EXPLORER
 ========================================================= */
 
-const EXPLORER_URL =
-  "https://testnet.iopn.tech";
+const EXPLORER_URL = "https://testnet.iopn.tech";
+
+/* =========================================================
+   INITIAL LIQUIDITY CONFIG
+========================================================= */
 
 /*
- * Amount of native OPN supplied to the initial
- * liquidity pool.
+ * Amount of native OPN supplied to the initial pool.
  *
- * Change only if you want a different amount.
+ * Example:
+ * 1 OPN + 4,000,000 TOKEN
  */
 const INITIAL_LIQUIDITY_OPN = "1";
 
 /*
- * Percentage of the newly deployed token supply
- * automatically supplied to the initial liquidity pool.
+ * Percentage of the HUMAN token supply allocated
+ * to the initial liquidity pool.
  */
 const LIQUIDITY_TOKEN_PERCENT = 20n;
 
@@ -49,20 +54,26 @@ const LIQUIDITY_TOKEN_PERCENT = 20n;
 ========================================================= */
 
 const ROUTER_ADDRESS =
-  "0xB489bce5c9c9364da2D1D1Bc5CE4274F63141885" as `0x${string}`;
+  "0xB489bce5c9c9364da2D1D1Bc5CE4274F63141885" as Address;
 
 const FACTORY_ADDRESS =
-  "0x8860242B65611dfd077aEe26C3C7920813dF9208" as `0x${string}`;
+  "0x8860242B65611dfd077aEe26C3C7920813dF9208" as Address;
 
 const WOPN_ADDRESS =
-  "0xBc022C9dEb5AF250A526321d16Ef52E39b4DBD84" as `0x${string}`;
+  "0xBc022C9dEb5AF250A526321d16Ef52E39b4DBD84" as Address;
 
 const OPN_ADDRESS =
-  "0xA463ce9F738E0B4035D8d036B902D0efADb24d20" as `0x${string}`;
+  "0xA463ce9F738E0B4035D8d036B902D0efADb24d20" as Address;
 
 /*
- * OPN_ADDRESS is kept here because it is part of the
- * existing DEX configuration.
+ * IMPORTANT:
+ *
+ * The pair is created as:
+ *
+ * TOKEN / WOPN
+ *
+ * Native OPN is supplied to the router.
+ * The router internally handles the native OPN side.
  */
 
 /* =========================================================
@@ -74,7 +85,9 @@ type DeploymentState =
   | "deploying"
   | "indexing"
   | "verifying"
+  | "pairing"
   | "liquidity"
+  | "checking"
   | "verified"
   | "failed";
 
@@ -90,11 +103,20 @@ type VerificationResponse = {
   error?: string;
 };
 
+type BalanceCheck = {
+  deployerBalance: bigint;
+  pairBalance: bigint;
+  expectedDeployerBalance: bigint;
+  expectedPairBalance: bigint;
+  totalSupply: bigint;
+  liquidityAmount: bigint;
+};
+
 /* =========================================================
    ERC20 ABI
 ========================================================= */
 
-const ERC20_LIQUIDITY_ABI = [
+const ERC20_ABI = [
   {
     type: "function",
     name: "approve",
@@ -126,6 +148,18 @@ const ERC20_LIQUIDITY_ABI = [
         type: "address",
       },
     ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "totalSupply",
+    stateMutability: "view",
+    inputs: [],
     outputs: [
       {
         name: "",
@@ -188,7 +222,7 @@ const FACTORY_ABI = [
    ROUTER ABI
 ========================================================= */
 
-const ROUTER_LIQUIDITY_ABI = [
+const ROUTER_ABI = [
   {
     type: "function",
     name: "addLiquidityOPN",
@@ -237,6 +271,13 @@ const ROUTER_LIQUIDITY_ABI = [
 ] as const;
 
 /* =========================================================
+   ZERO ADDRESS
+========================================================= */
+
+const ZERO_ADDRESS =
+  "0x0000000000000000000000000000000000000000" as Address;
+
+/* =========================================================
    COMPONENT
 ========================================================= */
 
@@ -245,16 +286,18 @@ export default function DeployPage() {
 
   const publicClient = usePublicClient();
 
-  const { data: walletClient } =
-    useWalletClient();
+  const { data: walletClient } = useWalletClient();
 
   /* =======================================================
      FORM
   ======================================================= */
 
   const [name, setName] = useState("");
+
   const [symbol, setSymbol] = useState("");
+
   const [supply, setSupply] = useState("");
+
   const [decimals, setDecimals] = useState("18");
 
   /* =======================================================
@@ -262,35 +305,45 @@ export default function DeployPage() {
   ======================================================= */
 
   const [contractAddress, setContractAddress] =
-    useState("");
+    useState<Address | "">("");
 
   const [transactionHash, setTransactionHash] =
-    useState("");
+    useState<Hash | "">("");
 
   const [state, setState] =
     useState<DeploymentState>("idle");
 
-  const [message, setMessage] =
-    useState("");
+  const [message, setMessage] = useState("");
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
   const [verificationId, setVerificationId] =
     useState<string | null>(null);
 
-  const [copied, setCopied] =
-    useState(false);
+  const [copied, setCopied] = useState(false);
 
   /* =======================================================
      LIQUIDITY STATE
   ======================================================= */
 
   const [liquidityPairAddress, setLiquidityPairAddress] =
-    useState("");
+    useState<Address | "">("");
 
   const [liquidityTransactionHash, setLiquidityTransactionHash] =
-    useState("");
+    useState<Hash | "">("");
+
+  const [liquidityTokenAmount, setLiquidityTokenAmount] =
+    useState<bigint | null>(null);
+
+  const [liquidityOPNAmount, setLiquidityOPNAmount] =
+    useState<bigint | null>(null);
+
+  /* =======================================================
+     BALANCE VERIFICATION
+  ======================================================= */
+
+  const [balanceCheck, setBalanceCheck] =
+    useState<BalanceCheck | null>(null);
 
   /* =========================================================
      LOAD ARTIFACT
@@ -346,7 +399,8 @@ export default function DeployPage() {
 
     if (
       !data?.success ||
-      typeof data.standardInput !== "string" ||
+      typeof data.standardInput !==
+        "string" ||
       !data.standardInput.trim()
     ) {
       throw new Error(
@@ -407,7 +461,7 @@ export default function DeployPage() {
   ========================================================= */
 
   async function waitForIndexing(
-    contract: string
+    contract: Address
   ) {
     setState("indexing");
 
@@ -423,10 +477,6 @@ export default function DeployPage() {
       const result =
         await checkExplorer(contract);
 
-      /*
-       * If Explorer already says verified,
-       * verification is already complete.
-       */
       if (result.verified) {
         return {
           verified: true,
@@ -434,10 +484,6 @@ export default function DeployPage() {
         };
       }
 
-      /*
-       * Once indexed, stop waiting and move
-       * immediately to the verification step.
-       */
       if (result.indexed) {
         setMessage(
           "✓ Explorer indexed the contract. Starting automatic verification..."
@@ -474,9 +520,9 @@ export default function DeployPage() {
   function encodeConstructorArguments(
     tokenName: string,
     tokenSymbol: string,
-    totalSupply: bigint,
+    totalSupplyBaseUnits: bigint,
     tokenDecimals: number,
-    owner: `0x${string}`
+    owner: Address
   ) {
     const encoded =
       encodeAbiParameters(
@@ -505,7 +551,7 @@ export default function DeployPage() {
         [
           tokenName,
           tokenSymbol,
-          totalSupply,
+          totalSupplyBaseUnits,
           tokenDecimals,
           owner,
         ]
@@ -516,14 +562,11 @@ export default function DeployPage() {
 
   /* =========================================================
      AUTOMATIC VERIFICATION
-
-     IMPORTANT:
-     This function runs BEFORE liquidity.
   ========================================================= */
 
   async function verifyContract(
-    contract: string,
-    totalSupply: bigint,
+    contract: Address,
+    totalSupplyBaseUnits: bigint,
     tokenDecimals: number
   ) {
     if (!address) {
@@ -541,11 +584,17 @@ export default function DeployPage() {
     const standardInput =
       await loadStandardInput();
 
+    /*
+     * IMPORTANT:
+     *
+     * Verification receives the SAME base-unit
+     * supply that was used during deployment.
+     */
     const constructorArgs =
       encodeConstructorArguments(
         name.trim(),
         symbol.trim(),
-        totalSupply,
+        totalSupplyBaseUnits,
         tokenDecimals,
         address
       );
@@ -609,10 +658,6 @@ export default function DeployPage() {
       );
     }
 
-    /*
-     * If the verification endpoint itself returned
-     * a failure, do NOT continue to liquidity.
-     */
     if (
       !response.ok ||
       data.success === false ||
@@ -625,9 +670,6 @@ export default function DeployPage() {
       );
     }
 
-    /*
-     * Immediately check Explorer.
-     */
     const immediate =
       await checkExplorer(contract);
 
@@ -641,14 +683,6 @@ export default function DeployPage() {
       return true;
     }
 
-    /*
-     * Continue polling Explorer until verification
-     * is actually confirmed.
-     *
-     * IMPORTANT:
-     * We return false instead of allowing liquidity
-     * when verification is not confirmed.
-     */
     for (
       let attempt = 1;
       attempt <= 40;
@@ -679,12 +713,6 @@ export default function DeployPage() {
       }
     }
 
-    /*
-     * Verification was not confirmed.
-     *
-     * CRITICAL:
-     * Liquidity must NOT be created.
-     */
     setState("failed");
 
     throw new Error(
@@ -694,14 +722,131 @@ export default function DeployPage() {
   }
 
   /* =========================================================
-     AUTOMATIC LIQUIDITY
+     GET OR CREATE TOKEN/WOPN PAIR
+  ========================================================= */
 
-     THIS FUNCTION IS ONLY CALLED AFTER VERIFIED === TRUE.
+  async function getOrCreatePair(
+    tokenAddress: Address
+  ): Promise<Address> {
+    if (!address) {
+      throw new Error(
+        "Wallet address is unavailable."
+      );
+    }
+
+    if (!walletClient) {
+      throw new Error(
+        "Wallet client is unavailable."
+      );
+    }
+
+    if (!publicClient) {
+      throw new Error(
+        "Blockchain client is unavailable."
+      );
+    }
+
+    setState("pairing");
+
+    setMessage(
+      "Contract verified. Checking for the TOKEN/WOPN liquidity pair..."
+    );
+
+    let pairAddress =
+      await publicClient.readContract({
+        address: FACTORY_ADDRESS,
+        abi: FACTORY_ABI,
+        functionName: "getPair",
+        args: [
+          tokenAddress,
+          WOPN_ADDRESS,
+        ],
+      });
+
+    /*
+     * PAIR DOES NOT EXIST
+     *
+     * Create it BEFORE adding liquidity.
+     */
+    if (
+      pairAddress === ZERO_ADDRESS
+    ) {
+      setMessage(
+        "No TOKEN/WOPN pair exists. Creating the pair first..."
+      );
+
+      const createPairHash =
+        await walletClient.writeContract({
+          address: FACTORY_ADDRESS,
+          abi: FACTORY_ABI,
+          functionName: "createPair",
+          args: [
+            tokenAddress,
+            WOPN_ADDRESS,
+          ],
+          account: address,
+          chain: walletClient.chain,
+        });
+
+      setMessage(
+        "TOKEN/WOPN pair transaction submitted. Waiting for confirmation..."
+      );
+
+      const receipt =
+        await publicClient.waitForTransactionReceipt(
+          {
+            hash: createPairHash,
+          }
+        );
+
+      if (
+        receipt.status !==
+        "success"
+      ) {
+        throw new Error(
+          "TOKEN/WOPN pair creation transaction failed."
+        );
+      }
+
+      pairAddress =
+        await publicClient.readContract({
+          address: FACTORY_ADDRESS,
+          abi: FACTORY_ABI,
+          functionName: "getPair",
+          args: [
+            tokenAddress,
+            WOPN_ADDRESS,
+          ],
+        });
+    }
+
+    if (
+      pairAddress === ZERO_ADDRESS
+    ) {
+      throw new Error(
+        "The TOKEN/WOPN pair could not be created or found."
+      );
+    }
+
+    setLiquidityPairAddress(
+      pairAddress
+    );
+
+    setMessage(
+      `✓ TOKEN/WOPN pair ready: ${pairAddress}`
+    );
+
+    return pairAddress;
+  }
+
+  /* =========================================================
+     CREATE AUTOMATIC LIQUIDITY
   ========================================================= */
 
   async function createAutomaticLiquidity(
-    tokenAddress: `0x${string}`,
-    totalSupply: bigint
+    tokenAddress: Address,
+    totalSupplyBaseUnits: bigint,
+    tokenDecimals: number
   ) {
     if (!address) {
       throw new Error(
@@ -722,10 +867,26 @@ export default function DeployPage() {
     }
 
     /*
-     * 20% of the deployed token supply.
+     * ======================================================
+     * STEP 1
+     *
+     * CALCULATE 20% IN BASE UNITS
+     * ======================================================
+     *
+     * Example:
+     *
+     * Human supply:
+     * 20,000,000
+     *
+     * Base supply:
+     * 20,000,000 × 10^18
+     *
+     * 20%:
+     * 4,000,000 × 10^18
      */
+
     const liquidityTokenAmount =
-      (totalSupply *
+      (totalSupplyBaseUnits *
         LIQUIDITY_TOKEN_PERCENT) /
       100n;
 
@@ -738,11 +899,12 @@ export default function DeployPage() {
     }
 
     /*
-     * Native OPN contribution.
+     * Native OPN amount.
      */
     const liquidityOPNAmount =
-      parseEther(
-        INITIAL_LIQUIDITY_OPN
+      parseUnits(
+        INITIAL_LIQUIDITY_OPN,
+        18
       );
 
     if (
@@ -753,9 +915,22 @@ export default function DeployPage() {
       );
     }
 
+    setLiquidityTokenAmount(
+      liquidityTokenAmount
+    );
+
+    setLiquidityOPNAmount(
+      liquidityOPNAmount
+    );
+
     /*
-     * Check OPN balance.
+     * ======================================================
+     * STEP 2
+     *
+     * CHECK NATIVE OPN BALANCE
+     * ======================================================
      */
+
     const nativeBalance =
       await publicClient.getBalance({
         address,
@@ -766,17 +941,22 @@ export default function DeployPage() {
       liquidityOPNAmount
     ) {
       throw new Error(
-        `Insufficient OPN balance for automatic liquidity. Required ${INITIAL_LIQUIDITY_OPN} OPN.`
+        `Insufficient OPN balance. Required ${INITIAL_LIQUIDITY_OPN} OPN.`
       );
     }
 
     /*
-     * Check deployed token balance.
+     * ======================================================
+     * STEP 3
+     *
+     * CHECK TOKEN BALANCE
+     * ======================================================
      */
+
     const tokenBalance =
       await publicClient.readContract({
         address: tokenAddress,
-        abi: ERC20_LIQUIDITY_ABI,
+        abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [address],
       });
@@ -786,98 +966,44 @@ export default function DeployPage() {
       liquidityTokenAmount
     ) {
       throw new Error(
-        "The deployer wallet does not contain enough newly deployed tokens for the 20% liquidity allocation."
+        "The deployer wallet does not contain enough tokens for the 20% liquidity allocation."
       );
     }
 
-    /* =====================================================
-       STEP A — GET / CREATE PAIR
-    ===================================================== */
+    /*
+     * ======================================================
+     * STEP 4
+     *
+     * CREATE / GET TOKEN-WOPN PAIR
+     * ======================================================
+     */
+
+    const pairAddress =
+      await getOrCreatePair(
+        tokenAddress
+      );
+
+    /*
+     * ======================================================
+     * STEP 5
+     *
+     * APPROVE EXACTLY 20%
+     * ======================================================
+     */
 
     setState("liquidity");
 
     setMessage(
-      "Contract verified. Preparing the automatic OPN liquidity pool..."
-    );
-
-    let pairAddress =
-      await publicClient.readContract({
-        address: FACTORY_ADDRESS,
-        abi: FACTORY_ABI,
-        functionName: "getPair",
-        args: [
-          tokenAddress,
-          WOPN_ADDRESS,
-        ],
-      });
-
-    /*
-     * Zero address means pair doesn't exist.
-     */
-    if (
-      pairAddress ===
-      "0x0000000000000000000000000000000000000000"
-    ) {
-      setMessage(
-        "Contract verified. Creating the new OPN liquidity pair..."
-      );
-
-      const createPairHash =
-        await walletClient.writeContract({
-          address: FACTORY_ADDRESS,
-          abi: FACTORY_ABI,
-          functionName: "createPair",
-          args: [
-            tokenAddress,
-            WOPN_ADDRESS,
-          ],
-          account: address,
-          chain: walletClient.chain,
-        });
-
-      await publicClient.waitForTransactionReceipt(
-        {
-          hash: createPairHash,
-        }
-      );
-
-      pairAddress =
-        await publicClient.readContract({
-          address: FACTORY_ADDRESS,
-          abi: FACTORY_ABI,
-          functionName: "getPair",
-          args: [
-            tokenAddress,
-            WOPN_ADDRESS,
-          ],
-        });
-    }
-
-    if (
-      pairAddress ===
-      "0x0000000000000000000000000000000000000000"
-    ) {
-      throw new Error(
-        "The liquidity pair could not be created."
-      );
-    }
-
-    setLiquidityPairAddress(
-      pairAddress
-    );
-
-    /* =====================================================
-       STEP B — APPROVE ROUTER
-    ===================================================== */
-
-    setMessage(
-      `Contract verified. Approving ${LIQUIDITY_TOKEN_PERCENT.toString()}% of your token supply for the liquidity pool...`
+      `Approving ${formatUnits(
+        liquidityTokenAmount,
+        tokenDecimals
+      )} ${symbol.toUpperCase()} for the liquidity router...`
     );
 
     const approvalHash =
       await walletClient.writeContract({
         address: tokenAddress,
-        abi: ERC20_LIQUIDITY_ABI,
+        abi: ERC20_ABI,
         functionName: "approve",
         args: [
           ROUTER_ADDRESS,
@@ -893,27 +1019,30 @@ export default function DeployPage() {
       }
     );
 
-    /* =====================================================
-       STEP C — ADD LIQUIDITY
-    ===================================================== */
-
-    setState("liquidity");
+    /*
+     * ======================================================
+     * STEP 6
+     *
+     * ADD INITIAL TOKEN/WOPN LIQUIDITY
+     * ======================================================
+     */
 
     setMessage(
-      `Adding ${LIQUIDITY_TOKEN_PERCENT.toString()}% of your token supply and ${INITIAL_LIQUIDITY_OPN} OPN to the initial liquidity pool...`
+      `Adding ${formatUnits(
+        liquidityTokenAmount,
+        tokenDecimals
+      )} ${symbol.toUpperCase()} + ${INITIAL_LIQUIDITY_OPN} OPN to the initial pool...`
     );
 
     /*
      * 1% slippage protection.
      */
     const amountTokenMin =
-      (liquidityTokenAmount *
-        99n) /
+      (liquidityTokenAmount * 99n) /
       100n;
 
     const amountOPNMin =
-      (liquidityOPNAmount *
-        99n) /
+      (liquidityOPNAmount * 99n) /
       100n;
 
     /*
@@ -929,7 +1058,7 @@ export default function DeployPage() {
     const liquidityHash =
       await walletClient.writeContract({
         address: ROUTER_ADDRESS,
-        abi: ROUTER_LIQUIDITY_ABI,
+        abi: ROUTER_ABI,
         functionName:
           "addLiquidityOPN",
         args: [
@@ -949,14 +1078,132 @@ export default function DeployPage() {
       liquidityHash
     );
 
-    await publicClient.waitForTransactionReceipt(
-      {
-        hash: liquidityHash,
-      }
+    setMessage(
+      "Liquidity transaction submitted. Waiting for confirmation..."
     );
 
+    const liquidityReceipt =
+      await publicClient.waitForTransactionReceipt(
+        {
+          hash: liquidityHash,
+        }
+      );
+
+    if (
+      liquidityReceipt.status !==
+      "success"
+    ) {
+      throw new Error(
+        "Initial liquidity transaction failed."
+      );
+    }
+
+    /*
+     * ======================================================
+     * STEP 7
+     *
+     * VERIFY ON-CHAIN BALANCES
+     * ======================================================
+     */
+
+    setState("checking");
+
     setMessage(
-      `✓ Contract verified and initial liquidity pool created successfully. ${LIQUIDITY_TOKEN_PERCENT.toString()}% of the token supply was added with ${INITIAL_LIQUIDITY_OPN} OPN.`
+      "Liquidity confirmed. Verifying the final token distribution on-chain..."
+    );
+
+    const finalDeployerBalance =
+      await publicClient.readContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      });
+
+    const finalPairBalance =
+      await publicClient.readContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [pairAddress],
+      });
+
+    const expectedLiquidity =
+      liquidityTokenAmount;
+
+    const expectedDeployer =
+      totalSupplyBaseUnits -
+      liquidityTokenAmount;
+
+    setBalanceCheck({
+      deployerBalance:
+        finalDeployerBalance,
+
+      pairBalance:
+        finalPairBalance,
+
+      expectedDeployerBalance:
+        expectedDeployer,
+
+      expectedPairBalance:
+        expectedLiquidity,
+
+      totalSupply:
+        totalSupplyBaseUnits,
+
+      liquidityAmount:
+        liquidityTokenAmount,
+    });
+
+    /*
+     * Allow a small difference because the router
+     * can use slightly different amounts depending
+     * on implementation.
+     */
+    const pairDifference =
+      finalPairBalance >
+      expectedLiquidity
+        ? finalPairBalance -
+          expectedLiquidity
+        : expectedLiquidity -
+          finalPairBalance;
+
+    const deployerDifference =
+      finalDeployerBalance >
+      expectedDeployer
+        ? finalDeployerBalance -
+          expectedDeployer
+        : expectedDeployer -
+          finalDeployerBalance;
+
+    /*
+     * 0.01% tolerance.
+     */
+    const tolerance =
+      totalSupplyBaseUnits /
+      10000n;
+
+    if (
+      pairDifference >
+        tolerance ||
+      deployerDifference >
+        tolerance
+    ) {
+      throw new Error(
+        "Liquidity transaction succeeded, but the final on-chain token distribution does not match the expected 80% deployer / 20% liquidity allocation."
+      );
+    }
+
+    /*
+     * ======================================================
+     * FINAL SUCCESS
+     * ======================================================
+     */
+
+    setState("verified");
+
+    setMessage(
+      `✓ Token paired successfully, 20% initial liquidity added, and on-chain balances verified.`
     );
 
     return {
@@ -966,37 +1213,47 @@ export default function DeployPage() {
         liquidityTokenAmount,
       opnAmount:
         liquidityOPNAmount,
+      deployerBalance:
+        finalDeployerBalance,
+      pairBalance:
+        finalPairBalance,
     };
   }
 
   /* =========================================================
      DEPLOY
-
-     FINAL ORDER:
-
-     1. Deploy contract
-     2. Wait for Explorer indexing
-     3. Verify contract
-     4. Confirm verification
-     5. Add liquidity
-
-     NEVER add liquidity before verification.
   ========================================================= */
 
   async function deploy() {
     setError("");
+
     setMessage("");
+
     setContractAddress("");
+
     setTransactionHash("");
+
     setVerificationId(null);
+
     setCopied(false);
+
     setLiquidityPairAddress("");
+
     setLiquidityTransactionHash("");
+
+    setLiquidityTokenAmount(null);
+
+    setLiquidityOPNAmount(null);
+
+    setBalanceCheck(null);
+
     setState("idle");
 
-    /* =====================================================
-       WALLET
-    ===================================================== */
+    /*
+     * ======================================================
+     * WALLET
+     * ======================================================
+     */
 
     if (!isConnected) {
       setError(
@@ -1026,9 +1283,11 @@ export default function DeployPage() {
       return;
     }
 
-    /* =====================================================
-       VALIDATION
-    ===================================================== */
+    /*
+     * ======================================================
+     * VALIDATION
+     * ======================================================
+     */
 
     if (!name.trim()) {
       setError(
@@ -1074,21 +1333,35 @@ export default function DeployPage() {
       return;
     }
 
-    /* =====================================================
-       EXACT SUPPLY
-    ===================================================== */
+    /*
+     * ======================================================
+     * HUMAN SUPPLY
+     * ======================================================
+     *
+     * User enters:
+     *
+     * 20,000,000
+     *
+     * This is NOT the value sent directly to
+     * the ERC20 constructor.
+     */
 
-    let totalSupply: bigint;
+    let humanSupply: string;
+
+    let totalSupplyBaseUnits: bigint;
 
     try {
-      const cleanSupply =
+      humanSupply =
         supply
           .trim()
           .replace(/,/g, "");
 
+      /*
+       * Whole token supply only.
+       */
       if (
         !/^\d+$/.test(
-          cleanSupply
+          humanSupply
         )
       ) {
         throw new Error(
@@ -1096,11 +1369,31 @@ export default function DeployPage() {
         );
       }
 
-      totalSupply =
-        BigInt(cleanSupply);
+      /*
+       * ==================================================
+       * CRITICAL FIX
+       *
+       * Convert:
+       *
+       * 20,000,000
+       *
+       * into:
+       *
+       * 20,000,000 × 10^18
+       *
+       * when decimals = 18.
+       * ==================================================
+       */
+
+      totalSupplyBaseUnits =
+        parseUnits(
+          humanSupply,
+          decimalsNumber
+        );
 
       if (
-        totalSupply <= 0n
+        totalSupplyBaseUnits <=
+        0n
       ) {
         throw new Error(
           "Supply must be greater than zero."
@@ -1116,15 +1409,25 @@ export default function DeployPage() {
       return;
     }
 
+    /*
+     * ======================================================
+     * START PROCESS
+     * ======================================================
+     */
+
     try {
-      /* ===================================================
-         STEP 1 — DEPLOY CONTRACT
-      =================================================== */
+      /*
+       * ====================================================
+       * STEP 1
+       *
+       * DEPLOY
+       * ====================================================
+       */
 
       setState("deploying");
 
       setMessage(
-        "Deploying your token to OPN Chain..."
+        `Deploying ${humanSupply} ${symbol.toUpperCase()} with ${decimalsNumber} decimals...`
       );
 
       const artifact =
@@ -1139,6 +1442,20 @@ export default function DeployPage() {
         );
       }
 
+      /*
+       * IMPORTANT:
+       *
+       * Deploy BASE UNITS.
+       *
+       * Example:
+       *
+       * User:
+       * 20,000,000
+       *
+       * Constructor:
+       * 20,000,000 × 10^18
+       */
+
       const hash =
         await walletClient.deployContract(
           {
@@ -1149,12 +1466,10 @@ export default function DeployPage() {
 
             args: [
               name.trim(),
+
               symbol.trim(),
 
-              /*
-               * EXACT USER SUPPLY
-               */
-              totalSupply,
+              totalSupplyBaseUnits,
 
               decimalsNumber,
 
@@ -1168,12 +1483,16 @@ export default function DeployPage() {
       );
 
       setMessage(
-        "Transaction submitted. Waiting for blockchain confirmation..."
+        "Deployment transaction submitted. Waiting for blockchain confirmation..."
       );
 
-      /* ===================================================
-         STEP 2 — WAIT FOR DEPLOYMENT RECEIPT
-      =================================================== */
+      /*
+       * ====================================================
+       * STEP 2
+       *
+       * DEPLOYMENT RECEIPT
+       * ====================================================
+       */
 
       const receipt =
         await publicClient.waitForTransactionReceipt(
@@ -1191,9 +1510,13 @@ export default function DeployPage() {
         );
       }
 
-      /* ===================================================
-         STEP 3 — GET CONTRACT ADDRESS
-      =================================================== */
+      /*
+       * ====================================================
+       * STEP 3
+       *
+       * CONTRACT ADDRESS
+       * ====================================================
+       */
 
       const deployedAddress =
         receipt.contractAddress;
@@ -1208,15 +1531,13 @@ export default function DeployPage() {
         deployedAddress
       );
 
-      setState("indexing");
-
-      setMessage(
-        "Token deployed successfully. Waiting for Explorer indexing..."
-      );
-
-      /* ===================================================
-         STEP 4 — WAIT FOR EXPLORER INDEXING
-      =================================================== */
+      /*
+       * ====================================================
+       * STEP 4
+       *
+       * WAIT FOR EXPLORER INDEXING
+       * ====================================================
+       */
 
       const explorerState =
         await waitForIndexing(
@@ -1224,79 +1545,88 @@ export default function DeployPage() {
         );
 
       /*
-       * If Explorer somehow already confirms
-       * verification, we can skip submission.
+       * ====================================================
+       * STEP 5
+       *
+       * VERIFY
+       * ====================================================
        */
+
       let verified =
         explorerState.verified;
-
-      /* ===================================================
-         STEP 5 — AUTOMATIC VERIFICATION
-         
-         THIS HAPPENS BEFORE LIQUIDITY.
-      =================================================== */
 
       if (!verified) {
         verified =
           await verifyContract(
             deployedAddress,
-            totalSupply,
+            totalSupplyBaseUnits,
             decimalsNumber
           );
       }
 
       /*
-       * ABSOLUTE SAFETY CHECK.
-       *
-       * If verification is not confirmed,
-       * STOP HERE.
-       *
-       * NO LIQUIDITY.
+       * ABSOLUTE SAFETY CHECK
        */
+
       if (!verified) {
         throw new Error(
-          "Explorer verification was not confirmed. Automatic liquidity was not created."
+          "Explorer verification was not confirmed. Pair and liquidity creation were not started."
         );
       }
 
-      /* ===================================================
-         STEP 6 — VERIFICATION CONFIRMED
-      =================================================== */
+      /*
+       * ====================================================
+       * STEP 6
+       *
+       * VERIFIED
+       * ====================================================
+       */
 
       setState("verified");
 
       setMessage(
-        "✓ Contract verified on IOPn Explorer. Starting automatic liquidity..."
+        "✓ Contract verified. Now creating the TOKEN/WOPN pair before adding liquidity..."
       );
 
-      /*
-       * Small pause so the UI clearly reflects that
-       * verification completed before liquidity starts.
-       */
       await new Promise(
         (resolve) =>
           setTimeout(resolve, 1000)
       );
 
-      /* ===================================================
-         STEP 7 — AUTOMATIC LIQUIDITY
-         
-         THIS CAN ONLY RUN AFTER VERIFIED === TRUE.
-      =================================================== */
+      /*
+       * ====================================================
+       * STEP 7
+       *
+       * PAIR + LIQUIDITY
+       *
+       * Order:
+       *
+       * 1. Get/create TOKEN/WOPN pair
+       * 2. Calculate 20%
+       * 3. Approve 20%
+       * 4. Add liquidity
+       * 5. Verify balances
+       * ====================================================
+       */
 
       await createAutomaticLiquidity(
         deployedAddress,
-        totalSupply
+        totalSupplyBaseUnits,
+        decimalsNumber
       );
 
-      /* ===================================================
-         STEP 8 — FINAL SUCCESS
-      =================================================== */
+      /*
+       * ====================================================
+       * STEP 8
+       *
+       * FINAL SUCCESS
+       * ====================================================
+       */
 
       setState("verified");
 
       setMessage(
-        "✓ Token deployed, Explorer verified, and initial liquidity pool created successfully."
+        `✓ ${humanSupply} ${symbol.toUpperCase()} deployed, verified, paired with WOPN, 20% initial liquidity added, and final balances verified on-chain.`
       );
     } catch (err) {
       console.error(
@@ -1312,12 +1642,6 @@ export default function DeployPage() {
           : "Deployment failed."
       );
 
-      /*
-       * Do not erase the deployment result.
-       *
-       * If verification or liquidity failed after
-       * deployment, the user can still see the contract.
-       */
       setMessage("");
     }
   }
@@ -1355,7 +1679,9 @@ export default function DeployPage() {
     state === "deploying" ||
     state === "indexing" ||
     state === "verifying" ||
-    state === "liquidity";
+    state === "pairing" ||
+    state === "liquidity" ||
+    state === "checking";
 
   const explorerContractUrl =
     contractAddress
@@ -1373,15 +1699,60 @@ export default function DeployPage() {
       : "";
 
   /* =========================================================
+     DISPLAY VALUES
+  ========================================================= */
+
+  const displayLiquidityTokens =
+    liquidityTokenAmount !== null
+      ? formatUnits(
+          liquidityTokenAmount,
+          Number(decimals)
+        )
+      : "";
+
+  const displayExpectedDeployer =
+    balanceCheck
+      ? formatUnits(
+          balanceCheck.expectedDeployerBalance,
+          Number(decimals)
+        )
+      : "";
+
+  const displayActualDeployer =
+    balanceCheck
+      ? formatUnits(
+          balanceCheck.deployerBalance,
+          Number(decimals)
+        )
+      : "";
+
+  const displayExpectedPair =
+    balanceCheck
+      ? formatUnits(
+          balanceCheck.expectedPairBalance,
+          Number(decimals)
+        )
+      : "";
+
+  const displayActualPair =
+    balanceCheck
+      ? formatUnits(
+          balanceCheck.pairBalance,
+          Number(decimals)
+        )
+      : "";
+
+  /* =========================================================
      UI
   ========================================================= */
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05070b] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-black text-white">
 
       {/* BACKGROUND */}
 
       <div className="pointer-events-none absolute inset-0">
+
         <div className="absolute left-1/2 top-[-180px] h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-[120px]" />
 
         <div className="absolute bottom-[-180px] right-[-120px] h-[380px] w-[380px] rounded-full bg-blue-600/10 blur-[120px]" />
@@ -1397,6 +1768,7 @@ export default function DeployPage() {
               "42px 42px",
           }}
         />
+
       </div>
 
       <div className="relative mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
@@ -1414,12 +1786,15 @@ export default function DeployPage() {
           </Link>
 
           <div className="flex items-center gap-2 rounded-full border border-cyan-400/15 bg-cyan-400/[0.05] px-3 py-1.5">
+
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400" />
 
             <span className="text-xs font-medium text-cyan-300">
               OPN TESTNET
             </span>
+
           </div>
+
         </div>
 
         {/* HERO */}
@@ -1427,24 +1802,30 @@ export default function DeployPage() {
         <section className="mb-8 text-center">
 
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/15 to-blue-500/10 shadow-[0_0_45px_rgba(34,211,238,0.12)]">
+
             <Rocket
               size={28}
               className="text-cyan-300"
             />
+
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+
             Create Tokens
 
             <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
               with Fun on OPN Chain
             </span>
+
           </h1>
 
           <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-zinc-400 sm:text-base">
             Launch your own token on the OPN
-            Chain testnet in seconds. Deploy
-            directly from your wallet.
+            Chain testnet. Your token is
+            deployed, verified, paired, and
+            supplied with initial liquidity
+            automatically.
           </p>
 
           <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -1458,10 +1839,15 @@ export default function DeployPage() {
             </span>
 
             <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-400">
+              🔗 TOKEN/WOPN paired
+            </span>
+
+            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-400">
               ✓ Explorer verified
             </span>
 
           </div>
+
         </section>
 
         {/* MAIN CARD */}
@@ -1473,10 +1859,13 @@ export default function DeployPage() {
             <div className="flex items-center gap-3">
 
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
+
                 <FileCode2 size={20} />
+
               </div>
 
               <div>
+
                 <h2 className="font-semibold">
                   Token Configuration
                 </h2>
@@ -1485,9 +1874,11 @@ export default function DeployPage() {
                   Define the basic properties
                   of your token
                 </p>
+
               </div>
 
             </div>
+
           </div>
 
           <div className="space-y-5 p-5 sm:p-7">
@@ -1542,8 +1933,6 @@ export default function DeployPage() {
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
-              {/* SUPPLY */}
-
               <div>
 
                 <label className="mb-2 block text-sm font-medium text-zinc-300">
@@ -1553,6 +1942,7 @@ export default function DeployPage() {
                 <input
                   value={supply}
                   onChange={(event) => {
+
                     const value =
                       event.target.value.replace(
                         /[^\d,]/g,
@@ -1560,21 +1950,21 @@ export default function DeployPage() {
                       );
 
                     setSupply(value);
+
                   }}
                   disabled={isBusy}
                   inputMode="numeric"
-                  placeholder="e.g. 1000000000"
+                  placeholder="e.g. 20000000"
                   autoComplete="off"
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:bg-black/50 focus:ring-4 focus:ring-cyan-400/5 disabled:cursor-not-allowed disabled:opacity-50"
                 />
 
                 <p className="mt-2 text-xs text-zinc-600">
-                  Enter the exact token supply
+                  Enter the human-readable
+                  token supply
                 </p>
 
               </div>
-
-              {/* DECIMALS */}
 
               <div>
 
@@ -1585,6 +1975,7 @@ export default function DeployPage() {
                 <input
                   value={decimals}
                   onChange={(event) => {
+
                     const value =
                       event.target.value.replace(
                         /\D/g,
@@ -1592,6 +1983,7 @@ export default function DeployPage() {
                       );
 
                     setDecimals(value);
+
                   }}
                   disabled={isBusy}
                   inputMode="numeric"
@@ -1606,6 +1998,7 @@ export default function DeployPage() {
                 </p>
 
               </div>
+
             </div>
 
             {/* SUPPLY PREVIEW */}
@@ -1616,7 +2009,7 @@ export default function DeployPage() {
                 <div className="flex items-center justify-between gap-4">
 
                   <span className="text-xs text-zinc-500">
-                    On-chain total supply
+                    Human-readable supply
                   </span>
 
                   <span className="font-mono text-sm font-semibold text-cyan-300">
@@ -1628,14 +2021,162 @@ export default function DeployPage() {
 
                 </div>
 
-                <p className="mt-2 text-[11px] leading-5 text-zinc-600">
-                  This value is deployed exactly as
-                  entered. No automatic 10^18
-                  multiplication is applied.
+                <div className="mt-3 grid grid-cols-2 gap-3">
+
+                  <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+                      Liquidity 20%
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-cyan-300">
+
+                      {(() => {
+
+                        try {
+
+                          const human =
+                            supply
+                              .replace(
+                                /,/g,
+                                ""
+                              );
+
+                          const parsed =
+                            parseUnits(
+                              human,
+                              Number(decimals)
+                            );
+
+                          const liquidity =
+                            (parsed *
+                              20n) /
+                            100n;
+
+                          return formatUnits(
+                            liquidity,
+                            Number(decimals)
+                          );
+
+                        } catch {
+
+                          return "—";
+
+                        }
+
+                      })()}
+
+                    </p>
+
+                  </div>
+
+                  <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+                      Deployer 80%
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-emerald-300">
+
+                      {(() => {
+
+                        try {
+
+                          const human =
+                            supply
+                              .replace(
+                                /,/g,
+                                ""
+                              );
+
+                          const parsed =
+                            parseUnits(
+                              human,
+                              Number(decimals)
+                            );
+
+                          const liquidity =
+                            (parsed *
+                              20n) /
+                            100n;
+
+                          const deployer =
+                            parsed -
+                            liquidity;
+
+                          return formatUnits(
+                            deployer,
+                            Number(decimals)
+                          );
+
+                        } catch {
+
+                          return "—";
+
+                        }
+
+                      })()}
+
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <p className="mt-3 text-[11px] leading-5 text-zinc-600">
+                  The supply is converted to
+                  ERC-20 base units using the
+                  selected decimals before
+                  deployment. With 20,000,000
+                  supply and 18 decimals, the
+                  contract receives
+                  20,000,000 × 10¹⁸ base units.
                 </p>
 
               </div>
             )}
+
+            {/* PROCESS PREVIEW */}
+
+            <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/[0.025] p-4">
+
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-cyan-400/60">
+                Automatic deployment flow
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-500 sm:grid-cols-4">
+
+                <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                  <span className="block text-cyan-400">
+                    01
+                  </span>
+                  Deploy
+                </div>
+
+                <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                  <span className="block text-cyan-400">
+                    02
+                  </span>
+                  Verify
+                </div>
+
+                <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                  <span className="block text-cyan-400">
+                    03
+                  </span>
+                  Pair
+                </div>
+
+                <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                  <span className="block text-cyan-400">
+                    04
+                  </span>
+                  Add 20%
+                </div>
+
+              </div>
+
+            </div>
 
             {/* DEPLOY BUTTON */}
 
@@ -1667,7 +2208,13 @@ export default function DeployPage() {
                       : state ===
                         "verifying"
                       ? "Verifying Contract..."
-                      : "Adding Liquidity..."}
+                      : state ===
+                        "pairing"
+                      ? "Creating Token Pair..."
+                      : state ===
+                        "liquidity"
+                      ? "Adding Liquidity..."
+                      : "Checking On-Chain Balances..."}
                   </>
                 ) : state ===
                   "verified" ? (
@@ -1699,9 +2246,11 @@ export default function DeployPage() {
             {message && (
               <div
                 className={`rounded-xl border p-4 ${
-                  state === "verified"
+                  state ===
+                  "verified"
                     ? "border-emerald-400/20 bg-emerald-400/[0.06]"
-                    : state === "failed"
+                    : state ===
+                      "failed"
                     ? "border-red-400/20 bg-red-400/[0.05]"
                     : "border-cyan-400/10 bg-cyan-400/[0.03]"
                 }`}
@@ -1737,6 +2286,7 @@ export default function DeployPage() {
                   </p>
 
                 </div>
+
               </div>
             )}
 
@@ -1753,6 +2303,7 @@ export default function DeployPage() {
             )}
 
           </div>
+
         </section>
 
         {/* DEPLOYMENT RESULT */}
@@ -1766,9 +2317,11 @@ export default function DeployPage() {
 
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                    state === "verified"
+                    state ===
+                    "verified"
                       ? "bg-emerald-400/10 text-emerald-400"
-                      : state === "failed"
+                      : state ===
+                        "failed"
                       ? "bg-red-400/10 text-red-400"
                       : "bg-blue-400/10 text-blue-400"
                   }`}
@@ -1786,6 +2339,7 @@ export default function DeployPage() {
                 <div>
 
                   <h2 className="font-semibold">
+
                     {state ===
                     "verified"
                       ? "Token Verified & Liquidity Created"
@@ -1793,13 +2347,14 @@ export default function DeployPage() {
                         "failed"
                       ? "Token Deployed"
                       : "Token Deployed"}
+
                   </h2>
 
                   <p className="mt-0.5 text-xs text-zinc-500">
 
                     {state ===
                     "verified"
-                      ? "Verified by the IOPn Explorer and liquidity added"
+                      ? "Verified, paired with WOPN, liquidity added and balances verified"
                       : "Your contract is live on OPN Chain"}
 
                   </p>
@@ -1807,11 +2362,12 @@ export default function DeployPage() {
                 </div>
 
               </div>
+
             </div>
 
             <div className="space-y-4 p-5 sm:p-7">
 
-              {/* CONTRACT ADDRESS */}
+              {/* CONTRACT */}
 
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
 
@@ -1848,7 +2404,9 @@ export default function DeployPage() {
                 </p>
 
                 <a
-                  href={explorerContractUrl}
+                  href={
+                    explorerContractUrl
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-cyan-400 transition hover:text-cyan-300"
@@ -1859,7 +2417,7 @@ export default function DeployPage() {
 
               </div>
 
-              {/* TRANSACTION */}
+              {/* DEPLOYMENT TX */}
 
               {transactionHash && (
                 <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
@@ -1887,7 +2445,7 @@ export default function DeployPage() {
                 </div>
               )}
 
-              {/* LIQUIDITY */}
+              {/* PAIR */}
 
               {liquidityPairAddress && (
                 <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
@@ -1901,14 +2459,14 @@ export default function DeployPage() {
                     <div>
 
                       <p className="font-semibold text-cyan-300">
-                        Initial Liquidity Created
+                        TOKEN/WOPN Pair Ready
                       </p>
 
                       <p className="mt-1 text-xs leading-5 text-cyan-400/60">
-                        The contract was verified first.
-                        Then {LIQUIDITY_TOKEN_PERCENT.toString()}%
-                        of the token supply was automatically
-                        added to the initial OPN liquidity pool.
+                        The liquidity pair was
+                        created before the
+                        initial liquidity was
+                        supplied.
                       </p>
 
                     </div>
@@ -1927,24 +2485,194 @@ export default function DeployPage() {
 
                   </div>
 
-                  {liquidityTransactionHash && (
-                    <a
-                      href={
-                        explorerLiquidityTransactionUrl
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-cyan-300 transition hover:text-cyan-200"
-                    >
-                      View liquidity transaction
-                      <ExternalLink size={13} />
-                    </a>
-                  )}
+                </div>
+              )}
+
+              {/* LIQUIDITY */}
+
+              {liquidityTokenAmount !==
+                null &&
+                liquidityPairAddress && (
+                  <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
+
+                    <div className="flex items-start gap-3">
+
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-cyan-300">
+                        <Rocket size={17} />
+                      </div>
+
+                      <div>
+
+                        <p className="font-semibold text-cyan-300">
+                          Initial Liquidity Added
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-cyan-400/60">
+                          Exactly{" "}
+                          {LIQUIDITY_TOKEN_PERCENT.toString()}
+                          % of the token
+                          supply was allocated
+                          to the initial pool.
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+
+                      <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+                          Token liquidity
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-cyan-300">
+                          {displayLiquidityTokens}
+                        </p>
+
+                        <p className="text-[10px] text-zinc-600">
+                          {symbol.toUpperCase()}
+                        </p>
+
+                      </div>
+
+                      <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-600">
+                          OPN liquidity
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-cyan-300">
+                          {liquidityOPNAmount !==
+                          null
+                            ? formatUnits(
+                                liquidityOPNAmount,
+                                18
+                              )
+                            : "—"}
+                        </p>
+
+                        <p className="text-[10px] text-zinc-600">
+                          OPN
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    {liquidityTransactionHash && (
+                      <a
+                        href={
+                          explorerLiquidityTransactionUrl
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-cyan-300 transition hover:text-cyan-200"
+                      >
+                        View liquidity transaction
+                        <ExternalLink size={13} />
+                      </a>
+                    )}
+
+                  </div>
+                )}
+
+              {/* BALANCE VERIFICATION */}
+
+              {balanceCheck && (
+                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-4">
+
+                  <div className="flex items-start gap-3">
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-black">
+                      <Check
+                        size={18}
+                        strokeWidth={3}
+                      />
+                    </div>
+
+                    <div>
+
+                      <p className="font-semibold text-emerald-300">
+                        On-Chain Distribution Verified
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-emerald-400/60">
+                        The final balances match
+                        the expected 80% deployer
+                        and 20% liquidity
+                        allocation.
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+
+                    <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+
+                      <div className="flex items-center justify-between gap-3">
+
+                        <span className="text-xs text-zinc-500">
+                          Deployer
+                        </span>
+
+                        <span className="font-mono text-xs text-emerald-300">
+                          {displayActualDeployer}
+                        </span>
+
+                      </div>
+
+                      <div className="mt-1 flex items-center justify-between gap-3">
+
+                        <span className="text-[10px] text-zinc-700">
+                          Expected
+                        </span>
+
+                        <span className="font-mono text-[10px] text-zinc-600">
+                          {displayExpectedDeployer}
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                    <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+
+                      <div className="flex items-center justify-between gap-3">
+
+                        <span className="text-xs text-zinc-500">
+                          Liquidity Pair
+                        </span>
+
+                        <span className="font-mono text-xs text-cyan-300">
+                          {displayActualPair}
+                        </span>
+
+                      </div>
+
+                      <div className="mt-1 flex items-center justify-between gap-3">
+
+                        <span className="text-[10px] text-zinc-700">
+                          Expected
+                        </span>
+
+                        <span className="font-mono text-[10px] text-zinc-600">
+                          {displayExpectedPair}
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                  </div>
 
                 </div>
               )}
 
-              {/* VERIFIED */}
+              {/* FINAL VERIFIED */}
 
               {state ===
                 "verified" &&
@@ -1963,17 +2691,40 @@ export default function DeployPage() {
                       <div>
 
                         <p className="font-semibold text-emerald-300">
-                          Verified & Liquidity Added
+                          Verified & Ready to Trade
                         </p>
 
                         <p className="mt-1 text-xs leading-5 text-emerald-400/60">
-                          The Explorer confirmed
-                          the published source code
-                          before the automatic liquidity
-                          pool was created.
+                          The token is deployed,
+                          Explorer verified,
+                          paired with WOPN,
+                          initial liquidity added,
+                          and the final token
+                          distribution was
+                          verified on-chain.
                         </p>
 
                       </div>
+
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+
+                      <span className="rounded-full border border-emerald-400/10 bg-emerald-400/5 px-3 py-1.5 text-[10px] text-emerald-300">
+                        ✓ Deployed
+                      </span>
+
+                      <span className="rounded-full border border-emerald-400/10 bg-emerald-400/5 px-3 py-1.5 text-[10px] text-emerald-300">
+                        ✓ Verified
+                      </span>
+
+                      <span className="rounded-full border border-emerald-400/10 bg-emerald-400/5 px-3 py-1.5 text-[10px] text-emerald-300">
+                        ✓ Pair Created
+                      </span>
+
+                      <span className="rounded-full border border-emerald-400/10 bg-emerald-400/5 px-3 py-1.5 text-[10px] text-emerald-300">
+                        ✓ Liquidity Added
+                      </span>
 
                     </div>
 
@@ -1992,7 +2743,7 @@ export default function DeployPage() {
                   </div>
                 )}
 
-              {/* VERIFICATION / LIQUIDITY FAILED */}
+              {/* FAILED */}
 
               {state ===
                 "failed" && (
@@ -2007,15 +2758,17 @@ export default function DeployPage() {
                       <div>
 
                         <p className="font-semibold text-red-300">
-                          Automatic process stopped
+                          Automatic Process Stopped
                         </p>
 
                         <p className="mt-1 text-xs leading-5 text-red-400/60">
-                          The contract was deployed,
-                          but the automatic process stopped
-                          because Explorer verification was not
-                          confirmed or liquidity creation failed.
-                          No liquidity is created before verification.
+                          The contract may already
+                          exist on-chain. The
+                          automatic process stopped
+                          because one of the
+                          verification, pair creation,
+                          liquidity, or balance
+                          verification steps failed.
                         </p>
 
                       </div>
@@ -2054,6 +2807,7 @@ export default function DeployPage() {
               )}
 
             </div>
+
           </section>
         )}
 
@@ -2075,6 +2829,7 @@ export default function DeployPage() {
         </div>
 
       </div>
+
     </main>
   );
 }
