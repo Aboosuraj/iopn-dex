@@ -5,16 +5,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useAccount,
   useBalance,
-  useSendTransaction,
+  usePublicClient,
+  useWalletClient,
 } from "wagmi";
 
-import { parseEther } from "viem";
+import {
+  formatUnits,
+  isAddress,
+  parseEther,
+  parseUnits,
+} from "viem";
+
 import { io } from "socket.io-client";
 
 import {
   Wallet,
   Send,
-  QrCode,
   CreditCard,
   Activity,
   ShieldCheck,
@@ -46,6 +52,35 @@ const socket = io("https://iopndex.onrender.com", {
 
 
 /* =========================================================
+   ERC20 TRANSFER ABI
+========================================================= */
+
+const ERC20_TRANSFER_ABI = [
+  {
+    type: "function",
+    name: "transfer",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "to",
+        type: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+      },
+    ],
+  },
+] as const;
+
+
+/* =========================================================
    FORMAT BALANCE
 ========================================================= */
 
@@ -62,7 +97,7 @@ function formatBalance(value: any) {
 
   return formatted.toLocaleString(undefined, {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 6,
   });
 }
 
@@ -85,11 +120,17 @@ function shortAddress(address?: string) {
 ========================================================= */
 
 export default function PayPage() {
-
   const {
     address,
     isConnected,
   } = useAccount();
+
+  const {
+    data: walletClient,
+  } = useWalletClient();
+
+  const publicClient =
+    usePublicClient();
 
 
   /* =======================================================
@@ -106,13 +147,22 @@ export default function PayPage() {
     useState("OPN");
 
   const [txHash, setTxHash] =
-    useState<string | null>(null);
+    useState<`0x${string}` | null>(null);
 
   const [liveTxs, setLiveTxs] =
     useState<any[]>([]);
 
   const [copied, setCopied] =
     useState(false);
+
+  const [sending, setSending] =
+    useState(false);
+
+  const [statusMessage, setStatusMessage] =
+    useState("");
+
+  const [errorMessage, setErrorMessage] =
+    useState("");
 
 
   /* =======================================================
@@ -152,17 +202,19 @@ export default function PayPage() {
 
 
   /* =======================================================
-     SELECTED TOKEN ADDRESS
+     TOKEN INFORMATION
   ======================================================= */
 
   const selectedTokenAddress =
-    (token as any)?.address;
-
+    token?.address;
 
   const isNativeToken =
-    tokenSymbol === "OPN" ||
-    (token as any)?.native === true ||
-    !selectedTokenAddress;
+    token?.native === true ||
+    tokenSymbol === "OPN";
+
+
+  const tokenDecimals =
+    token?.decimals ?? 18;
 
 
   /* =======================================================
@@ -171,6 +223,7 @@ export default function PayPage() {
 
   const {
     data: selectedBalance,
+    refetch: refetchBalance,
   } = useBalance({
     address,
     token: isNativeToken
@@ -180,108 +233,431 @@ export default function PayPage() {
 
 
   /* =======================================================
-     SEND
+     SEND TRANSACTION
   ======================================================= */
 
-  const {
-    sendTransactionAsync,
-  } = useSendTransaction();
-
-
-  /* =========================================================
-     SEND TRANSACTION
-  ========================================================= */
-
   async function sendTx() {
+    setErrorMessage("");
+    setStatusMessage("");
 
     if (!isConnected || !address) {
+      setErrorMessage(
+        "Please connect your wallet first."
+      );
+      return;
+    }
 
-      alert("Connect wallet first");
+    if (!walletClient) {
+      setErrorMessage(
+        "Wallet client is unavailable. Please reconnect your wallet."
+      );
+      return;
+    }
+
+    if (!publicClient) {
+      setErrorMessage(
+        "Blockchain client is unavailable."
+      );
+      return;
+    }
+
+    /* =====================================================
+       RECIPIENT VALIDATION
+    ===================================================== */
+
+    const cleanRecipient =
+      recipient.trim();
+
+    if (!cleanRecipient) {
+      setErrorMessage(
+        "Please enter a recipient address."
+      );
+      return;
+    }
+
+    if (!isAddress(cleanRecipient)) {
+      setErrorMessage(
+        "Invalid recipient address."
+      );
+      return;
+    }
+
+
+    /* =====================================================
+       AMOUNT VALIDATION
+    ===================================================== */
+
+    const cleanAmount =
+      amount.trim();
+
+    if (!cleanAmount) {
+      setErrorMessage(
+        "Please enter an amount."
+      );
+      return;
+    }
+
+    if (
+      !/^(?:\d+\.?\d*|\.\d+)$/.test(
+        cleanAmount
+      )
+    ) {
+      setErrorMessage(
+        "Invalid amount."
+      );
+      return;
+    }
+
+    if (
+      Number(cleanAmount) <= 0
+    ) {
+      setErrorMessage(
+        "Amount must be greater than zero."
+      );
+      return;
+    }
+
+
+    /* =====================================================
+       TOKEN CHECK
+    ===================================================== */
+
+    if (
+      !isNativeToken &&
+      !selectedTokenAddress
+    ) {
+      setErrorMessage(
+        "Selected token address is unavailable."
+      );
+      return;
+    }
+
+
+    /* =====================================================
+       PARSE AMOUNT
+    ===================================================== */
+
+    let amountBaseUnits: bigint;
+
+    try {
+      amountBaseUnits =
+        parseUnits(
+          cleanAmount,
+          tokenDecimals
+        );
+    } catch {
+      setErrorMessage(
+        `Invalid amount for ${tokenSymbol}.`
+      );
+      return;
+    }
+
+    if (
+      amountBaseUnits <= 0n
+    ) {
+      setErrorMessage(
+        "Amount must be greater than zero."
+      );
+      return;
+    }
+
+
+    /* =====================================================
+       BALANCE CHECK
+    ===================================================== */
+
+    if (
+      selectedBalance?.value !== undefined &&
+      amountBaseUnits >
+        selectedBalance.value
+    ) {
+      const available =
+        formatUnits(
+          selectedBalance.value,
+          tokenDecimals
+        );
+
+      setErrorMessage(
+        `Insufficient ${tokenSymbol} balance. Available: ${available} ${tokenSymbol}.`
+      );
 
       return;
     }
 
 
-    if (!recipient || !amount) {
+    /* =====================================================
+       START
+    ===================================================== */
 
-      alert("Missing fields");
+    setSending(true);
 
-      return;
-    }
+    setStatusMessage(
+      "Waiting for wallet confirmation..."
+    );
 
 
     try {
+      let hash: `0x${string}`;
 
-      /* =====================================================
-         WALLET TRANSACTION
-         Existing transaction engine preserved
-      ===================================================== */
 
-      const tx =
-        await sendTransactionAsync({
-          to:
-            recipient as `0x${string}`,
-          value:
-            parseEther(amount),
+      /* ===================================================
+         NATIVE OPN TRANSFER
+      =================================================== */
+
+      if (isNativeToken) {
+        hash =
+          await walletClient.sendTransaction({
+            account: address,
+            chain: walletClient.chain,
+            to:
+              cleanRecipient as `0x${string}`,
+            value:
+              amountBaseUnits,
+          });
+      }
+
+
+      /* ===================================================
+         ERC20 TRANSFER
+      =================================================== */
+
+      else {
+        hash =
+          await walletClient.writeContract({
+            account: address,
+            chain: walletClient.chain,
+            address:
+              selectedTokenAddress as `0x${string}`,
+            abi:
+              ERC20_TRANSFER_ABI,
+            functionName:
+              "transfer",
+            args: [
+              cleanRecipient as `0x${string}`,
+              amountBaseUnits,
+            ],
+          });
+      }
+
+
+      /* ===================================================
+         WALLET ACCEPTED
+      =================================================== */
+
+      setTxHash(hash);
+
+      setStatusMessage(
+        "Transaction submitted. Waiting for blockchain confirmation..."
+      );
+
+
+      /* ===================================================
+         WAIT FOR RECEIPT
+      =================================================== */
+
+      const receipt =
+        await publicClient.waitForTransactionReceipt({
+          hash,
+          confirmations: 1,
         });
 
 
-      setTxHash(tx);
+      if (
+        receipt.status !== "success"
+      ) {
+        throw new Error(
+          "The blockchain rejected the transaction."
+        );
+      }
 
 
-      /* =====================================================
-         BACKEND RECORD
-      ===================================================== */
+      /* ===================================================
+         CONFIRMED
+      =================================================== */
 
-      await fetch(
-        "https://iopndex.onrender.com/api/send",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-
-            from: address,
-
-            to: recipient,
-
-            amount,
-
-            token: tokenSymbol,
-
-            hash: tx,
-
-            chainId: 984,
-
-          }),
-
-        }
+      setStatusMessage(
+        "Transaction confirmed successfully."
       );
 
 
-      setRecipient("");
+      /* ===================================================
+         BACKEND RECORD
+      =================================================== */
 
+      try {
+        await fetch(
+          "https://iopndex.onrender.com/api/send",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              from: address,
+              to: cleanRecipient,
+              amount: cleanAmount,
+              token: tokenSymbol,
+              hash,
+              chainId: 984,
+              status: "confirmed",
+              blockNumber:
+                receipt.blockNumber
+                  ? receipt.blockNumber.toString()
+                  : null,
+            }),
+          }
+        );
+      } catch (backendError) {
+        console.error(
+          "Backend recording failed:",
+          backendError
+        );
+      }
+
+
+      /* ===================================================
+         REFRESH BALANCE
+      =================================================== */
+
+      await refetchBalance();
+
+
+      /* ===================================================
+         RESET FORM
+      =================================================== */
+
+      setRecipient("");
       setAmount("");
 
 
-      alert(
-        "Transaction sent 🚀"
+      /* ===================================================
+         NOTIFICATION
+      =================================================== */
+
+      showNotification(
+        "Transaction Confirmed",
+        `${cleanAmount} ${tokenSymbol} sent successfully`
       );
 
-    } catch (err) {
-
-      console.error(err);
-
-      alert(
-        "Transaction failed ❌"
+    } catch (err: any) {
+      console.error(
+        "Payment transaction error:",
+        err
       );
 
+
+      /* ===================================================
+         WALLET REJECTION
+      =================================================== */
+
+      const message =
+        err?.shortMessage ||
+        err?.details ||
+        err?.message ||
+        "";
+
+
+      if (
+        message
+          .toLowerCase()
+          .includes("user rejected") ||
+        message
+          .toLowerCase()
+          .includes("user denied") ||
+        message
+          .toLowerCase()
+          .includes("rejected")
+      ) {
+        setErrorMessage(
+          "Transaction was rejected in your wallet."
+        );
+      }
+
+      /* ===================================================
+         INSUFFICIENT FUNDS
+      =================================================== */
+
+      else if (
+        message
+          .toLowerCase()
+          .includes("insufficient funds")
+      ) {
+        setErrorMessage(
+          `Insufficient funds to send ${tokenSymbol} and pay network gas.`
+        );
+      }
+
+      /* ===================================================
+         GENERIC FAILURE
+      =================================================== */
+
+      else {
+        setErrorMessage(
+          message ||
+          "Transaction failed. Please try again."
+        );
+      }
+
+      setStatusMessage("");
+
+    } finally {
+      setSending(false);
+    }
+  }
+
+
+  /* =========================================================
+     MAX
+  ========================================================= */
+
+  function setMaxAmount() {
+    if (!selectedBalance) {
+      return;
     }
 
+    /*
+     * For native OPN, don't blindly use the full balance
+     * because gas must also be paid in OPN.
+     */
+
+    if (isNativeToken) {
+      const balance =
+        selectedBalance.value;
+
+      const gasReserve =
+        parseEther("0.001");
+
+      if (
+        balance <= gasReserve
+      ) {
+        setAmount("0");
+        return;
+      }
+
+      setAmount(
+        formatUnits(
+          balance - gasReserve,
+          18
+        )
+      );
+
+      return;
+    }
+
+
+    /* =====================================================
+       ERC20 MAX
+    ===================================================== */
+
+    setAmount(
+      formatUnits(
+        selectedBalance.value,
+        tokenDecimals
+      )
+    );
   }
 
 
@@ -290,12 +666,10 @@ export default function PayPage() {
   ========================================================= */
 
   function openSendForm() {
-
     sendFormRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
-
   }
 
 
@@ -304,13 +678,11 @@ export default function PayPage() {
   ========================================================= */
 
   async function copyAddress() {
-
     if (!address) {
       return;
     }
 
     try {
-
       await navigator.clipboard.writeText(
         address
       );
@@ -321,13 +693,9 @@ export default function PayPage() {
         () => setCopied(false),
         1600
       );
-
     } catch (error) {
-
       console.error(error);
-
     }
-
   }
 
 
@@ -336,16 +704,13 @@ export default function PayPage() {
   ========================================================= */
 
   useEffect(() => {
-
     socket.on(
       "connect",
       () => {
-
         console.log(
           "Socket connected:",
           socket.id
         );
-
       }
     );
 
@@ -353,7 +718,6 @@ export default function PayPage() {
     socket.on(
       "newTx",
       (tx) => {
-
         setLiveTxs(
           (prev) => [
             tx,
@@ -361,12 +725,10 @@ export default function PayPage() {
           ]
         );
 
-
         showNotification(
           "💸 New Transaction",
           `${tx.amount} ${tx.token} sent`
         );
-
       }
     );
 
@@ -374,7 +736,6 @@ export default function PayPage() {
     socket.on(
       "txConfirmed",
       (data) => {
-
         setLiveTxs(
           (prev) =>
             prev.map(
@@ -389,26 +750,19 @@ export default function PayPage() {
             )
         );
 
-
         showNotification(
           "✅ Transaction Confirmed",
           "Your transaction is now confirmed"
         );
-
       }
     );
 
 
     return () => {
-
       socket.off("connect");
-
       socket.off("newTx");
-
       socket.off("txConfirmed");
-
     };
-
   }, []);
 
 
@@ -417,15 +771,9 @@ export default function PayPage() {
   ========================================================= */
 
   useEffect(() => {
-
-    if (
-      "Notification" in window
-    ) {
-
+    if ("Notification" in window) {
       Notification.requestPermission();
-
     }
-
   }, []);
 
 
@@ -434,28 +782,24 @@ export default function PayPage() {
   ========================================================= */
 
   useEffect(() => {
-
     const url =
       window.location.href;
-
 
     if (
       url.includes(
         "iopndex://pay/"
       )
     ) {
-
       const addr =
         url.replace(
           "iopndex://pay/",
           ""
         );
 
-
-      setRecipient(addr);
-
+      if (isAddress(addr)) {
+        setRecipient(addr);
+      }
     }
-
   }, []);
 
 
@@ -467,13 +811,11 @@ export default function PayPage() {
     title: string,
     body: string
   ) {
-
     if (
       "Notification" in window &&
       Notification.permission ===
         "granted"
     ) {
-
       new Notification(
         title,
         {
@@ -481,9 +823,7 @@ export default function PayPage() {
           icon: "/icon.png",
         }
       );
-
     }
-
   }
 
 
@@ -492,7 +832,6 @@ export default function PayPage() {
   ========================================================= */
 
   return (
-
     <main
       className="
         relative
@@ -518,8 +857,6 @@ export default function PayPage() {
         "
       >
 
-        {/* Cyan glow */}
-
         <div
           className="
             absolute
@@ -532,9 +869,6 @@ export default function PayPage() {
             blur-[130px]
           "
         />
-
-
-        {/* Purple glow */}
 
         <div
           className="
@@ -549,9 +883,6 @@ export default function PayPage() {
           "
         />
 
-
-        {/* Blue glow */}
-
         <div
           className="
             absolute
@@ -564,9 +895,6 @@ export default function PayPage() {
             blur-[140px]
           "
         />
-
-
-        {/* Grid */}
 
         <div
           className="
@@ -593,7 +921,6 @@ export default function PayPage() {
         "
       >
 
-
         {/* =================================================
             HEADER
         ================================================= */}
@@ -617,33 +944,26 @@ export default function PayPage() {
 
             <div
               className="
-                relative
                 flex
                 h-11
                 w-11
                 items-center
                 justify-center
-                overflow-hidden
                 rounded-2xl
                 border
                 border-cyan-400/20
                 bg-gradient-to-br
                 from-cyan-400/15
                 to-violet-500/15
-                shadow-[0_0_30px_rgba(34,211,238,0.08)]
               "
             >
 
               <Send
                 size={20}
-                className="
-                  relative
-                  text-cyan-300
-                "
+                className="text-cyan-300"
               />
 
             </div>
-
 
             <div>
 
@@ -667,17 +987,13 @@ export default function PayPage() {
 
                 <Sparkles
                   size={15}
-                  className="
-                    text-cyan-300
-                  "
+                  className="text-cyan-300"
                 />
 
               </div>
 
-
               <p
                 className="
-                  mt-0.5
                   text-xs
                   text-white/35
                 "
@@ -701,15 +1017,12 @@ export default function PayPage() {
               border
               border-white/[0.08]
               bg-white/[0.025]
-              shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]
             "
           >
 
             <Activity
               size={19}
-              className="
-                text-white/45
-              "
+              className="text-white/45"
             />
 
           </div>
@@ -733,15 +1046,11 @@ export default function PayPage() {
             via-[#080C15]
             to-[#111021]
             p-4
-            shadow-[0_20px_70px_rgba(0,0,0,0.35)]
           "
         >
 
-          {/* top glow */}
-
           <div
             className="
-              pointer-events-none
               absolute
               right-[-80px]
               top-[-100px]
@@ -753,26 +1062,6 @@ export default function PayPage() {
             "
           />
 
-
-          <div
-            className="
-              pointer-events-none
-              absolute
-              left-[-60px]
-              bottom-[-100px]
-              h-40
-              w-40
-              rounded-full
-              bg-cyan-400/[0.08]
-              blur-[70px]
-            "
-          />
-
-
-          {/* =================================================
-              BALANCE HEADER
-          ================================================= */}
-
           <div
             className="
               relative
@@ -782,8 +1071,6 @@ export default function PayPage() {
               gap-3
             "
           >
-
-            {/* TOKEN */}
 
             <div>
 
@@ -798,7 +1085,6 @@ export default function PayPage() {
               >
                 Payment Asset
               </p>
-
 
               <div
                 className="
@@ -822,16 +1108,10 @@ export default function PayPage() {
                     to-violet-600
                     text-lg
                     font-black
-                    shadow-[0_0_28px_rgba(34,211,238,0.18)]
                   "
                 >
-                  {tokenSymbol === "OPN"
-                    ? "O"
-                    : tokenSymbol === "WOPN"
-                    ? "N"
-                    : tokenSymbol.slice(0, 1)}
+                  {tokenSymbol.slice(0, 1)}
                 </div>
-
 
                 <div>
 
@@ -854,13 +1134,10 @@ export default function PayPage() {
 
                     <ChevronDown
                       size={16}
-                      className="
-                        text-white/35
-                      "
+                      className="text-white/35"
                     />
 
                   </div>
-
 
                   <span
                     className="
@@ -885,45 +1162,17 @@ export default function PayPage() {
             </div>
 
 
-            {/* BALANCE */}
+            <div className="text-right">
 
-            <div
-              className="
-                text-right
-              "
-            >
-
-              <div
+              <span
                 className="
-                  flex
-                  items-center
-                  justify-end
-                  gap-2
+                  text-[10px]
+                  font-semibold
+                  text-white/45
                 "
               >
-
-                <span
-                  className="
-                    h-2
-                    w-2
-                    rounded-full
-                    bg-violet-400
-                    shadow-[0_0_10px_rgba(167,139,250,0.8)]
-                  "
-                />
-
-                <span
-                  className="
-                    text-[10px]
-                    font-semibold
-                    text-white/45
-                  "
-                >
-                  Available Balance
-                </span>
-
-              </div>
-
+                Available Balance
+              </span>
 
               <div
                 className="
@@ -939,8 +1188,6 @@ export default function PayPage() {
                   className="
                     text-3xl
                     font-black
-                    tracking-tight
-                    sm:text-4xl
                   "
                 >
                   {formatBalance(
@@ -949,7 +1196,6 @@ export default function PayPage() {
                 </span>
 
               </div>
-
 
               <span
                 className="
@@ -972,7 +1218,6 @@ export default function PayPage() {
 
           <div
             className="
-              relative
               mt-5
               overflow-x-auto
               pb-1
@@ -989,22 +1234,23 @@ export default function PayPage() {
             >
 
               {TOKENS.map(
-                (item: any) => {
+                (item) => {
 
                   const active =
                     item.symbol ===
                     tokenSymbol;
 
                   return (
-
                     <button
                       key={item.symbol}
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         setTokenSymbol(
                           item.symbol
-                        )
-                      }
+                        );
+                        setErrorMessage("");
+                        setStatusMessage("");
+                      }}
                       className={`
                         flex
                         items-center
@@ -1015,45 +1261,35 @@ export default function PayPage() {
                         py-2
                         text-xs
                         font-bold
-                        transition-all
-                        active:scale-95
+                        transition
                         ${
                           active
-                            ? "border-violet-400/70 bg-violet-500/15 text-white shadow-[0_0_18px_rgba(139,92,246,0.15)]"
-                            : "border-white/[0.07] bg-white/[0.025] text-white/55 hover:border-white/15 hover:text-white/80"
+                            ? "border-violet-400/70 bg-violet-500/15 text-white"
+                            : "border-white/[0.07] bg-white/[0.025] text-white/55"
                         }
                       `}
                     >
 
                       <span
-                        className={`
+                        className="
                           flex
                           h-5
                           w-5
                           items-center
                           justify-center
                           rounded-full
+                          bg-white/10
                           text-[8px]
                           font-black
-                          ${
-                            active
-                              ? "bg-gradient-to-br from-cyan-300 to-violet-500 text-black"
-                              : "bg-white/10 text-white/70"
-                          }
-                        `}
+                        "
                       >
-                        {item.symbol.slice(
-                          0,
-                          1
-                        )}
+                        {item.symbol.slice(0, 1)}
                       </span>
 
                       {item.symbol}
 
                     </button>
-
                   );
-
                 }
               )}
 
@@ -1077,15 +1313,12 @@ export default function PayPage() {
           "
         >
 
-          {/* RECEIVE */}
-
           <button
             type="button"
             onClick={() =>
               setShowReceive(true)
             }
             className="
-              group
               flex
               min-h-[82px]
               flex-col
@@ -1095,35 +1328,14 @@ export default function PayPage() {
               rounded-2xl
               border
               border-white/[0.08]
-              bg-[#080D15]/90
-              px-2
-              py-3
-              transition-all
-              hover:-translate-y-0.5
-              hover:border-cyan-400/30
-              hover:bg-cyan-400/[0.05]
-              active:scale-[0.97]
+              bg-[#080D15]
             "
           >
 
-            <div
-              className="
-                flex
-                h-9
-                w-9
-                items-center
-                justify-center
-                rounded-xl
-                bg-cyan-400/10
-                text-cyan-300
-              "
-            >
-
-              <Download
-                size={18}
-              />
-
-            </div>
+            <Download
+              size={18}
+              className="text-cyan-300"
+            />
 
             <span
               className="
@@ -1138,15 +1350,12 @@ export default function PayPage() {
           </button>
 
 
-          {/* SCAN */}
-
           <button
             type="button"
             onClick={() =>
               setShowScanner(true)
             }
             className="
-              group
               flex
               min-h-[82px]
               flex-col
@@ -1156,35 +1365,14 @@ export default function PayPage() {
               rounded-2xl
               border
               border-white/[0.08]
-              bg-[#080D15]/90
-              px-2
-              py-3
-              transition-all
-              hover:-translate-y-0.5
-              hover:border-violet-400/30
-              hover:bg-violet-400/[0.05]
-              active:scale-[0.97]
+              bg-[#080D15]
             "
           >
 
-            <div
-              className="
-                flex
-                h-9
-                w-9
-                items-center
-                justify-center
-                rounded-xl
-                bg-violet-400/10
-                text-violet-300
-              "
-            >
-
-              <ScanLine
-                size={18}
-              />
-
-            </div>
+            <ScanLine
+              size={18}
+              className="text-violet-300"
+            />
 
             <span
               className="
@@ -1199,13 +1387,10 @@ export default function PayPage() {
           </button>
 
 
-          {/* SEND */}
-
           <button
             type="button"
             onClick={openSendForm}
             className="
-              group
               flex
               min-h-[82px]
               flex-col
@@ -1215,39 +1400,14 @@ export default function PayPage() {
               rounded-2xl
               border
               border-cyan-400/20
-              bg-gradient-to-b
-              from-cyan-400/[0.08]
-              to-violet-500/[0.05]
-              px-2
-              py-3
-              transition-all
-              hover:-translate-y-0.5
-              hover:border-cyan-300/40
-              hover:shadow-[0_0_25px_rgba(34,211,238,0.10)]
-              active:scale-[0.97]
+              bg-cyan-400/[0.06]
             "
           >
 
-            <div
-              className="
-                flex
-                h-9
-                w-9
-                items-center
-                justify-center
-                rounded-xl
-                bg-gradient-to-br
-                from-cyan-400/15
-                to-violet-500/15
-                text-cyan-300
-              "
-            >
-
-              <ArrowUpRight
-                size={19}
-              />
-
-            </div>
+            <ArrowUpRight
+              size={19}
+              className="text-cyan-300"
+            />
 
             <span
               className="
@@ -1262,15 +1422,12 @@ export default function PayPage() {
           </button>
 
 
-          {/* CARD */}
-
           <button
             type="button"
             onClick={() =>
               setShowCard(true)
             }
             className="
-              group
               flex
               min-h-[82px]
               flex-col
@@ -1280,35 +1437,14 @@ export default function PayPage() {
               rounded-2xl
               border
               border-white/[0.08]
-              bg-[#080D15]/90
-              px-2
-              py-3
-              transition-all
-              hover:-translate-y-0.5
-              hover:border-violet-400/30
-              hover:bg-violet-400/[0.05]
-              active:scale-[0.97]
+              bg-[#080D15]
             "
           >
 
-            <div
-              className="
-                flex
-                h-9
-                w-9
-                items-center
-                justify-center
-                rounded-xl
-                bg-violet-400/10
-                text-violet-300
-              "
-            >
-
-              <CreditCard
-                size={18}
-              />
-
-            </div>
+            <CreditCard
+              size={18}
+              className="text-violet-300"
+            />
 
             <span
               className="
@@ -1342,11 +1478,8 @@ export default function PayPage() {
             via-[#080C14]
             to-[#0C0B17]
             p-4
-            shadow-[0_20px_60px_rgba(0,0,0,0.30)]
           "
         >
-
-          {/* HEADER */}
 
           <div
             className="
@@ -1373,16 +1506,15 @@ export default function PayPage() {
                   justify-center
                   rounded-xl
                   bg-cyan-400/10
-                  text-cyan-300
                 "
               >
 
                 <Send
                   size={18}
+                  className="text-cyan-300"
                 />
 
               </div>
-
 
               <div>
 
@@ -1391,7 +1523,6 @@ export default function PayPage() {
                     text-base
                     font-black
                     uppercase
-                    tracking-wide
                   "
                 >
                   Send Payment
@@ -1399,7 +1530,6 @@ export default function PayPage() {
 
                 <p
                   className="
-                    mt-0.5
                     text-[10px]
                     text-white/35
                   "
@@ -1411,56 +1541,19 @@ export default function PayPage() {
 
             </div>
 
-
-            {/* SELECTED TOKEN */}
-
-            <div
+            <span
               className="
-                flex
-                items-center
-                gap-2
                 rounded-full
-                border
-                border-violet-400/15
                 bg-violet-400/[0.07]
                 px-3
                 py-1.5
+                text-[10px]
+                font-bold
+                text-violet-300
               "
             >
-
-              <span
-                className="
-                  flex
-                  h-5
-                  w-5
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-gradient-to-br
-                  from-cyan-300
-                  to-violet-500
-                  text-[8px]
-                  font-black
-                  text-black
-                "
-              >
-                {tokenSymbol.slice(
-                  0,
-                  1
-                )}
-              </span>
-
-              <span
-                className="
-                  text-[10px]
-                  font-bold
-                  text-violet-300
-                "
-              >
-                {tokenSymbol}
-              </span>
-
-            </div>
+              {tokenSymbol}
+            </span>
 
           </div>
 
@@ -1509,11 +1602,7 @@ export default function PayPage() {
 
           {/* RECIPIENT */}
 
-          <div
-            className="
-              mt-4
-            "
-          >
+          <div className="mt-4">
 
             <label
               className="
@@ -1525,7 +1614,6 @@ export default function PayPage() {
               Recipient Address
             </label>
 
-
             <div
               className="
                 mt-2
@@ -1536,10 +1624,6 @@ export default function PayPage() {
                 border-white/[0.08]
                 bg-black/20
                 px-4
-                transition
-                focus-within:border-cyan-400/30
-                focus-within:ring-1
-                focus-within:ring-cyan-400/10
               "
             >
 
@@ -1551,6 +1635,7 @@ export default function PayPage() {
                   )
                 }
                 placeholder="0x..."
+                disabled={sending}
                 className="
                   min-w-0
                   flex-1
@@ -1565,6 +1650,7 @@ export default function PayPage() {
 
               <button
                 type="button"
+                disabled={sending}
                 onClick={() =>
                   setRecipient(
                     address || ""
@@ -1574,8 +1660,6 @@ export default function PayPage() {
                   rounded-xl
                   p-2
                   text-white/25
-                  transition
-                  hover:bg-white/5
                   hover:text-cyan-300
                 "
               >
@@ -1593,11 +1677,7 @@ export default function PayPage() {
 
           {/* AMOUNT */}
 
-          <div
-            className="
-              mt-4
-            "
-          >
+          <div className="mt-4">
 
             <div
               className="
@@ -1617,31 +1697,20 @@ export default function PayPage() {
                 Amount
               </label>
 
-
               <button
                 type="button"
-                onClick={() =>
-                  setAmount(
-                    selectedBalance?.formatted
-                      ? String(
-                          selectedBalance.formatted
-                        )
-                      : "0"
-                  )
-                }
+                disabled={sending}
+                onClick={setMaxAmount}
                 className="
                   text-xs
                   font-black
                   text-violet-300
-                  transition
-                  hover:text-violet-200
                 "
               >
                 MAX
               </button>
 
             </div>
-
 
             <div
               className="
@@ -1653,10 +1722,6 @@ export default function PayPage() {
                 border-white/[0.08]
                 bg-black/20
                 px-4
-                transition
-                focus-within:border-violet-400/30
-                focus-within:ring-1
-                focus-within:ring-violet-400/10
               "
             >
 
@@ -1667,7 +1732,8 @@ export default function PayPage() {
                     e.target.value
                   )
                 }
-                type="number"
+                disabled={sending}
+                type="text"
                 inputMode="decimal"
                 placeholder="0.00"
                 className="
@@ -1683,56 +1749,65 @@ export default function PayPage() {
                 "
               />
 
-
-              <div
+              <span
                 className="
-                  flex
-                  items-center
-                  gap-2
                   rounded-xl
                   bg-white/[0.04]
-                  px-2.5
+                  px-3
                   py-2
+                  text-xs
+                  font-bold
+                  text-white/70
                 "
               >
-
-                <span
-                  className="
-                    flex
-                    h-5
-                    w-5
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-gradient-to-br
-                    from-cyan-300
-                    to-violet-500
-                    text-[8px]
-                    font-black
-                    text-black
-                  "
-                >
-                  {tokenSymbol.slice(
-                    0,
-                    1
-                  )}
-                </span>
-
-                <span
-                  className="
-                    text-xs
-                    font-bold
-                    text-white/70
-                  "
-                >
-                  {tokenSymbol}
-                </span>
-
-              </div>
+                {tokenSymbol}
+              </span>
 
             </div>
 
           </div>
+
+
+          {/* STATUS */}
+
+          {statusMessage && (
+            <div
+              className="
+                mt-3
+                rounded-2xl
+                border
+                border-cyan-400/10
+                bg-cyan-400/[0.04]
+                px-3
+                py-3
+                text-xs
+                text-cyan-300
+              "
+            >
+              {statusMessage}
+            </div>
+          )}
+
+
+          {/* ERROR */}
+
+          {errorMessage && (
+            <div
+              className="
+                mt-3
+                rounded-2xl
+                border
+                border-red-400/15
+                bg-red-400/[0.04]
+                px-3
+                py-3
+                text-xs
+                text-red-300
+              "
+            >
+              {errorMessage}
+            </div>
+          )}
 
 
           {/* SEND BUTTON */}
@@ -1740,6 +1815,7 @@ export default function PayPage() {
           <button
             type="button"
             onClick={sendTx}
+            disabled={sending}
             className="
               mt-5
               flex
@@ -1756,19 +1832,36 @@ export default function PayPage() {
               text-sm
               font-black
               text-black
-              shadow-[0_10px_35px_rgba(59,130,246,0.18)]
-              transition-all
-              hover:-translate-y-0.5
-              hover:shadow-[0_15px_40px_rgba(139,92,246,0.25)]
-              active:scale-[0.98]
+              transition
+              disabled:cursor-not-allowed
+              disabled:opacity-50
             "
           >
 
-            <Send
-              size={18}
-            />
+            {sending ? (
+              <>
+                <span
+                  className="
+                    h-4
+                    w-4
+                    animate-spin
+                    rounded-full
+                    border-2
+                    border-black/30
+                    border-t-black
+                  "
+                />
 
-            Send Payment
+                Processing...
+
+              </>
+            ) : (
+              <>
+                <Send size={18} />
+
+                Send Payment
+              </>
+            )}
 
           </button>
 
@@ -1794,28 +1887,10 @@ export default function PayPage() {
           "
         >
 
-          <div
-            className="
-              flex
-              h-8
-              w-8
-              shrink-0
-              items-center
-              justify-center
-              rounded-xl
-              bg-cyan-400/10
-            "
-          >
-
-            <ShieldCheck
-              size={16}
-              className="
-                text-cyan-300
-              "
-            />
-
-          </div>
-
+          <ShieldCheck
+            size={18}
+            className="text-cyan-300"
+          />
 
           <div>
 
@@ -1831,13 +1906,11 @@ export default function PayPage() {
 
             <p
               className="
-                mt-0.5
                 text-[9px]
                 text-white/30
               "
             >
-              Transaction signed by your wallet
-              on IOPn Testnet.
+              Transactions are signed directly by your wallet on IOPn Testnet.
             </p>
 
           </div>
@@ -1880,26 +1953,10 @@ export default function PayPage() {
               "
             >
 
-              <div
-                className="
-                  flex
-                  h-8
-                  w-8
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-cyan-400/10
-                "
-              >
-
-                <Activity
-                  size={15}
-                  className="
-                    text-cyan-300
-                  "
-                />
-
-              </div>
+              <Activity
+                size={15}
+                className="text-cyan-300"
+              />
 
               <span
                 className="
@@ -1914,22 +1971,14 @@ export default function PayPage() {
 
             </div>
 
-
             <ArrowUpRight
               size={16}
-              className="
-                text-violet-300
-              "
+              className="text-violet-300"
             />
 
           </div>
 
-
-          <div
-            className="
-              p-2
-            "
-          >
+          <div className="p-2">
 
             <TransactionHistory
               address={address}
@@ -1946,7 +1995,6 @@ export default function PayPage() {
         ================================================= */}
 
         {txHash && (
-
           <div
             className="
               mt-3
@@ -1966,27 +2014,10 @@ export default function PayPage() {
               "
             >
 
-              <div
-                className="
-                  flex
-                  h-7
-                  w-7
-                  items-center
-                  justify-center
-                  rounded-lg
-                  bg-emerald-400/10
-                "
-              >
-
-                <Zap
-                  size={14}
-                  className="
-                    text-emerald-400
-                  "
-                />
-
-              </div>
-
+              <Zap
+                size={14}
+                className="text-emerald-400"
+              />
 
               <span
                 className="
@@ -1995,11 +2026,10 @@ export default function PayPage() {
                   text-emerald-400
                 "
               >
-                Last Transaction
+                Confirmed Transaction
               </span>
 
             </div>
-
 
             <div
               className="
@@ -2029,11 +2059,18 @@ export default function PayPage() {
 
               <button
                 type="button"
-                onClick={() =>
-                  navigator.clipboard.writeText(
+                onClick={async () => {
+                  await navigator.clipboard.writeText(
                     txHash
-                  )
-                }
+                  );
+
+                  setCopied(true);
+
+                  setTimeout(
+                    () => setCopied(false),
+                    1500
+                  );
+                }}
                 className="
                   shrink-0
                   text-white/30
@@ -2041,23 +2078,24 @@ export default function PayPage() {
                 "
               >
 
-                <Copy
-                  size={13}
-                />
+                {copied ? (
+                  <Check size={13} />
+                ) : (
+                  <Copy size={13} />
+                )}
 
               </button>
 
             </div>
 
           </div>
-
         )}
 
       </div>
 
 
       {/* =====================================================
-          RECEIVE MODAL
+          RECEIVE
       ===================================================== */}
 
       <ReceiveModal
@@ -2070,7 +2108,7 @@ export default function PayPage() {
 
 
       {/* =====================================================
-          VIRTUAL CARD
+          CARD
       ===================================================== */}
 
       <VirtualCard
@@ -2097,19 +2135,25 @@ export default function PayPage() {
         }
         onScan={(addr: string) => {
 
-          setRecipient(addr);
+          if (isAddress(addr)) {
+            setRecipient(addr);
+            setShowScanner(false);
 
-          setTimeout(
-            () => {
-              openSendForm();
-            },
-            150
-          );
+            setTimeout(
+              () => {
+                openSendForm();
+              },
+              150
+            );
+          } else {
+            setErrorMessage(
+              "QR code does not contain a valid wallet address."
+            );
+          }
 
         }}
       />
 
     </main>
-
   );
 }
