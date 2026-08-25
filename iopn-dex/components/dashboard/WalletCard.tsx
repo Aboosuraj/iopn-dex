@@ -26,9 +26,9 @@ export default function WalletCard() {
         relative
         mx-auto
         mt-2
-        w-[40%]
-        min-w-[260px]
-        max-w-[360px]
+        w-[72%]
+        min-w-[300px]
+        max-w-[520px]
         overflow-hidden
         rounded-[14px]
         border
