@@ -25,9 +25,7 @@ export default function TransactionHistory({
 }: Props) {
   const [history, setHistory] = useState<Tx[]>([]);
 
-  /* =========================================================
-     LOAD HISTORY
-  ========================================================= */
+  /* ================= LOAD HISTORY ================= */
 
   useEffect(() => {
     async function load() {
@@ -44,178 +42,81 @@ export default function TransactionHistory({
           setHistory(data.history);
         }
       } catch (err) {
-        console.error(
-          "History load failed:",
-          err
-        );
+        console.error("History load failed:", err);
       }
     }
 
     load();
   }, [address]);
 
-  /* =========================================================
-     MERGE LIVE + HISTORY
-  ========================================================= */
+  /* ================= MERGE LIVE + HISTORY ================= */
 
-  const merged = [
-    ...liveTxs,
-    ...history,
-  ];
-
-  /* =========================================================
-     UI
-  ========================================================= */
+  const merged = [...liveTxs, ...history];
 
   return (
-    <div className="mt-5">
+    <div className="mt-10">
+      {/* TITLE */}
 
-      {/* =====================================================
-          TITLE
-      ===================================================== */}
-
-      <h2 className="mb-2 px-1 text-sm font-bold text-white">
+      <h2 className="mb-4 text-lg font-bold text-white">
         Transaction History
       </h2>
 
-
-      {/* =====================================================
-          EMPTY STATE
-      ===================================================== */}
+      {/* EMPTY STATE */}
 
       {merged.length === 0 && (
-        <p className="px-1 text-xs text-white/40">
+        <p className="text-white/40">
           No transactions yet
         </p>
       )}
 
+      {/* LIST */}
 
-      {/* =====================================================
-          LIST
-      ===================================================== */}
-
-      <div className="space-y-1.5">
-
+      <div className="space-y-3">
         {merged.map((tx, i) => (
-
           <div
-            key={`${tx.hash}-${i}`}
-            className="
-              rounded-lg
-              border
-              border-white/[0.07]
-              bg-white/[0.035]
-              px-2.5
-              py-2
-            "
+            key={i}
+            className="rounded-2xl border border-white/10 bg-white/5 p-4"
           >
+            {/* FROM → TO */}
 
-            {/* =================================================
-                FROM → TO
-            ================================================= */}
-
-            <p
-              className="
-                truncate
-                text-[9px]
-                leading-3
-                text-white/45
-              "
-              title={`${tx.from} → ${tx.to}`}
-            >
+            <p className="text-sm text-white/60 break-all">
               {tx.from} → {tx.to}
             </p>
 
+            {/* AMOUNT */}
 
-            {/* =================================================
-                BOTTOM ROW
-            ================================================= */}
+            <p className="mt-1 text-green-400 font-bold">
+              {tx.amount} {tx.token}
+            </p>
 
-            <div
-              className="
-                mt-1.5
-                flex
-                items-center
-                justify-between
-                gap-2
-              "
-            >
+            {/* STATUS */}
 
-              {/* AMOUNT */}
-
-              <p
-                className="
-                  truncate
-                  text-[11px]
-                  font-bold
-                  text-green-400
-                "
+            <div className="mt-2 flex items-center justify-between">
+              <span
+                className={`text-xs ${
+                  tx.status === "confirmed"
+                    ? "text-green-400"
+                    : tx.status === "failed"
+                    ? "text-red-400"
+                    : "text-yellow-300"
+                }`}
               >
-                {tx.amount} {tx.token}
-              </p>
+                {tx.status || "pending"}
+              </span>
 
+              {/* HASH LINK */}
 
-              {/* STATUS + VIEW */}
-
-              <div
-                className="
-                  flex
-                  shrink-0
-                  items-center
-                  gap-2
-                "
+              <a
+                href={`https://testnet.iopn.tech/tx/${tx.hash}`}
+                target="_blank"
+                className="text-xs text-blue-400"
               >
-
-                <span
-                  className={`
-                    text-[8px]
-                    font-semibold
-                    uppercase
-                    ${
-                      tx.status === "confirmed"
-                        ? "text-green-400"
-                        : tx.status === "failed"
-                        ? "text-red-400"
-                        : "text-yellow-300"
-                    }
-                  `}
-                >
-                  {tx.status || "pending"}
-                </span>
-
-
-                {/* HASH LINK */}
-
-                <a
-                  href={`https://testnet.iopn.tech/tx/${tx.hash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="
-                    rounded-md
-                    bg-blue-400/10
-                    px-1.5
-                    py-0.5
-                    text-[8px]
-                    font-semibold
-                    text-blue-400
-                    transition
-                    hover:bg-blue-400/20
-                    hover:text-blue-300
-                  "
-                >
-                  View
-                </a>
-
-              </div>
-
+                View
+              </a>
             </div>
-
           </div>
-
         ))}
-
       </div>
-
     </div>
   );
 }
