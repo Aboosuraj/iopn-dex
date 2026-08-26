@@ -1,15 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   useAccount,
   useBalance,
   useSendTransaction,
+  useWriteContract,
 } from "wagmi";
 
-import { parseEther } from "viem";
-import { io } from "socket.io-client";
+import {
+  isAddress,
+  parseEther,
+  parseUnits,
+} from "viem";
+
+import {
+  waitForTransactionReceipt,
+} from "wagmi/actions";
+
+import {
+  io,
+} from "socket.io-client";
 
 import {
   Wallet,
@@ -26,7 +43,14 @@ import {
   ScanLine,
 } from "lucide-react";
 
-import { TOKENS } from "@/lib/tokens";
+import {
+  config,
+} from "@/lib/wagmi";
+
+import {
+  useTokens,
+  type Token,
+} from "@/hooks/useTokens";
 
 import ReceiveModal from "./components/ReceiveModal";
 import VirtualCard from "./components/VirtualCard";
@@ -38,30 +62,70 @@ import Scanner from "./components/Scanner";
    SOCKET
 ========================================================= */
 
-const socket = io("https://iopndex.onrender.com", {
-  transports: ["websocket"],
-});
+const socket = io(
+  "https://iopndex.onrender.com",
+  {
+    transports: ["websocket"],
+  }
+);
+
+
+/* =========================================================
+   ERC20 TRANSFER ABI
+========================================================= */
+
+const ERC20_TRANSFER_ABI = [
+  {
+    type: "function",
+    name: "transfer",
+    stateMutability: "nonpayable",
+
+    inputs: [
+      {
+        name: "to",
+        type: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+      },
+    ],
+  },
+] as const;
 
 
 /* =========================================================
    FORMAT BALANCE
 ========================================================= */
 
-function formatBalance(value: any) {
+function formatBalance(
+  value: any
+) {
   if (!value) {
     return "0.00";
   }
 
-  const formatted = Number(value.formatted);
+  const formatted =
+    Number(value.formatted);
 
   if (!Number.isFinite(formatted)) {
     return "0.00";
   }
 
-  return formatted.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return formatted.toLocaleString(
+    undefined,
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }
+  );
 }
 
 
@@ -69,12 +133,17 @@ function formatBalance(value: any) {
    SHORT ADDRESS
 ========================================================= */
 
-function shortAddress(address?: string) {
+function shortAddress(
+  address?: string
+) {
   if (!address) {
     return "Not connected";
   }
 
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return `${address.slice(
+    0,
+    6
+  )}...${address.slice(-4)}`;
 }
 
 
@@ -83,6 +152,7 @@ function shortAddress(address?: string) {
 ========================================================= */
 
 export default function PayPage() {
+
   const {
     address,
     isConnected,
@@ -90,40 +160,88 @@ export default function PayPage() {
 
 
   /* =======================================================
+     TOKEN LIST
+     IMPORTANT:
+     useTokens() includes:
+       - official tokens
+       - factory discovered tokens
+       - imported tokens
+  ======================================================= */
+
+  const {
+    tokens,
+    discovering,
+  } = useTokens();
+
+
+  /* =======================================================
      STATES
   ======================================================= */
 
-  const [recipient, setRecipient] =
-    useState("");
+  const [
+    recipient,
+    setRecipient,
+  ] = useState("");
 
-  const [amount, setAmount] =
-    useState("");
 
-  const [tokenSymbol, setTokenSymbol] =
-    useState("OPN");
+  const [
+    amount,
+    setAmount,
+  ] = useState("");
 
-  const [txHash, setTxHash] =
-    useState<string | null>(null);
 
-  const [liveTxs, setLiveTxs] =
-    useState<any[]>([]);
+  const [
+    tokenSymbol,
+    setTokenSymbol,
+  ] = useState("OPN");
 
-  const [copied, setCopied] =
-    useState(false);
+
+  const [
+    txHash,
+    setTxHash,
+  ] = useState<string | null>(
+    null
+  );
+
+
+  const [
+    liveTxs,
+    setLiveTxs,
+  ] = useState<any[]>([]);
+
+
+  const [
+    copied,
+    setCopied,
+  ] = useState(false);
+
+
+  const [
+    sending,
+    setSending,
+  ] = useState(false);
 
 
   /* =======================================================
      MODALS
   ======================================================= */
 
-  const [showScanner, setShowScanner] =
-    useState(false);
+  const [
+    showScanner,
+    setShowScanner,
+  ] = useState(false);
 
-  const [showReceive, setShowReceive] =
-    useState(false);
 
-  const [showCard, setShowCard] =
-    useState(false);
+  const [
+    showReceive,
+    setShowReceive,
+  ] = useState(false);
+
+
+  const [
+    showCard,
+    setShowCard,
+  ] = useState(false);
 
 
   /* =======================================================
@@ -131,21 +249,39 @@ export default function PayPage() {
   ======================================================= */
 
   const sendFormRef =
-    useRef<HTMLDivElement | null>(null);
+    useRef<HTMLDivElement | null>(
+      null
+    );
 
 
   /* =======================================================
-     TOKEN
+     SELECTED TOKEN
   ======================================================= */
 
-  const token = useMemo(
-    () =>
-      TOKENS.find(
-        (t) =>
-          t.symbol === tokenSymbol
-      ),
-    [tokenSymbol]
-  );
+  const token =
+    useMemo<Token | undefined>(
+      () =>
+        tokens.find(
+          (item) =>
+            item.symbol ===
+            tokenSymbol
+        ),
+      [
+        tokens,
+        tokenSymbol,
+      ]
+    );
+
+
+  /* =======================================================
+     NATIVE TOKEN DETECTION
+  ======================================================= */
+
+  const isNativeToken =
+    Boolean(
+      token?.native
+    ) ||
+    tokenSymbol === "OPN";
 
 
   /* =======================================================
@@ -153,13 +289,7 @@ export default function PayPage() {
   ======================================================= */
 
   const selectedTokenAddress =
-    (token as any)?.address;
-
-
-  const isNativeToken =
-    tokenSymbol === "OPN" ||
-    (token as any)?.native === true ||
-    !selectedTokenAddress;
+    token?.address;
 
 
   /* =======================================================
@@ -168,16 +298,24 @@ export default function PayPage() {
 
   const {
     data: selectedBalance,
+    isLoading: balanceLoading,
+    refetch: refetchBalance,
   } = useBalance({
+
     address,
-    token: isNativeToken
-      ? undefined
-      : selectedTokenAddress,
+
+    token:
+      isNativeToken
+        ? undefined
+        : selectedTokenAddress as
+            `0x${string}` |
+            undefined,
+
   });
 
 
   /* =======================================================
-     SEND
+     NATIVE SEND
   ======================================================= */
 
   const {
@@ -186,76 +324,427 @@ export default function PayPage() {
 
 
   /* =======================================================
+     ERC20 SEND
+  ======================================================= */
+
+  const {
+    writeContractAsync,
+    isPending: contractPending,
+  } = useWriteContract();
+
+
+  /* =======================================================
      SEND TRANSACTION
   ======================================================= */
 
   async function sendTx() {
-    if (!isConnected || !address) {
-      alert("Connect wallet first");
+
+    if (sending) {
       return;
     }
 
-    if (!recipient || !amount) {
-      alert("Missing fields");
+
+    /* =====================================================
+       WALLET
+    ===================================================== */
+
+    if (
+      !isConnected ||
+      !address
+    ) {
+
+      alert(
+        "Connect wallet first"
+      );
+
       return;
     }
+
+
+    /* =====================================================
+       TOKEN
+    ===================================================== */
+
+    if (!token) {
+
+      alert(
+        "Please select a token"
+      );
+
+      return;
+    }
+
+
+    /* =====================================================
+       RECIPIENT
+    ===================================================== */
+
+    const cleanRecipient =
+      recipient.trim();
+
+
+    if (
+      !cleanRecipient ||
+      !isAddress(cleanRecipient)
+    ) {
+
+      alert(
+        "Enter a valid recipient address"
+      );
+
+      return;
+    }
+
+
+    /* =====================================================
+       AMOUNT
+    ===================================================== */
+
+    const cleanAmount =
+      amount.trim();
+
+
+    if (!cleanAmount) {
+
+      alert(
+        "Enter an amount"
+      );
+
+      return;
+    }
+
+
+    let parsedAmount: bigint;
+
 
     try {
-      /* =====================================================
-         WALLET TRANSACTION
-      ===================================================== */
 
-      const tx =
-        await sendTransactionAsync({
-          to:
-            recipient as `0x${string}`,
-          value:
-            parseEther(amount),
-        });
+      parsedAmount =
+        parseUnits(
+          cleanAmount,
+          token.decimals
+        );
 
-      setTxHash(tx);
+    } catch {
+
+      alert(
+        "Invalid amount"
+      );
+
+      return;
+    }
 
 
-      /* =====================================================
-         BACKEND RECORD
-      ===================================================== */
+    if (
+      parsedAmount <= 0n
+    ) {
 
-      await fetch(
-        "https://iopndex.onrender.com/api/send",
+      alert(
+        "Amount must be greater than zero"
+      );
+
+      return;
+    }
+
+
+    /* =====================================================
+       BALANCE CHECK
+    ===================================================== */
+
+    if (
+      selectedBalance?.value !==
+        undefined &&
+      parsedAmount >
+        selectedBalance.value
+    ) {
+
+      alert(
+        `Insufficient ${token.symbol} balance`
+      );
+
+      return;
+    }
+
+
+    /* =====================================================
+       START
+    ===================================================== */
+
+    setSending(true);
+
+
+    try {
+
+      let hash:
+        `0x${string}`;
+
+
+      /* ===================================================
+         NATIVE OPN TRANSFER
+      =================================================== */
+
+      if (
+        isNativeToken
+      ) {
+
+        /*
+         * Native OPN transfer.
+         *
+         * This opens the wallet's normal
+         * native transaction confirmation.
+         */
+
+        hash =
+          await sendTransactionAsync({
+
+            to:
+              cleanRecipient as
+                `0x${string}`,
+
+            value:
+              parsedAmount,
+
+          });
+
+      }
+
+
+      /* ===================================================
+         ERC20 TRANSFER
+      =================================================== */
+
+      else {
+
+        /*
+         * ERC20 transfer.
+         *
+         * IMPORTANT:
+         * A normal token transfer does NOT need
+         * approve().
+         *
+         * approve() is only required when another
+         * contract will call transferFrom().
+         */
+
+        if (
+          !selectedTokenAddress ||
+          !isAddress(
+            selectedTokenAddress
+          )
+        ) {
+
+          throw new Error(
+            "Selected token has an invalid contract address"
+          );
+
+        }
+
+
+        hash =
+          await writeContractAsync({
+
+            address:
+              selectedTokenAddress as
+                `0x${string}`,
+
+            abi:
+              ERC20_TRANSFER_ABI,
+
+            functionName:
+              "transfer",
+
+            args: [
+
+              cleanRecipient as
+                `0x${string}`,
+
+              parsedAmount,
+
+            ],
+
+          });
+
+      }
+
+
+      /* ===================================================
+         TRANSACTION HASH
+      =================================================== */
+
+      setTxHash(
+        hash
+      );
+
+
+      /* ===================================================
+         WAIT FOR CONFIRMATION
+      =================================================== */
+
+      await waitForTransactionReceipt(
+        config,
         {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            from: address,
-            to: recipient,
-            amount,
-            token: tokenSymbol,
-            hash: tx,
-            chainId: 984,
-          }),
+          hash,
         }
       );
 
 
+      /* ===================================================
+         BACKEND RECORD
+      =================================================== */
+
+      try {
+
+        await fetch(
+          "https://iopndex.onrender.com/api/send",
+          {
+
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+
+                from:
+                  address,
+
+                to:
+                  cleanRecipient,
+
+                amount:
+                  cleanAmount,
+
+                token:
+                  token.symbol,
+
+                tokenAddress:
+                  token.address,
+
+                hash,
+
+                chainId:
+                  984,
+
+                native:
+                  isNativeToken,
+
+              }),
+
+          }
+        );
+
+      } catch (
+        backendError
+      ) {
+
+        /*
+         * Do not mark the blockchain transaction
+         * as failed if only backend recording failed.
+         */
+
+        console.error(
+          "Backend transaction recording failed:",
+          backendError
+        );
+
+      }
+
+
+      /* ===================================================
+         RESET
+      =================================================== */
+
       setRecipient("");
       setAmount("");
 
+
+      await refetchBalance();
+
+
+      /* ===================================================
+         SUCCESS
+      =================================================== */
+
       alert(
-        "Transaction sent 🚀"
+        `${token.symbol} sent successfully 🚀`
       );
 
-    } catch (err) {
-      console.error(err);
+    } catch (
+      error: any
+    ) {
 
-      alert(
-        "Transaction failed ❌"
+      console.error(
+        "Payment transaction failed:",
+        error
       );
+
+
+      /*
+       * Wallet rejection
+       */
+
+      if (
+        error?.code === 4001 ||
+        error?.name ===
+          "UserRejectedRequestError"
+      ) {
+
+        alert(
+          "Transaction rejected in wallet"
+        );
+
+      } else {
+
+        alert(
+          error?.shortMessage ||
+          error?.message ||
+          "Transaction failed ❌"
+        );
+
+      }
+
+    } finally {
+
+      setSending(false);
+
     }
+
+  }
+
+
+  /* =========================================================
+     MAX AMOUNT
+  ========================================================= */
+
+  function setMaxAmount() {
+
+    if (
+      !selectedBalance?.formatted
+    ) {
+
+      setAmount(
+        "0"
+      );
+
+      return;
+    }
+
+
+    /*
+     * Do not use Number(...).toFixed(2)
+     * because that destroys precision for tokens.
+     *
+     * Keep the actual wallet balance.
+     */
+
+    setAmount(
+      selectedBalance.formatted
+    );
+
   }
 
 
@@ -264,10 +753,15 @@ export default function PayPage() {
   ========================================================= */
 
   function openSendForm() {
+
     sendFormRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+      behavior:
+        "smooth",
+
+      block:
+        "start",
     });
+
   }
 
 
@@ -276,25 +770,40 @@ export default function PayPage() {
   ========================================================= */
 
   async function copyAddress() {
+
     if (!address) {
       return;
     }
 
+
     try {
+
       await navigator.clipboard.writeText(
         address
       );
 
-      setCopied(true);
+
+      setCopied(
+        true
+      );
+
 
       setTimeout(
-        () => setCopied(false),
+        () =>
+          setCopied(false),
         1600
       );
 
-    } catch (error) {
-      console.error(error);
+    } catch (
+      error
+    ) {
+
+      console.error(
+        error
+      );
+
     }
+
   }
 
 
@@ -303,13 +812,16 @@ export default function PayPage() {
   ========================================================= */
 
   useEffect(() => {
+
     socket.on(
       "connect",
       () => {
+
         console.log(
           "Socket connected:",
           socket.id
         );
+
       }
     );
 
@@ -317,6 +829,7 @@ export default function PayPage() {
     socket.on(
       "newTx",
       (tx) => {
+
         setLiveTxs(
           (prev) => [
             tx,
@@ -324,10 +837,12 @@ export default function PayPage() {
           ]
         );
 
+
         showNotification(
           "💸 New Transaction",
           `${tx.amount} ${tx.token} sent`
         );
+
       }
     );
 
@@ -335,11 +850,13 @@ export default function PayPage() {
     socket.on(
       "txConfirmed",
       (data) => {
+
         setLiveTxs(
           (prev) =>
             prev.map(
               (tx) =>
-                tx.hash === data.hash
+                tx.hash ===
+                data.hash
                   ? {
                       ...tx,
                       status:
@@ -349,18 +866,30 @@ export default function PayPage() {
             )
         );
 
+
         showNotification(
           "✅ Transaction Confirmed",
           "Your transaction is now confirmed"
         );
+
       }
     );
 
 
     return () => {
-      socket.off("connect");
-      socket.off("newTx");
-      socket.off("txConfirmed");
+
+      socket.off(
+        "connect"
+      );
+
+      socket.off(
+        "newTx"
+      );
+
+      socket.off(
+        "txConfirmed"
+      );
+
     };
 
   }, []);
@@ -371,11 +900,15 @@ export default function PayPage() {
   ========================================================= */
 
   useEffect(() => {
+
     if (
       "Notification" in window
     ) {
+
       Notification.requestPermission();
+
     }
+
   }, []);
 
 
@@ -384,22 +917,36 @@ export default function PayPage() {
   ========================================================= */
 
   useEffect(() => {
+
     const url =
       window.location.href;
+
 
     if (
       url.includes(
         "iopndex://pay/"
       )
     ) {
+
       const addr =
         url.replace(
           "iopndex://pay/",
           ""
         );
 
-      setRecipient(addr);
+
+      if (
+        isAddress(addr)
+      ) {
+
+        setRecipient(
+          addr
+        );
+
+      }
+
     }
+
   }, []);
 
 
@@ -411,11 +958,13 @@ export default function PayPage() {
     title: string,
     body: string
   ) {
+
     if (
       "Notification" in window &&
       Notification.permission ===
         "granted"
     ) {
+
       new Notification(
         title,
         {
@@ -423,8 +972,19 @@ export default function PayPage() {
           icon: "/icon.png",
         }
       );
+
     }
+
   }
+
+
+  /* =========================================================
+     SEND BUTTON STATE
+  ========================================================= */
+
+  const sendButtonLoading =
+    sending ||
+    contractPending;
 
 
   /* =========================================================
@@ -432,6 +992,7 @@ export default function PayPage() {
   ========================================================= */
 
   return (
+
     <main
       className="
         relative
@@ -693,10 +1254,6 @@ export default function PayPage() {
           />
 
 
-          {/* =================================================
-              BALANCE HEADER
-          ================================================= */}
-
           <div
             className="
               relative
@@ -747,11 +1304,18 @@ export default function PayPage() {
                     shadow-[0_0_28px_rgba(34,211,238,0.18)]
                   "
                 >
-                  {tokenSymbol === "OPN"
+
+                  {tokenSymbol ===
+                  "OPN"
                     ? "O"
-                    : tokenSymbol === "WOPN"
+                    : tokenSymbol ===
+                      "WOPN"
                     ? "N"
-                    : tokenSymbol.slice(0, 1)}
+                    : tokenSymbol.slice(
+                        0,
+                        1
+                      )}
+
                 </div>
 
 
@@ -806,8 +1370,6 @@ export default function PayPage() {
 
             </div>
 
-
-            {/* BALANCE */}
 
             <div
               className="
@@ -865,9 +1427,13 @@ export default function PayPage() {
                     sm:text-4xl
                   "
                 >
-                  {formatBalance(
-                    selectedBalance
-                  )}
+
+                  {balanceLoading
+                    ? "..."
+                    : formatBalance(
+                        selectedBalance
+                      )}
+
                 </span>
 
               </div>
@@ -910,16 +1476,19 @@ export default function PayPage() {
               "
             >
 
-              {TOKENS.map(
-                (item: any) => {
+              {tokens.map(
+                (item) => {
 
                   const active =
                     item.symbol ===
                     tokenSymbol;
 
                   return (
+
                     <button
-                      key={item.symbol}
+                      key={
+                        item.address
+                      }
                       type="button"
                       onClick={() =>
                         setTokenSymbol(
@@ -963,22 +1532,57 @@ export default function PayPage() {
                           }
                         `}
                       >
+
                         {item.symbol.slice(
                           0,
                           1
                         )}
+
                       </span>
+
 
                       {item.symbol}
 
+
+                      {item.imported && (
+
+                        <span
+                          className="
+                            text-[8px]
+                            text-cyan-300
+                          "
+                        >
+                          IMPORTED
+                        </span>
+
+                      )}
+
                     </button>
+
                   );
+
                 }
               )}
 
             </div>
 
           </div>
+
+
+          {discovering && (
+
+            <p
+              className="
+                relative
+                mt-3
+                text-[10px]
+                text-white/30
+              "
+            >
+              Updating token list...
+            </p>
+
+          )}
 
         </section>
 
@@ -1108,7 +1712,9 @@ export default function PayPage() {
 
           <button
             type="button"
-            onClick={openSendForm}
+            onClick={
+              openSendForm
+            }
             className="
               group
               flex
@@ -1330,7 +1936,10 @@ export default function PayPage() {
                   text-black
                 "
               >
-                {tokenSymbol.slice(0, 1)}
+                {tokenSymbol.slice(
+                  0,
+                  1
+                )}
               </span>
 
               <span
@@ -1374,9 +1983,6 @@ export default function PayPage() {
               Available
             </span>
 
-            {/* =================================================
-                EXACTLY 2 DECIMAL PLACES
-            ================================================= */}
 
             <span
               className="
@@ -1385,10 +1991,15 @@ export default function PayPage() {
                 text-cyan-300
               "
             >
-              {formatBalance(
-                selectedBalance
-              )}{" "}
+
+              {balanceLoading
+                ? "Loading..."
+                : formatBalance(
+                    selectedBalance
+                  )}{" "}
+
               {tokenSymbol}
+
             </span>
 
           </div>
@@ -1407,6 +2018,7 @@ export default function PayPage() {
             >
               Recipient Address
             </label>
+
 
             <div
               className="
@@ -1445,6 +2057,7 @@ export default function PayPage() {
                 "
               />
 
+
               <button
                 type="button"
                 onClick={() =>
@@ -1460,11 +2073,31 @@ export default function PayPage() {
                   hover:bg-white/5
                   hover:text-cyan-300
                 "
+                title="Use my address"
               >
                 <Wallet size={17} />
               </button>
 
             </div>
+
+
+            {recipient &&
+              !isAddress(
+                recipient.trim()
+              ) && (
+
+                <p
+                  className="
+                    mt-2
+                    text-[10px]
+                    font-semibold
+                    text-red-400
+                  "
+                >
+                  Invalid wallet address
+                </p>
+
+              )}
 
           </div>
 
@@ -1491,16 +2124,11 @@ export default function PayPage() {
                 Amount
               </label>
 
+
               <button
                 type="button"
-                onClick={() =>
-                  setAmount(
-                    selectedBalance?.formatted
-                      ? Number(
-                          selectedBalance.formatted
-                        ).toFixed(2)
-                      : "0.00"
-                  )
+                onClick={
+                  setMaxAmount
                 }
                 className="
                   text-xs
@@ -1542,6 +2170,8 @@ export default function PayPage() {
                 }
                 type="number"
                 inputMode="decimal"
+                min="0"
+                step="any"
                 placeholder="0.00"
                 className="
                   min-w-0
@@ -1585,7 +2215,10 @@ export default function PayPage() {
                     text-black
                   "
                 >
-                  {tokenSymbol.slice(0, 1)}
+                  {tokenSymbol.slice(
+                    0,
+                    1
+                  )}
                 </span>
 
                 <span
@@ -1605,11 +2238,83 @@ export default function PayPage() {
           </div>
 
 
+          {/* TRANSACTION TYPE */}
+
+          <div
+            className="
+              mt-4
+              rounded-2xl
+              border
+              border-white/[0.06]
+              bg-white/[0.02]
+              px-3
+              py-2.5
+            "
+          >
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+              "
+            >
+
+              <span
+                className="
+                  text-[10px]
+                  text-white/35
+                "
+              >
+                Transfer type
+              </span>
+
+
+              <span
+                className="
+                  text-[10px]
+                  font-bold
+                  text-cyan-300
+                "
+              >
+                {isNativeToken
+                  ? "Native OPN transfer"
+                  : "ERC-20 token transfer"}
+              </span>
+
+            </div>
+
+
+            {!isNativeToken && (
+
+              <p
+                className="
+                  mt-1
+                  text-[9px]
+                  text-white/25
+                "
+              >
+                Direct wallet transfer — no approval
+                required.
+              </p>
+
+            )}
+
+          </div>
+
+
           {/* SEND BUTTON */}
 
           <button
             type="button"
             onClick={sendTx}
+            disabled={
+              sendButtonLoading ||
+              !isConnected ||
+              !token ||
+              !recipient ||
+              !amount
+            }
             className="
               mt-5
               flex
@@ -1631,12 +2336,40 @@ export default function PayPage() {
               hover:-translate-y-0.5
               hover:shadow-[0_15px_40px_rgba(139,92,246,0.25)]
               active:scale-[0.98]
+              disabled:cursor-not-allowed
+              disabled:opacity-50
             "
           >
 
-            <Send size={18} />
+            {sendButtonLoading ? (
 
-            Send Payment
+              <>
+                <span
+                  className="
+                    h-4
+                    w-4
+                    animate-spin
+                    rounded-full
+                    border-2
+                    border-black/30
+                    border-t-black
+                  "
+                />
+
+                Confirming...
+
+              </>
+
+            ) : (
+
+              <>
+                <Send size={18} />
+
+                Send {tokenSymbol}
+
+              </>
+
+            )}
 
           </button>
 
@@ -1674,11 +2407,14 @@ export default function PayPage() {
               bg-cyan-400/10
             "
           >
+
             <ShieldCheck
               size={16}
               className="text-cyan-300"
             />
+
           </div>
+
 
           <div>
 
@@ -1691,6 +2427,7 @@ export default function PayPage() {
             >
               Secure wallet payment
             </p>
+
 
             <p
               className="
@@ -1754,11 +2491,14 @@ export default function PayPage() {
                   bg-cyan-400/10
                 "
               >
+
                 <Activity
                   size={15}
                   className="text-cyan-300"
                 />
+
               </div>
+
 
               <span
                 className="
@@ -1772,6 +2512,7 @@ export default function PayPage() {
               </span>
 
             </div>
+
 
             <ArrowUpRight
               size={16}
@@ -1798,6 +2539,7 @@ export default function PayPage() {
         ================================================= */}
 
         {txHash && (
+
           <div
             className="
               mt-3
@@ -1828,11 +2570,14 @@ export default function PayPage() {
                   bg-emerald-400/10
                 "
               >
+
                 <Zap
                   size={14}
                   className="text-emerald-400"
                 />
+
               </div>
+
 
               <span
                 className="
@@ -1873,25 +2618,56 @@ export default function PayPage() {
                 {txHash}
               </p>
 
+
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
+
                   navigator.clipboard.writeText(
                     txHash
-                  )
-                }
+                  );
+
+                  setCopied(
+                    true
+                  );
+
+                  setTimeout(
+                    () =>
+                      setCopied(false),
+                    1200
+                  );
+
+                }}
                 className="
                   shrink-0
                   text-white/30
                   hover:text-white
                 "
               >
+
                 <Copy size={13} />
+
               </button>
 
             </div>
 
+
+            {copied && (
+
+              <p
+                className="
+                  mt-1
+                  text-[9px]
+                  text-emerald-400
+                "
+              >
+                Transaction hash copied
+              </p>
+
+            )}
+
           </div>
+
         )}
 
       </div>
@@ -1902,11 +2678,17 @@ export default function PayPage() {
       ===================================================== */}
 
       <ReceiveModal
-        isOpen={showReceive}
-        onClose={() =>
-          setShowReceive(false)
+        isOpen={
+          showReceive
         }
-        address={address}
+        onClose={() =>
+          setShowReceive(
+            false
+          )
+        }
+        address={
+          address
+        }
       />
 
 
@@ -1915,15 +2697,25 @@ export default function PayPage() {
       ===================================================== */}
 
       <VirtualCard
-        isOpen={showCard}
-        onClose={() =>
-          setShowCard(false)
+        isOpen={
+          showCard
         }
-        balance={formatBalance(
-          selectedBalance
-        )}
-        token={tokenSymbol}
-        address={address}
+        onClose={() =>
+          setShowCard(
+            false
+          )
+        }
+        balance={
+          formatBalance(
+            selectedBalance
+          )
+        }
+        token={
+          tokenSymbol
+        }
+        address={
+          address
+        }
       />
 
 
@@ -1932,12 +2724,30 @@ export default function PayPage() {
       ===================================================== */}
 
       <Scanner
-        isOpen={showScanner}
+        isOpen={
+          showScanner
+        }
         onClose={() =>
-          setShowScanner(false)
+          setShowScanner(
+            false
+          )
         }
         onScan={(addr: string) => {
-          setRecipient(addr);
+
+          if (
+            isAddress(addr)
+          ) {
+
+            setRecipient(
+              addr
+            );
+
+          }
+
+          setShowScanner(
+            false
+          );
+
 
           setTimeout(
             () => {
@@ -1945,9 +2755,12 @@ export default function PayPage() {
             },
             150
           );
+
         }}
       />
 
     </main>
+
   );
+
 }
